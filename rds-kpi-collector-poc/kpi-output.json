@@ -1,0 +1,1162 @@
+{
+  "oc rsh -n openshift-monitoring prometheus-k8s-0 curl -ks 'http://localhost:9090/api/v1/query' --data-urlencode 'query=sort_desc(rate(container_cpu_usage_seconds_total{id=~\"/system.slice/.*\"}[30m]))' | jq .": {
+    "data": {
+      "result": [
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/kubelet.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.5112335572192244"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/kubelet.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.31892036381931044"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/kubelet.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.2177761448316915"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/ovs-vswitchd.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.07667718887258777"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/crio.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.057108134914502666"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/crio.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.05059931301738917"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/ovs-vswitchd.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.04523046528605766"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/ovs-vswitchd.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.029488059379712744"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/crio.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.027813895962868294"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/NetworkManager.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.006266982733061286"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/NetworkManager.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.005364984658700027"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/NetworkManager.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.003244326917025542"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/dbus-broker.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0019288157781686898"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/ovsdb-server.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0017665855521211851"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/dbus-broker.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0017634049915604994"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/ovsdb-server.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.00132959885654898"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/systemd-udevd.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0012906953177115076"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/systemd-journald.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0012868636183212762"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/systemd-udevd.service/udev",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0012815629974700868"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/systemd-journald.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0011408410265221446"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/systemd-journald.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0011259624090349057"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/systemd-udevd.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0010718061024539397"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/systemd-udevd.service/udev",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0010649723269444806"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/dbus-broker.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0010493507313966675"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/ovsdb-server.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0009373423315358599"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-getty.slice/getty@tty1.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0007421509177299376"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-getty.slice",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0007419422962991378"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/systemd-udevd.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0007221597741412614"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/systemd-udevd.service/udev",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0007168945418276297"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/irqbalance.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.000687799068056915"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rhsmcertd.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0004930806049424571"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-getty.slice/getty@tty1.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0003835653097384994"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-getty.slice",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.00037302834464752717"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/irqbalance.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.00028456509780923486"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/irqbalance.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0002731105593384136"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-getty.slice/getty@tty1.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.00025675804140722053"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-getty.slice",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0002515965515734513"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/systemd-logind.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.000014019727664950037"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/systemd-logind.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.00001147461806349934"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/systemd-logind.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.000010385521436067198"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/chronyd.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.00000581911954485768"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/chronyd.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.000004887628240663841"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/chronyd.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.000004472387174500612"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/auditd.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0000036006130433396728"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/auditd.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0000035162477716801853"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/auditd.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0000030057820670646718"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rdma-ndd.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0000023975041483280145"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rdma-ndd.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.0000016532039389181983"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rdma-ndd.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0.000001649724141646332"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rpcbind.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "7.912442414531782e-07"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rpcbind.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "7.576273926520918e-07"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rpcbind.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "6.130680713474094e-07"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-rdma\\x2dload\\x2dmodules.slice",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-systemd\\x2dfsck.slice",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-rdma\\x2dload\\x2dmodules.slice",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-modprobe.slice",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/sshd.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rpcbind.socket",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rhsmcertd.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rpc-statd.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rpc-statd.service",
+            "instance": "10.1.24.4:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-0.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rpcbind.socket",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/sshd.service",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-systemd\\x2dfsck.slice",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-modprobe.slice",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-modprobe.slice",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-rdma\\x2dload\\x2dmodules.slice",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/system-systemd\\x2dfsck.slice",
+            "instance": "10.1.24.5:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "worker-1.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/sshd.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rpcbind.socket",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rpc-statd.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "cpu": "total",
+            "endpoint": "https-metrics",
+            "id": "/system.slice/rhsmcertd.service",
+            "instance": "10.1.24.3:10250",
+            "job": "kubelet",
+            "metrics_path": "/metrics/cadvisor",
+            "node": "master-2.clus0.t5g.lab.eng.rdu2.redhat.com",
+            "service": "kubelet"
+          },
+          "value": [
+            1757590373.916,
+            "0"
+          ]
+        }
+      ],
+      "resultType": "vector"
+    },
+    "status": "success"
+  }
+}

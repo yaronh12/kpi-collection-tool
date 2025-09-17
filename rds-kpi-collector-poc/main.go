@@ -54,7 +54,7 @@ func main() {
 
 }
 
-func saveToFile(data map[string]interface{}, filename string) error {
+func saveToFile(data map[string]PrometheusResponse, filename string) error {
 	// We create the JSON file
 	file, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -69,9 +69,9 @@ func saveToFile(data map[string]interface{}, filename string) error {
 	return nil
 }
 
-func runCommands(commandsToRun []string) (map[string]interface{}, error) {
+func runCommands(commandsToRun []string) (map[string]PrometheusResponse, error) {
 	// this is a map: key is the command, output of the command is the value (jsonData)
-	commandsResults := make(map[string]interface{})
+	commandsResults := make(map[string]PrometheusResponse)
 
 	for _, command := range commandsToRun {
 		fmt.Printf("Running: %s\n", command)
@@ -79,7 +79,7 @@ func runCommands(commandsToRun []string) (map[string]interface{}, error) {
 		output, err := exec.Command("sh", "-c", command).Output()
 		if err != nil {
 			fmt.Printf("Failed: %v\n", err)
-			commandsResults[command] = map[string]string{"error": err.Error()}
+			commandsResults[command] = PrometheusResponse{Status: "error: " + err.Error()}
 			continue
 		}
 
@@ -87,11 +87,11 @@ func runCommands(commandsToRun []string) (map[string]interface{}, error) {
 		var jsonData PrometheusResponse
 		if err := json.Unmarshal(output, &jsonData); err != nil {
 			fmt.Printf("JSON parse failed: %v\n", err)
-			commandsResults[command] = map[string]string{"error": "JSON parse failed"}
+			commandsResults[command] = PrometheusResponse{Status: "error: " + err.Error()}
 			continue
 		}
 
-		commandsResults[command] = jsonData // Direct assignment to the map
+		commandsResults[command] = jsonData
 
 		// We print the JSON data to the console
 		prettyJSON, _ := json.MarshalIndent(jsonData, "", "  ")

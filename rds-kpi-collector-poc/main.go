@@ -26,6 +26,11 @@ type PrometheusResponse struct {
 	Status string `json:"status"`
 }
 
+type QueryResponse struct {
+	PrometheusResponse PrometheusResponse `json:"prometheus_response"`
+	ErrorMsg           string             `json:"error"`
+}
+
 func main() {
 	fmt.Println("RDS KPI Collector starting...")
 
@@ -37,14 +42,10 @@ func main() {
 	}
 
 	// We run the commands
-	commandsResults, err := runCommands(commandsToRun)
-	if err != nil {
-		fmt.Printf("Failed to run commands: %v\n", err)
-		return
-	}
+	commandsResults := runCommands(commandsToRun)
 
 	// We save the results to a file
-	err = saveToFile(commandsResults, OUTPUT_FILE)
+	err := saveToFile(commandsResults, OUTPUT_FILE)
 	if err != nil {
 		fmt.Printf("Failed to save file: %v\n", err)
 		return
@@ -54,7 +55,7 @@ func main() {
 
 }
 
-func saveToFile(data map[string]PrometheusResponse, filename string) error {
+func saveToFile(data map[string]QueryResponse, filename string) error {
 	// We create the JSON file
 	file, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -69,9 +70,9 @@ func saveToFile(data map[string]PrometheusResponse, filename string) error {
 	return nil
 }
 
-func runCommands(commandsToRun []string) (map[string]PrometheusResponse, error) {
+func runCommands(commandsToRun []string) map[string]QueryResponse {
 	// this is a map: key is the command, output of the command is the value (jsonData)
-	commandsResults := make(map[string]PrometheusResponse)
+	commandsResults := make(map[string]QueryResponse)
 
 	for _, command := range commandsToRun {
 		fmt.Printf("Running: %s\n", command)
@@ -79,7 +80,7 @@ func runCommands(commandsToRun []string) (map[string]PrometheusResponse, error) 
 		output, err := exec.Command("sh", "-c", command).Output()
 		if err != nil {
 			fmt.Printf("Failed: %v\n", err)
-			commandsResults[command] = PrometheusResponse{Status: "error: " + err.Error()}
+			commandsResults[command] = QueryResponse{ErrorMsg: fmt.Sprintf("command execution failed: %v", err)}
 			continue
 		}
 
@@ -87,18 +88,21 @@ func runCommands(commandsToRun []string) (map[string]PrometheusResponse, error) 
 		var jsonData PrometheusResponse
 		if err := json.Unmarshal(output, &jsonData); err != nil {
 			fmt.Printf("JSON parse failed: %v\n", err)
-			commandsResults[command] = PrometheusResponse{Status: "error: " + err.Error()}
+			commandsResults[command] = QueryResponse{
+				PrometheusResponse: jsonData,
+				ErrorMsg:           fmt.Sprintf("JSON parsing failed: %v", err),
+			}
 			continue
 		}
 
-		commandsResults[command] = jsonData
+		//We save the data in the map
+		commandsResults[command] = QueryResponse{PrometheusResponse: jsonData}
 
 		// We print the JSON data to the console
 		prettyJSON, _ := json.MarshalIndent(jsonData, "", "  ")
-		fmt.Printf("JSON data: %s\n", string(prettyJSON))
+		fmt.Printf("JSON data: %s\n", prettyJSON)
 
 		fmt.Printf("Success\n")
 	}
-
-	return commandsResults, nil
+	return commandsResults
 }

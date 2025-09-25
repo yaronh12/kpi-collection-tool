@@ -10,18 +10,30 @@ import (
 	"os"
 	"time"
 
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+
+	"database/sql"
+
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
+	authv1 "k8s.io/api/authentication/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	OUTPUT_FILE = "kpi-output.json"
-	// CPU_USAGE_COMMAND          = "oc rsh -n openshift-monitoring prometheus-k8s-0 curl -ks 'http://localhost:9090/api/v1/query' --data-urlencode 'query=sort_desc(rate(container_cpu_usage_seconds_total{id=~\"/system.slice/.*\"}[30m]))'"
-	// OVS_CPU_USAGE_COMMAND      = "oc rsh -n openshift-monitoring prometheus-k8s-0 curl -ks 'http://localhost:9090/api/v1/query' --data-urlencode 'query=sort_desc((rate(container_cpu_usage_seconds_total{id=~\"/ovs.slice/.*\"}[30m])))'"
-	// POD_CPU_USAGE_COMMAND      = "oc rsh -n openshift-monitoring prometheus-k8s-0 curl -ks 'http://localhost:9090/api/v1/query' --data-urlencode 'query=sort_desc(avg_over_time(pod:container_cpu_usage:sum[30m]))'"
+	OUTPUT_FILE                = "kpi-output.json"
 	USER_READ_WRITE_PERMISSION = 0644
+	THANOS_ROUTE_API_PATH      = "/apis/route.openshift.io/v1/namespaces/openshift-monitoring/routes/thanos-querier"
 )
 
+// NOTE: Currently, QueryResponse and PrometheusResponse structs are not in good use
+// because we are not saving any results to a JSON file yet. These are placeholder
+// structures for future implementation when we add JSON output functionality.
+
+// PrometheusResponse represents the JSON response structure returned by Prometheus/Thanos queries
 type PrometheusResponse struct {
 	Data struct {
 		Result []struct {
@@ -33,11 +45,15 @@ type PrometheusResponse struct {
 	Status string `json:"status"`
 }
 
+// QueryResponse represents the result of executing a Prometheus query,
+// containing both the response data and any error that occurred
 type QueryResponse struct {
 	PrometheusResponse PrometheusResponse `json:"prometheus_response"`
 	ErrorMsg           string             `json:"error"`
 }
 
+// KPIs represents the structure of the kpis.json file containing
+// the list of KPI queries to be executed against Prometheus/Thanos
 type KPIs struct {
 	Queries []struct {
 		ID        string `json:"id"`
@@ -45,92 +61,197 @@ type KPIs struct {
 	} `json:"queries"`
 }
 
+// Define a struct to represent the OpenShift route object
+type Route struct {
+	Spec struct {
+		Host string `json:"host"`
+	} `json:"spec"`
+}
+
 func main() {
 	fmt.Println("RDS KPI Collector starting...")
-
-	// Add all the command from Jose Nunez here
-	// commandsToRun := []string{
-	// 	CPU_USAGE_COMMAND,
-	// 	OVS_CPU_USAGE_COMMAND,
-	// 	POD_CPU_USAGE_COMMAND,
-	// }
-	// Parse command-line flags for authentication and connection options
-
 	// Option 1: --bearer-token and --thanos-url
 	// Option 2: --kubeconfig
 
-	var (
-		bearerToken string
-		thanosURL   string
-		kubeconfig  string
-	)
-
-	flag.StringVar(&bearerToken, "token", "", "bearer token for thanos-queries")
-	flag.StringVar(&thanosURL, "thanos-url", "", "thanos url for http requests")
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "kubeconfig file path")
-	// validateFlags checks that either both token and thanos-url are provided,
-	// or kubeconfig is provided, but not both scenarios
-
-	flag.Parse()
-
-	fmt.Println("bearer token: ", bearerToken)
-	fmt.Println("thanos url: ", thanosURL)
-	fmt.Println("kubeconfig: ", kubeconfig)
-
-	// Validate that either both token and thanos-url are provided,
-	// or kubeconfig is provided, but not both scenarios
-	err := validateFlags(bearerToken, thanosURL, kubeconfig)
+	// Setup and validate flags
+	bearerToken, thanosURL, kubeconfig, clusterName, err := setupFlags()
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
 
-	// Open and read the kpis.json file
-	// kspis.json file contains predefined KPI queries with their IDs and PromQL queries
-	// that will be executed against the Prometheus/Thanos endpoint
-	kpisFile, err := os.Open("kpis.json")
+	fmt.Println("bearer token: ", bearerToken)
+	fmt.Println("thanos url: ", thanosURL)
+	fmt.Println("kubeconfig: ", kubeconfig)
+	fmt.Println("Cluster: ", clusterName)
+
+	// Load KPI queries
+	queries, err := loadKPIQueries()
 	if err != nil {
-		fmt.Printf("Failed to open kpis.json: %v\n", err)
-		return
-	}
-	defer kpisFile.Close()
-
-	// Decode the kpis.json file into an array of KPIs
-	var kpis KPIs
-	decoder := json.NewDecoder(kpisFile)
-	if err := decoder.Decode(&kpis); err != nil {
-		fmt.Printf("Failed to decode kpis.json: %v\n", err)
+		fmt.Printf("Failed to load KPI queries: %v\n", err)
 		return
 	}
 
-	// Extract PromQL queries from the KPIs structure into a slice of strings
-	// This prepares the queries to be executed against the Prometheus/Thanos endpoint
-	var queries []string
-	for _, query := range kpis.Queries {
-		queries = append(queries, query.PromQuery)
+	// If kubeconfig is provided, discover Thanos URL and create service account token
+	if kubeconfig != "" {
+		thanosURL, bearerToken, err = setupKubeconfigAuth(kubeconfig)
+		if err != nil {
+			fmt.Printf("Failed to setup kubeconfig auth: %v\n", err)
+			return
+		}
+		fmt.Printf("Discovered Thanos URL: %s\n", thanosURL)
+		fmt.Printf("Created service account token!\n")
 	}
 
 	// We run the queries
-	queriesResults, err := runQueries(queries, thanosURL, bearerToken)
+	err = runQueries(queries, thanosURL, bearerToken, clusterName)
 	if err != nil {
 		fmt.Printf("Failed to run commands: %v\n", err)
 		return
 	}
 
-	fmt.Printf("\n\n\n\n%v", queriesResults)
-
-	// // We save the results to a file
-	// err = saveToFile(commandsResults, OUTPUT_FILE)
-	// if err != nil {
-	// 	fmt.Printf("Failed to save file: %v\n", err)
-	// 	return
-	// }
-
-	// fmt.Printf("Done! Check %s\n", OUTPUT_FILE)
+	//fmt.Printf("\n\n\n\n%v", queriesResults)
+	fmt.Println("All queries completed successfully!")
 
 }
 
-func validateFlags(token string, url string, kubeconfig string) error {
+func setupFlags() (string, string, string, string, error) {
+	var bearerToken, thanosURL, kubeconfig, clusterName string
+	// Parse command line flags for authentication options
+	flag.StringVar(&bearerToken, "token", "", "bearer token for thanos-queries")
+	flag.StringVar(&thanosURL, "thanos-url", "", "thanos url for http requests")
+	flag.StringVar(&kubeconfig, "kubeconfig", "", "kubeconfig file path")
+	flag.StringVar(&clusterName, "cluster-name", "", "cluster name (required)")
+
+	flag.Parse()
+	// Validate flags
+	err := validateFlags(bearerToken, thanosURL, kubeconfig, clusterName)
+	return bearerToken, thanosURL, kubeconfig, clusterName, err
+}
+
+func loadKPIQueries() ([]string, error) {
+	// Open the kpis.json file
+	kpisFile, err := os.Open("kpis.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open kpis.json: %v", err)
+	}
+	defer kpisFile.Close()
+
+	// Parse the JSON file into KPIs struct using a JSON decoder
+	var kpis KPIs
+	decoder := json.NewDecoder(kpisFile)
+	if err := decoder.Decode(&kpis); err != nil {
+		return nil, fmt.Errorf("failed to decode kpis.json: %v", err)
+	}
+
+	// Extract prometheus query strings from the parsed KPI configuration
+	var queries []string
+	for _, query := range kpis.Queries {
+		queries = append(queries, query.PromQuery)
+	}
+
+	return queries, nil
+}
+
+func setupKubeconfigAuth(kubeconfig string) (string, string, error) {
+	// Set up authentication and connection to Kubernetes cluster
+	// using the provided kubeconfig file.
+	clientset, err := setupKubernetesClient(kubeconfig)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to setup Kubernetes client: %v", err)
+	}
+
+	// Discover the Thanos querier URL from the OpenShift cluster
+	thanosURL, err := getThanosURL(clientset)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get Thanos URL: %v", err)
+	}
+
+	// Create a service account token for authenticating with Thanos
+	bearerToken, err := createServiceAccountToken(clientset)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create service account token: %v", err)
+	}
+
+	return thanosURL, bearerToken, nil
+}
+
+func setupKubernetesClient(kubeconfigPath string) (*kubernetes.Clientset, error) {
+	// Load kubeconfig
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load kubeconfig: %v", err)
+	}
+
+	// Create clientset
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kubernetes client: %v", err)
+	}
+
+	return clientset, nil
+}
+
+func getThanosURL(clientset *kubernetes.Clientset) (string, error) {
+	// Equivalent to: oc get route thanos-querier -n openshift-monitoring -o jsonpath='{.spec.host}'
+	// This function retrieves the Thanos querier route hostname from OpenShift monitoring namespace
+	// by making a REST API call to get the route object and extracting the host from its spec
+	routes, err := clientset.RESTClient().
+		Get().
+		AbsPath(THANOS_ROUTE_API_PATH).
+		DoRaw(context.TODO())
+
+	if err != nil {
+		return "", fmt.Errorf("failed to get thanos-querier route: %v", err)
+	}
+
+	// Parse route response to get hostname
+	var route Route
+	if err := json.Unmarshal(routes, &route); err != nil {
+		return "", fmt.Errorf("failed to parse route response: %v", err)
+	}
+
+	// Extract the host field from the route specification
+	// The route spec contains the hostname where the Thanos querier is accessible
+	if route.Spec.Host != "" {
+		return route.Spec.Host, nil
+	}
+
+	return "", fmt.Errorf("failed to extract host from route spec")
+}
+
+func createServiceAccountToken(clientset *kubernetes.Clientset) (string, error) {
+	// Equivalent to: oc create token telemeter-client -n openshift-monitoring --duration=10h
+	// Creates a service account token for the telemeter-client service account
+	// in the openshift-monitoring namespace with a 10-hour expiration time
+
+	tokenRequest := &authv1.TokenRequest{
+		Spec: authv1.TokenRequestSpec{
+			ExpirationSeconds: int64Ptr(36000), // 10 hours = 36000 seconds
+		},
+	}
+	// Create the token using the Kubernetes API by calling CreateToken on the service account
+	result, err := clientset.CoreV1().ServiceAccounts("openshift-monitoring").
+		CreateToken(context.TODO(), "telemeter-client", tokenRequest, metav1.CreateOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to create service account token: %v", err)
+	}
+
+	return result.Status.Token, nil
+}
+
+// Helper function to create int64 pointer
+func int64Ptr(i int64) *int64 {
+	return &i
+}
+
+func validateFlags(token string, url string, kubeconfig string, clusterName string) error {
+	// Check if cluster name is provided
+	if clusterName == "" {
+		return fmt.Errorf("cluster name is required: use --cluster-name flag")
+	}
+
+	// Check authantication flags
 	if (token != "" && url != "" && kubeconfig == "") ||
 		(token == "" && url == "" && kubeconfig != "") {
 		return nil
@@ -139,13 +260,69 @@ func validateFlags(token string, url string, kubeconfig string) error {
 	}
 }
 
-func runQueries(queriesToRun []string, thanosURL string, bearerToken string) (map[string]QueryResponse, error) {
+func runQueries(queriesToRun []string, thanosURL string, bearerToken string, clusterName string) error {
 
-	// tr := &http.Transport{
-	// 	TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	// }
-	// client := &http.Client{Transport: tr}
+	// Initialize Database
+	db, err := initDB()
+	if err != nil {
+		return fmt.Errorf("failed to init database: %v", err)
+	}
+	// Get or create cluster in DB
+	clusterID, err := getOrCreateCluster(db, clusterName)
+	if err != nil {
+		return fmt.Errorf("failed to get cluster ID: %v", err)
+	}
 
+	// Create Prometheus client
+	v1api, err := setupPromClient(thanosURL, bearerToken)
+	if err != nil {
+		return fmt.Errorf("failed to create client: %v", err)
+	}
+
+	// Create Prometheus v1 API client for executing queries
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	for _, query := range queriesToRun {
+		fmt.Println("------------------------")
+		fmt.Printf("Running: %s\n", query)
+		// Execute query using the client library
+		result, warnings, err := v1api.Query(ctx, query, time.Now())
+		if err != nil {
+			fmt.Println("query failed: ", err)
+			if storeErr := storeQueryError(db, clusterID, query, err.Error()); storeErr != nil {
+				fmt.Printf("Failed to store error: %v\n", storeErr)
+			}
+			continue
+		}
+
+		if len(warnings) > 0 {
+			fmt.Printf("Warnings: %v\n", warnings)
+		}
+
+		// Store successful query execution
+		queryID, err := storeQueryExecution(db, clusterID, query)
+		if err != nil {
+			fmt.Printf("Failed to store query: %v\n", err)
+			continue
+		}
+
+		// Store results
+		err = storeQueryResults(db, queryID, result)
+		if err != nil {
+			fmt.Printf("Failed to store results: %v\n", err)
+		} else {
+			fmt.Println("Results stored successfuly in database")
+		}
+
+		fmt.Println("------------------------")
+
+	}
+
+	return nil
+}
+
+func setupPromClient(thanosURL, bearerToken string) (v1.API, error) {
 	// Create Prometheus client
 	client, err := api.NewClient(api.Config{
 		Address: "https://" + thanosURL, // Creation of the URL
@@ -161,89 +338,12 @@ func runQueries(queriesToRun []string, thanosURL string, bearerToken string) (ma
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %v", err)
+		return nil, fmt.Errorf("failed to create prometheus client: %v", err)
 	}
 
 	// Create Prometheus v1 API client for executing queries
 	v1api := v1.NewAPI(client)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// this is a map: key is the query, output of the query is the value
-	queriesResults := make(map[string]QueryResponse)
-
-	for _, query := range queriesToRun {
-		fmt.Println("------------------------")
-		fmt.Printf("Running: %s\n", query)
-		// Create POST request with form data
-		// data := url.Values{}
-		// data.Set("query", query)
-		// req, err := http.NewRequest("POST", "https://"+(thanosURL)+"/api/v1/query", strings.NewReader(data.Encode()))
-		// if err != nil {
-		// 	continue
-		// }
-
-		// Execute query using the client library
-		result, warnings, err := v1api.Query(ctx, query, time.Now())
-		if err != nil {
-			fmt.Println("query failed: ", err)
-			queriesResults[query] = QueryResponse{ErrorMsg: fmt.Sprintf("query failed: %v", err)}
-			continue
-		}
-
-		if len(warnings) > 0 {
-			fmt.Printf("Warnings: %v\n", warnings)
-		}
-
-		fmt.Println("RESULT:", result)
-
-		// // Add bearer token
-		// req.Header.Set("Authorization", "Bearer "+(bearerToken))
-		// req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-		// resp, err := client.Do(req)
-		// if err != nil {
-		// 	fmt.Printf("Request failed: %v\n", err)
-		// 	continue
-		// }
-		// defer resp.Body.Close()
-
-		// // Read the response body
-		// body, err := io.ReadAll(resp.Body)
-		// if err != nil {
-		// 	fmt.Printf("Failed to read response: %v\n", err)
-		// 	continue
-		// }
-
-		// // Print the actual JSON
-		// var prettyJSON interface{}
-		// if err := json.Unmarshal(body, &prettyJSON); err == nil {
-		// 	formatted, _ := json.MarshalIndent(prettyJSON, "", "  ")
-		// 	fmt.Printf("Response JSON:\n%s\n", string(formatted))
-		// } else {
-		// 	fmt.Printf("Raw response: %s\n", string(body))
-		// }
-		//fmt.Println(resp)
-		fmt.Println("------------------------")
-
-	}
-
-	return queriesResults, nil
-}
-
-func saveToFile(data map[string]PrometheusResponse, filename string) error {
-	// We create the JSON file
-	file, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to create JSON: %v", err)
-	}
-
-	// We save the file
-	err = os.WriteFile(filename, file, USER_READ_WRITE_PERMISSION)
-	if err != nil {
-		return fmt.Errorf("failed to save file: %v", err)
-	}
-	return nil
+	return v1api, nil
 }
 
 // Custom RoundTripper to add Bearer token
@@ -257,11 +357,105 @@ func (t *tokenRoundTripper) RoundTrip(req *http.Request) (*http.Response, error)
 	return t.rt.RoundTrip(req)
 }
 
-//TOKEN = eyJhbGciOiJSUzI1NiIsImtpZCI6Im5mOTl3a05TN2dCQ19Zdl8yOExsc1hBUE9vR2pIR19fZnQxemY5RHk2Y0UifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjIl0sImV4cCI6MTc1ODIyNzM5NiwiaWF0IjoxNzU4MTkxMzk2LCJpc3MiOiJodHRwczovL2t1YmVybmV0ZXMuZGVmYXVsdC5zdmMiLCJqdGkiOiI4MjZkMWQyOS1lZTkwLTQ2Y2QtYjgxNy04ZDExOGY1OTY5ODUiLCJrdWJlcm5ldGVzLmlvIjp7Im5hbWVzcGFjZSI6Im9wZW5zaGlmdC1tb25pdG9yaW5nIiwic2VydmljZWFjY291bnQiOnsibmFtZSI6InRlbGVtZXRlci1jbGllbnQiLCJ1aWQiOiJiNDM3ODYzMS1mNWQ3LTQxMGYtYWI5OS1kOTM4ZDgyMGY3ZGQifX0sIm5iZiI6MTc1ODE5MTM5Niwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50Om9wZW5zaGlmdC1tb25pdG9yaW5nOnRlbGVtZXRlci1jbGllbnQifQ.HnFq-3x9MMuHrL7OAOZzsWUxhCNM1k9ULvJxMunMmVt8hWKwOd6O_gBNM6EYxDWvWFoqxPIq0ItpwoXY6oESMBv7BXMYCkiby5JvKJYVdqJmrkJuW59LPA8IRGWMBkQHRFu7yph8LMAKfOwzjfzm9Cwnwj3WzmZMkhFWJmvl1YxvOopTxHdWvLPddioCcLtXBqY6d0rwWyS2hCIFkAQt29kPuCT2IY1FYZvhhuA8J-Yhg8IuR52dmvWlS7tjFxW5O6WqpTv5RNZK2jHFPDCCp1SI70iqjOzkdjEleyPZdTbAaro3nPXf6BAK1a3y7WDnKtlV64NbZrhxUxadTan_en5p4TKfHpIuTSOiq6XqbF4w4TBhTHnb0aWClhch5LKFNTwViwmgabL7g0vJJPG05zNIHtKK5xfVC0Uls9MuBKIlBpdjh8d9MEK7us1qt49Tguby6OPxgQjsbb3riF95LpuOapM1lPzCQVnkP9NqChbPUEo0U0ox6bbmikObXya7-Z5_E1dGF4lEn6iphaQ-TerNLLCp0ZYo46S55bCt8zncWuBSRkEmdl1U18lo-6Mo2otjOybjQP49bj9FfCvJv_Uk_wTps7e8pkvUPgqJhAg11au1kMlWzUQYUu0p6ekzFp42DuP6wsErPAggh3RMJVsJcn3q1sMXl6qi5RgSxOs
-//thanor querier url = thanos-querier-openshift-monitoring.apps.clus0.t5g.lab.eng.rdu2.redhat.com
+func initDB() (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", "./kpi_metrics.db")
+	if err != nil {
+		return nil, err
+	}
 
-// Command to get the token for telemeter-client:
-// TOKEN=$(oc create token telemeter-client -n openshift-monitoring --duration=10h)
+	// Create tables with your exact schema
+	schema := `
+    CREATE TABLE IF NOT EXISTS clusters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cluster_name TEXT UNIQUE NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    CREATE TABLE IF NOT EXISTS queries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cluster_id INTEGER REFERENCES clusters(id),
+        query_text TEXT NOT NULL,
+        execution_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status TEXT DEFAULT 'success',
+        error_message TEXT
+    );
+    
+    CREATE TABLE IF NOT EXISTS query_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        query_id INTEGER REFERENCES queries(id),
+        metric_value REAL,
+        timestamp_value REAL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        
+        -- Store ALL metric labels as JSON (this handles any structure)
+        metric_labels TEXT  -- JSON string of all labels
+    );
+    
+    `
 
-// Command to get to thanos URL:
-//oc get route thanos-querier -n openshift-monitoring -o jsonpath='{.spec.host}'
+	_, err = db.Exec(schema)
+	return db, err
+}
+
+func getOrCreateCluster(db *sql.DB, clusterName string) (int64, error) {
+	// Try to get existing cluster
+	var clusterID int64
+	err := db.QueryRow("SELECT id FROM clusters WHERE cluster_name = ?", clusterName).Scan(&clusterID)
+	if err == nil { // Cluster exists! returning the cluster ID
+		return clusterID, nil
+	}
+
+	//Create new cluster if not exists
+	result, err := db.Exec("INSERT INTO clusters (cluster_name) VALUES (?)", clusterName)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+func storeQueryError(db *sql.DB, clusterID int64, queryText string, errorMsg string) error {
+	_, err := db.Exec(
+		"INSERTS INTO queries (cluster_id, query_text, status, error_message) VALUES (?, ?, 'error', ?)",
+		clusterID, queryText, errorMsg,
+	)
+	return err
+}
+
+func storeQueryExecution(db *sql.DB, clusterID int64, queryText string) (int64, error) {
+	result, err := db.Exec(
+		"INSERT INTO queries (cluster_id, query_text) VALUES (?, ?)",
+		clusterID, queryText,
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.LastInsertId()
+}
+
+func storeQueryResults(db *sql.DB, queryID int64, result model.Value) error {
+	// Iterate through the vector results (assuming result is always a vector)
+	vector := result.(model.Vector)
+	for _, sample := range vector {
+		metric := sample.Metric
+		value := float64(sample.Value)
+		timestamp := float64(sample.Timestamp) / 1000
+
+		// Convert labels to JSON
+		labelsJSON, err := json.Marshal(metric)
+		if err != nil {
+			return err
+		}
+
+		_, err = db.Exec(`
+            INSERT INTO query_results 
+            (query_id, metric_value, timestamp_value, metric_labels)
+            VALUES (?, ?, ?, ?)`,
+			queryID, value, timestamp, string(labelsJSON),
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -52,7 +52,11 @@ func loadKPIQueries() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open kpis.json: %v", err)
 	}
-	defer kpisFile.Close()
+	defer func() {
+		if closeErr := kpisFile.Close(); closeErr != nil {
+			fmt.Printf("Warning: failed to close kpis.json: %v\n", closeErr)
+		}
+	}()
 
 	var kpis KPIs
 	decoder := json.NewDecoder(kpisFile)

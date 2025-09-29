@@ -46,7 +46,11 @@ func runQueries(queriesToRun []string, thanosURL string, bearerToken string, clu
 	if err != nil {
 		return fmt.Errorf("failed to init database: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			fmt.Printf("Warning: failed to close database connection: %v\n", closeErr)
+		}
+	}()
 
 	// Get or create cluster in DB
 	clusterID, err := getOrCreateCluster(db, clusterName)

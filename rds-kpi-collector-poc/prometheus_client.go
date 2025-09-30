@@ -8,8 +8,14 @@ import (
 	"net/http"
 	"time"
 
+	"rds-kpi-collector/database"
+
 	"github.com/prometheus/client_golang/api"
-	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
+)
+
+const (
+	TEN_SECONDS = 10 * time.Second
 )
 
 func (t *tokenRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -18,7 +24,7 @@ func (t *tokenRoundTripper) RoundTrip(req *http.Request) (*http.Response, error)
 }
 
 // setupPromClient creates and configures a Prometheus API client
-func setupPromClient(thanosURL, bearerToken string) (v1.API, error) {
+func setupPromClient(thanosURL, bearerToken string, insecureTLS bool) (promv1.API, error) {
 	client, err := api.NewClient(api.Config{
 		Address: "https://" + thanosURL,
 		RoundTripper: &tokenRoundTripper{
@@ -27,7 +33,7 @@ func setupPromClient(thanosURL, bearerToken string) (v1.API, error) {
 				// NOTE: InsecureSkipVerify is set to true for development purposes only.
 				// In production environments, this should be false and proper certificate
 				// validation should be implemented.
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureTLS},
 			},
 		},
 	})
@@ -35,37 +41,36 @@ func setupPromClient(thanosURL, bearerToken string) (v1.API, error) {
 		return nil, fmt.Errorf("failed to create prometheus client: %v", err)
 	}
 
-	v1api := v1.NewAPI(client)
-	return v1api, nil
+	return promv1.NewAPI(client), nil
 }
 
 // runQueries executes all Prometheus queries and stores results in database
-func runQueries(queriesToRun []string, thanosURL string, bearerToken string, clusterName string) error {
+func runQueries(kpisToRun KPIs, flags InputFlags) error {
 	// Initialize Database
-	db, err := initDB()
+	db, err := database.InitDB()
 	if err != nil {
 		return fmt.Errorf("failed to init database: %v", err)
 	}
 	defer db.Close()
 
 	// Get or create cluster in DB
-	clusterID, err := getOrCreateCluster(db, clusterName)
+	clusterID, err := database.GetOrCreateCluster(db, flags.ClusterName)
 	if err != nil {
 		return fmt.Errorf("failed to get cluster ID: %v", err)
 	}
 
 	// Create Prometheus client
-	v1api, err := setupPromClient(thanosURL, bearerToken)
+	v1api, err := setupPromClient(flags.ThanosURL, flags.BearerToken, flags.InsecureTLS)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %v", err)
 	}
 
 	// Execute queries
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), TEN_SECONDS)
 	defer cancel()
 
-	for _, query := range queriesToRun {
-		err := executeQuery(ctx, v1api, db, clusterID, query)
+	for _, query := range kpisToRun.Queries {
+		err := executeQuery(ctx, v1api, db, clusterID, query.ID, query.PromQuery)
 		if err != nil {
 			fmt.Printf("Query execution failed: %v\n", err)
 			// Continue with next query even if one fails
@@ -76,16 +81,16 @@ func runQueries(queriesToRun []string, thanosURL string, bearerToken string, clu
 }
 
 // executeQuery executes a single Prometheus query and handles the result
-func executeQuery(ctx context.Context, v1api v1.API, db *sql.DB, clusterID int64, query string) error {
+func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, clusterID int64, queryID string, queryText string) error {
 	fmt.Println("------------------------")
-	fmt.Printf("Running: %s\n", query)
+	fmt.Printf("Running: %s\n", queryText)
 
 	// Execute query using the Prometheus client library
-	result, warnings, err := v1api.Query(ctx, query, time.Now())
+	result, warnings, err := v1api.Query(ctx, queryText, time.Now())
 	if err != nil {
 		fmt.Println("query failed: ", err)
-		if storeErr := storeQueryError(db, clusterID, query, err.Error()); storeErr != nil {
-			fmt.Printf("Failed to store error: %v\n", storeErr)
+		if storeErr := database.IncrementQueryError(db, queryID); storeErr != nil {
+			fmt.Printf("Failed to increment error count: %v\n", storeErr)
 		}
 		return fmt.Errorf("query execution failed: %v", err)
 	}
@@ -94,15 +99,8 @@ func executeQuery(ctx context.Context, v1api v1.API, db *sql.DB, clusterID int64
 		fmt.Printf("Warnings: %v\n", warnings)
 	}
 
-	// Store successful query execution
-	queryID, err := storeQueryExecution(db, clusterID, query)
-	if err != nil {
-		fmt.Printf("Failed to store query: %v\n", err)
-		return fmt.Errorf("failed to store query: %v", err)
-	}
-
 	// Store results
-	err = storeQueryResults(db, queryID, result)
+	err = database.StoreQueryResults(db, clusterID, queryID, result)
 	if err != nil {
 		fmt.Printf("Failed to store results: %v\n", err)
 		return fmt.Errorf("failed to store results: %v", err)

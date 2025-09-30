@@ -13,6 +13,7 @@ func setupFlags() (InputFlags, error) {
 	flag.StringVar(&flags.ThanosURL, "thanos-url", "", "thanos url for http requests")
 	flag.StringVar(&flags.Kubeconfig, "kubeconfig", "", "kubeconfig file path")
 	flag.StringVar(&flags.ClusterName, "cluster-name", "", "cluster name (required)")
+	flag.BoolVar(&flags.InsecureTLS, "insecure-tls", false, "skip TLS certificate verification")
 
 	flag.Parse()
 
@@ -24,6 +25,10 @@ func setupFlags() (InputFlags, error) {
 func validateFlags(flags InputFlags) error {
 	if flags.ClusterName == "" {
 		return fmt.Errorf("cluster name is required: use --cluster-name flag")
+	}
+
+	if flags.InsecureTLS {
+		fmt.Println("WARNING: TLS certificate verification is disabled. Use only in development environments.")
 	}
 
 	if (flags.BearerToken != "" && flags.ThanosURL != "" && flags.Kubeconfig == "") ||

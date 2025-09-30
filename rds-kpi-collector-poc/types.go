@@ -14,6 +14,7 @@ type InputFlags struct {
 	ThanosURL   string
 	Kubeconfig  string
 	ClusterName string
+	InsecureTLS bool
 }
 
 // KPIs represents the structure of the kpis.json file containing
@@ -22,7 +23,7 @@ type KPIs struct {
 	Queries []struct {
 		ID        string `json:"id"`
 		PromQuery string `json:"promquery"`
-	} `json:"queries"`
+	} `json:"kpis"`
 }
 
 // Route represents the OpenShift route object structure

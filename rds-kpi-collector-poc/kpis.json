@@ -1,5 +1,5 @@
 {
-    "queries": [
+    "kpis": [
         {
             "id": "cpu-system",
             "promquery":"sort_desc(rate(container_cpu_usage_seconds_total{id=~\"/system.slice/.*\"}[30m]))"

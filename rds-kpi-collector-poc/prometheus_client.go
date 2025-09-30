@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	TEN_SECONDS = 10 * time.Second
+	FIVE_SECONDS = 5 * time.Second
 )
 
 func (t *tokenRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -66,7 +66,7 @@ func runQueries(kpisToRun KPIs, flags InputFlags) error {
 	}
 
 	// Execute queries
-	ctx, cancel := context.WithTimeout(context.Background(), TEN_SECONDS)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(len(kpisToRun.Queries))*FIVE_SECONDS)
 	defer cancel()
 
 	for _, query := range kpisToRun.Queries {

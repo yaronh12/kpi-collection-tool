@@ -76,18 +76,6 @@ linters:
           - mnd
         path: _test\.go
       - linters:
-          - mnd
-        path: config/config.go
-      - linters:
-          - gocritic
-        path: _scaling.go
-      - linters:
-          - mnd
-        path: hugepages.go
-      - linters:
-          - mnd
-        path: scheduling.go
-      - linters:
           - lll
         source: ^(.*= (".*"|`.*`))$
       - linters:

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"rds-kpi-collector/database"
@@ -51,7 +52,11 @@ func runQueries(kpisToRun KPIs, flags InputFlags) error {
 	if err != nil {
 		return fmt.Errorf("failed to init database: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to close database: %v\n", closeErr)
+		}
+	}()
 
 	// Get or create cluster in DB
 	clusterID, err := database.GetOrCreateCluster(db, flags.ClusterName)

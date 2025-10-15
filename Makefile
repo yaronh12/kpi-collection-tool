@@ -1,8 +1,10 @@
 # Detect the operating system
 UNAME_S := $(shell uname -s)
+# Binary name
+BINARY_NAME=kpi-collector
 
 build:
-	cd rds-kpi-collector-poc && go build -o rds-kpi-collector
+	go build -o $(BINARY_NAME) ./cmd/rds-kpi-collector
 
 # Mac installation via Homebrew
 install-golangci-lint-mac:
@@ -22,4 +24,4 @@ endif
 
 # Lint depends only on golangci-lint installation
 lint: install-golangci-lint
-	cd rds-kpi-collector-poc && golangci-lint run --timeout 10m0s
+	golangci-lint run --timeout 10m0s

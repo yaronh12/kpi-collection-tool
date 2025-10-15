@@ -1,11 +1,16 @@
-package main
+package types
 
 import "net/http"
 
 // tokenRoundTripper adds Bearer token authentication to HTTP requests
-type tokenRoundTripper struct {
-	token string
-	rt    http.RoundTripper
+type TokenRoundTripper struct {
+	Token string
+	RT    http.RoundTripper
+}
+
+func (t *TokenRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("Authorization", "Bearer "+t.Token)
+	return t.RT.RoundTrip(req)
 }
 
 // InputFlags holds all command line flag values

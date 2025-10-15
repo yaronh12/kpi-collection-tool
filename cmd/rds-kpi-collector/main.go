@@ -4,13 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"rds-kpi-collector/internal/config"
+	"rds-kpi-collector/internal/kubernetes"
+	"rds-kpi-collector/internal/prometheus"
+	"rds-kpi-collector/internal/types"
 )
 
 func main() {
 	fmt.Println("RDS KPI Collector starting...")
 
 	// Setup flags
-	flags, err := setupFlags()
+	flags, err := config.SetupFlags()
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
@@ -27,7 +31,7 @@ func main() {
 
 	// If kubeconfig is provided, discover Thanos URL and token
 	if flags.Kubeconfig != "" {
-		flags.ThanosURL, flags.BearerToken, err = setupKubeconfigAuth(flags.Kubeconfig)
+		flags.ThanosURL, flags.BearerToken, err = kubernetes.SetupKubeconfigAuth(flags.Kubeconfig)
 		if err != nil {
 			fmt.Printf("Failed to setup kubeconfig auth: %v\n", err)
 			return
@@ -37,7 +41,7 @@ func main() {
 	}
 
 	// Run queries
-	err = runQueries(kpis, flags)
+	err = prometheus.RunQueries(kpis, flags)
 	if err != nil {
 		fmt.Printf("Failed to run queries: %v\n", err)
 		return
@@ -47,10 +51,10 @@ func main() {
 }
 
 // loadKPIs loads Prometheus queries from kpis.json file
-func loadKPIs() (KPIs, error) {
-	kpisFile, err := os.Open("kpis.json")
+func loadKPIs() (types.KPIs, error) {
+	kpisFile, err := os.Open("configs/kpis.json")
 	if err != nil {
-		return KPIs{}, fmt.Errorf("failed to open kpis.json: %v", err)
+		return types.KPIs{}, fmt.Errorf("failed to open kpis.json: %v", err)
 	}
 	defer func() {
 		if closeErr := kpisFile.Close(); closeErr != nil {
@@ -58,10 +62,10 @@ func loadKPIs() (KPIs, error) {
 		}
 	}()
 
-	var kpis KPIs
+	var kpis types.KPIs
 	decoder := json.NewDecoder(kpisFile)
 	if err := decoder.Decode(&kpis); err != nil {
-		return KPIs{}, fmt.Errorf("failed to decode kpis.json: %v", err)
+		return types.KPIs{}, fmt.Errorf("failed to decode kpis.json: %v", err)
 	}
 
 	return kpis, nil

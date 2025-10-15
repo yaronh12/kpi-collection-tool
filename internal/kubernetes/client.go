@@ -1,9 +1,10 @@
-package main
+package kubernetes
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"rds-kpi-collector/internal/types"
 
 	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +18,7 @@ const (
 
 // setupKubeconfigAuth sets up authentication using kubeconfig file
 // and discovers Thanos URL and creates service account token
-func setupKubeconfigAuth(kubeconfig string) (string, string, error) {
+func SetupKubeconfigAuth(kubeconfig string) (string, string, error) {
 	clientset, err := setupKubernetesClient(kubeconfig)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to setup Kubernetes client: %v", err)
@@ -63,7 +64,7 @@ func getThanosURL(clientset *kubernetes.Clientset) (string, error) {
 		return "", fmt.Errorf("failed to get thanos-querier route: %v", err)
 	}
 
-	var route Route
+	var route types.Route
 	if err := json.Unmarshal(routes, &route); err != nil {
 		return "", fmt.Errorf("failed to parse route response: %v", err)
 	}

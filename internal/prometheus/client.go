@@ -1,4 +1,4 @@
-package main
+package prometheus
 
 import (
 	"context"
@@ -9,7 +9,8 @@ import (
 	"os"
 	"time"
 
-	"rds-kpi-collector/database"
+	"rds-kpi-collector/internal/database"
+	"rds-kpi-collector/internal/types"
 
 	"github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -19,18 +20,13 @@ const (
 	FIVE_SECONDS = 5 * time.Second
 )
 
-func (t *tokenRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Set("Authorization", "Bearer "+t.token)
-	return t.rt.RoundTrip(req)
-}
-
 // setupPromClient creates and configures a Prometheus API client
 func setupPromClient(thanosURL, bearerToken string, insecureTLS bool) (promv1.API, error) {
 	client, err := api.NewClient(api.Config{
 		Address: "https://" + thanosURL,
-		RoundTripper: &tokenRoundTripper{
-			token: bearerToken,
-			rt: &http.Transport{
+		RoundTripper: &types.TokenRoundTripper{
+			Token: bearerToken,
+			RT: &http.Transport{
 				// NOTE: InsecureSkipVerify is set to true for development purposes only.
 				// In production environments, this should be false and proper certificate
 				// validation should be implemented.
@@ -46,7 +42,7 @@ func setupPromClient(thanosURL, bearerToken string, insecureTLS bool) (promv1.AP
 }
 
 // runQueries executes all Prometheus queries and stores results in database
-func runQueries(kpisToRun KPIs, flags InputFlags) error {
+func RunQueries(kpisToRun types.KPIs, flags types.InputFlags) error {
 	// Initialize Database
 	db, err := database.InitDB()
 	if err != nil {

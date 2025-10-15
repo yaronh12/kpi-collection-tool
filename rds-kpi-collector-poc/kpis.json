@@ -1,0 +1,16 @@
+{
+    "kpis": [
+        {
+            "id": "cpu-system",
+            "promquery":"sort_desc(rate(container_cpu_usage_seconds_total{id=~\"/system.slice/.*\"}[30m]))"
+        },
+        {
+            "id": "cpu-ovs",
+            "promquery":"sort_desc((rate(container_cpu_usage_seconds_total{id=~\"/ovs.slice/.*\"}[30m])))"
+        },
+        {
+            "id": "cpu-pods",
+            "promquery":"sort_desc(avg_over_time(pod:container_cpu_usage:sum[30m]))"
+        }
+    ]
+}

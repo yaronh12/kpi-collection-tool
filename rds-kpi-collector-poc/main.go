@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 )
 
@@ -10,7 +11,7 @@ func main() {
 	fmt.Println("RDS KPI Collector starting...")
 
 	// Setup flags
-	flags, err := setupFlags()
+	flags, err := SetupFlags()
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
@@ -52,7 +53,11 @@ func loadKPIs() (KPIs, error) {
 	if err != nil {
 		return KPIs{}, fmt.Errorf("failed to open kpis.json: %v", err)
 	}
-	defer kpisFile.Close()
+	defer func() {
+		if err := kpisFile.Close(); err != nil {
+			log.Printf("failed to close kpis.json: %v", err)
+		}
+	}()
 
 	var kpis KPIs
 	decoder := json.NewDecoder(kpisFile)

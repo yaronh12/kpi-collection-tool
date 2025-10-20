@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-// setupFlags parses and validates command line flags, returns InputFlags struct
-func setupFlags() (InputFlags, error) {
+// SetupFlags parses and validates command line flags, returns InputFlags struct
+func SetupFlags() (InputFlags, error) {
 	var flags InputFlags
 
 	flag.StringVar(&flags.BearerToken, "token", "", "bearer token for thanos-queries")

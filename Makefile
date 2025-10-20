@@ -22,4 +22,4 @@ endif
 
 # Lint depends only on golangci-lint installation
 lint: install-golangci-lint
-	cd rds-kpi-collector-poc && golangci-lint run --timeout 10m0s
+	golangci-lint run --timeout 10m0s ./...

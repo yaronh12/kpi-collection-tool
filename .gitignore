@@ -1,5 +1,2 @@
-rds-kpi-collector-poc/main
-rds-kpi-collector-poc/rds-kpi-collector
-rds-kpi-collector-poc/kpi-output.json
-rds-kpi-collector-poc/database/kpi_metrics.db
+rds-kpi-collector-poc/
 .DS_Store

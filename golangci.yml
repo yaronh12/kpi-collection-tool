@@ -1,4 +1,8 @@
 version: "2"
+run:
+  timeout: 10m
+  skip-dirs:
+    - rds-kpi-collector-poc
 linters:
   default: none
   enable:

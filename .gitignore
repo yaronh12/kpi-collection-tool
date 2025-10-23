@@ -1,2 +1,4 @@
-rds-kpi-collector-poc/
+main
+kpi-collector
+collected-data/
 .DS_Store

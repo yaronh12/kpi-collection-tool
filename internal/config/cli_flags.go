@@ -1,11 +1,11 @@
-package main
+package config
 
 import (
 	"flag"
 	"fmt"
 )
 
-// SetupFlags parses and validates command line flags, returns InputFlags struct
+// setupFlags parses and validates command line flags, returns InputFlags struct
 func SetupFlags() (InputFlags, error) {
 	var flags InputFlags
 

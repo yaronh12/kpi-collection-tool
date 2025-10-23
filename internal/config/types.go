@@ -1,12 +1,4 @@
-package main
-
-import "net/http"
-
-// tokenRoundTripper adds Bearer token authentication to HTTP requests
-type tokenRoundTripper struct {
-	token string
-	rt    http.RoundTripper
-}
+package config
 
 // InputFlags holds all command line flag values
 type InputFlags struct {
@@ -24,11 +16,4 @@ type KPIs struct {
 		ID        string `json:"id"`
 		PromQuery string `json:"promquery"`
 	} `json:"kpis"`
-}
-
-// Route represents the OpenShift route object structure
-type Route struct {
-	Spec struct {
-		Host string `json:"host"`
-	} `json:"spec"`
 }

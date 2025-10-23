@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"encoding/json"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/common/model"
@@ -10,7 +11,11 @@ import (
 
 // initDB initializes the SQLite database and creates required tables
 func InitDB() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "./database/kpi_metrics.db")
+	// Create collected-data directory if it doesn't exist
+	if err := os.MkdirAll("./collected-data", 0755); err != nil {
+		return nil, err
+	}
+	db, err := sql.Open("sqlite3", "./collected-data/kpi_metrics.db")
 	if err != nil {
 		return nil, err
 	}

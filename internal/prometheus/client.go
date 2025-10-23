@@ -24,7 +24,7 @@ const (
 func setupPromClient(thanosURL, bearerToken string, insecureTLS bool) (promv1.API, error) {
 	client, err := api.NewClient(api.Config{
 		Address: "https://" + thanosURL,
-		RoundTripper: &TokenRoundTripper{
+		RoundTripper: &tokenRoundTripper{
 			Token: bearerToken,
 			RT: &http.Transport{
 				// NOTE: InsecureSkipVerify is set to true for development purposes only.

@@ -63,7 +63,7 @@ func getThanosURL(clientset *kubernetes.Clientset) (string, error) {
 		return "", fmt.Errorf("failed to get thanos-querier route: %v", err)
 	}
 
-	var route Route
+	var route route
 	if err := json.Unmarshal(routes, &route); err != nil {
 		return "", fmt.Errorf("failed to parse route response: %v", err)
 	}

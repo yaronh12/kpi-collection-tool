@@ -1,7 +1,7 @@
 package kubernetes
 
 // Route represents the OpenShift route object structure
-type Route struct {
+type route struct {
 	Spec struct {
 		Host string `json:"host"`
 	} `json:"spec"`

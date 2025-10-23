@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"rds-kpi-collector/internal/types"
 
 	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +63,7 @@ func getThanosURL(clientset *kubernetes.Clientset) (string, error) {
 		return "", fmt.Errorf("failed to get thanos-querier route: %v", err)
 	}
 
-	var route types.Route
+	var route Route
 	if err := json.Unmarshal(routes, &route); err != nil {
 		return "", fmt.Errorf("failed to parse route response: %v", err)
 	}

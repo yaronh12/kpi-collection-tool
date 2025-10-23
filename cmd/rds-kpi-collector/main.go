@@ -7,7 +7,6 @@ import (
 	"rds-kpi-collector/internal/config"
 	"rds-kpi-collector/internal/kubernetes"
 	"rds-kpi-collector/internal/prometheus"
-	"rds-kpi-collector/internal/types"
 )
 
 func main() {
@@ -51,10 +50,10 @@ func main() {
 }
 
 // loadKPIs loads Prometheus queries from kpis.json file
-func loadKPIs() (types.KPIs, error) {
+func loadKPIs() (config.KPIs, error) {
 	kpisFile, err := os.Open("configs/kpis.json")
 	if err != nil {
-		return types.KPIs{}, fmt.Errorf("failed to open kpis.json: %v", err)
+		return config.KPIs{}, fmt.Errorf("failed to open kpis.json: %v", err)
 	}
 	defer func() {
 		if closeErr := kpisFile.Close(); closeErr != nil {
@@ -62,10 +61,10 @@ func loadKPIs() (types.KPIs, error) {
 		}
 	}()
 
-	var kpis types.KPIs
+	var kpis config.KPIs
 	decoder := json.NewDecoder(kpisFile)
 	if err := decoder.Decode(&kpis); err != nil {
-		return types.KPIs{}, fmt.Errorf("failed to decode kpis.json: %v", err)
+		return config.KPIs{}, fmt.Errorf("failed to decode kpis.json: %v", err)
 	}
 
 	return kpis, nil

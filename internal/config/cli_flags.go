@@ -3,13 +3,11 @@ package config
 import (
 	"flag"
 	"fmt"
-
-	"rds-kpi-collector/internal/types"
 )
 
 // setupFlags parses and validates command line flags, returns InputFlags struct
-func SetupFlags() (types.InputFlags, error) {
-	var flags types.InputFlags
+func SetupFlags() (InputFlags, error) {
+	var flags InputFlags
 
 	flag.StringVar(&flags.BearerToken, "token", "", "bearer token for thanos-queries")
 	flag.StringVar(&flags.ThanosURL, "thanos-url", "", "thanos url for http requests")
@@ -24,7 +22,7 @@ func SetupFlags() (types.InputFlags, error) {
 }
 
 // validateFlags ensures the correct combination of flags is provided
-func validateFlags(flags types.InputFlags) error {
+func validateFlags(flags InputFlags) error {
 	if flags.ClusterName == "" {
 		return fmt.Errorf("cluster name is required: use --cluster-name flag")
 	}

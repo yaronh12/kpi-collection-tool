@@ -9,8 +9,8 @@ import (
 	"os"
 	"time"
 
+	"rds-kpi-collector/internal/config"
 	"rds-kpi-collector/internal/database"
-	"rds-kpi-collector/internal/types"
 
 	"github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -24,7 +24,7 @@ const (
 func setupPromClient(thanosURL, bearerToken string, insecureTLS bool) (promv1.API, error) {
 	client, err := api.NewClient(api.Config{
 		Address: "https://" + thanosURL,
-		RoundTripper: &types.TokenRoundTripper{
+		RoundTripper: &TokenRoundTripper{
 			Token: bearerToken,
 			RT: &http.Transport{
 				// NOTE: InsecureSkipVerify is set to true for development purposes only.
@@ -42,7 +42,7 @@ func setupPromClient(thanosURL, bearerToken string, insecureTLS bool) (promv1.AP
 }
 
 // runQueries executes all Prometheus queries and stores results in database
-func RunQueries(kpisToRun types.KPIs, flags types.InputFlags) error {
+func RunQueries(kpisToRun config.KPIs, flags config.InputFlags) error {
 	// Initialize Database
 	db, err := database.InitDB()
 	if err != nil {

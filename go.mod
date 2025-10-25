@@ -1,3 +1,8 @@
+module rds-kpi-collector
+
+go 1.25.1
+
+require (
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.66.1

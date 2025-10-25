@@ -4,9 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"log"
+
 	"rds-kpi-collector/internal/config"
 	"rds-kpi-collector/internal/kubernetes"
 	"rds-kpi-collector/internal/prometheus"
+	"rds-kpi-collector/internal/logger"
+	"rds-kpi-collector/internal/collector"
 )
 
 func main() {
@@ -21,9 +25,25 @@ func main() {
 
 	fmt.Printf("Cluster: %s\n", flags.ClusterName)
 
+
+	// Initialize logger
+	logF, err := logger.InitLogger(flags.LogFile)
+	if err != nil {
+		fmt.Printf("Failed to initialize logger: %v\n", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := logF.Close(); err != nil {
+			fmt.Printf("Failed to close log file: %v\n", err)
+		}
+	}()
+
+	log.Println("RDS KPI Collector initialized.")
+
 	// Load KPI queries
 	kpis, err := loadKPIs()
 	if err != nil {
+		log.Printf("Failed to load KPI queries: %v\n", err)
 		fmt.Printf("Failed to load KPI queries: %v\n", err)
 		return
 	}
@@ -32,6 +52,7 @@ func main() {
 	if flags.Kubeconfig != "" {
 		flags.ThanosURL, flags.BearerToken, err = kubernetes.SetupKubeconfigAuth(flags.Kubeconfig)
 		if err != nil {
+			log.Printf("Failed to setup kubeconfig auth: %v\n", err)
 			fmt.Printf("Failed to setup kubeconfig auth: %v\n", err)
 			return
 		}
@@ -42,11 +63,23 @@ func main() {
 	// Run queries
 	err = prometheus.RunQueries(kpis, flags)
 	if err != nil {
+		log.Printf("Failed to run queries: %v\n", err)
 		fmt.Printf("Failed to run queries: %v\n", err)
 		return
 	}
 
 	fmt.Println("All queries completed successfully!")
+
+	// Run collector
+	if err := collector.RunKPICollector(flags.SamplingFreq, flags.Duration, flags.OutputFile); err != nil {
+		log.Printf("Collector error: %v\n", err)
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	log.Println("RDS KPI Collector finished successfully.")
+	fmt.Println("RDS KPI Collector finished successfully.")
+
 }
 
 // loadKPIs loads Prometheus queries from kpis.json file

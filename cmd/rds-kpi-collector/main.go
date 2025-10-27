@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 	"log"
+	"time"
 
 	"rds-kpi-collector/internal/config"
 	"rds-kpi-collector/internal/kubernetes"
 	"rds-kpi-collector/internal/prometheus"
 	"rds-kpi-collector/internal/logger"
-	"rds-kpi-collector/internal/collector"
 )
 
 func main() {
@@ -60,25 +60,27 @@ func main() {
 		fmt.Printf("Created service account token!\n")
 	}
 
-	// Run queries
-	err = prometheus.RunQueries(kpis, flags)
-	if err != nil {
-		log.Printf("Failed to run queries: %v\n", err)
-		fmt.Printf("Failed to run queries: %v\n", err)
-		return
+	// Calculate number of runs based on sampling frequency and duration
+	numRuns := int(flags.Duration.Seconds()) / flags.SamplingFreq
+
+	for i := 1; i <= numRuns; i++ {
+		log.Printf("Running sample %d/%d\n", i, numRuns)
+		fmt.Printf("Running sample %d/%d\n", i, numRuns)
+
+		// Run Prometheus queries
+		if err := prometheus.RunQueries(kpis, flags); err != nil {
+			log.Printf("RunQueries failed on sample %d: %v\n", i, err)
+			fmt.Printf("RunQueries failed on sample %d: %v\n", i, err)
+		} else {
+			log.Printf("Sample %d completed successfully\n", i)
+			fmt.Printf("Sample %d completed successfully\n", i)
+		}
+
+		// Sleep between samples
+		time.Sleep(time.Duration(flags.SamplingFreq) * time.Second)
 	}
 
 	fmt.Println("All queries completed successfully!")
-
-	// Run collector
-	if err := collector.RunKPICollector(flags.SamplingFreq, flags.Duration, flags.OutputFile); err != nil {
-		log.Printf("Collector error: %v\n", err)
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	log.Println("RDS KPI Collector finished successfully.")
-	fmt.Println("RDS KPI Collector finished successfully.")
 
 }
 

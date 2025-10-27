@@ -44,7 +44,6 @@ func main() {
 	kpis, err := loadKPIs()
 	if err != nil {
 		log.Printf("Failed to load KPI queries: %v\n", err)
-		fmt.Printf("Failed to load KPI queries: %v\n", err)
 		return
 	}
 
@@ -53,7 +52,6 @@ func main() {
 		flags.ThanosURL, flags.BearerToken, err = kubernetes.SetupKubeconfigAuth(flags.Kubeconfig)
 		if err != nil {
 			log.Printf("Failed to setup kubeconfig auth: %v\n", err)
-			fmt.Printf("Failed to setup kubeconfig auth: %v\n", err)
 			return
 		}
 		fmt.Printf("Discovered Thanos URL: %s\n", flags.ThanosURL)
@@ -65,15 +63,12 @@ func main() {
 
 	for i := 1; i <= numRuns; i++ {
 		log.Printf("Running sample %d/%d\n", i, numRuns)
-		fmt.Printf("Running sample %d/%d\n", i, numRuns)
 
 		// Run Prometheus queries
 		if err := prometheus.RunQueries(kpis, flags); err != nil {
 			log.Printf("RunQueries failed on sample %d: %v\n", i, err)
-			fmt.Printf("RunQueries failed on sample %d: %v\n", i, err)
 		} else {
 			log.Printf("Sample %d completed successfully\n", i)
-			fmt.Printf("Sample %d completed successfully\n", i)
 		}
 
 		// Sleep between samples

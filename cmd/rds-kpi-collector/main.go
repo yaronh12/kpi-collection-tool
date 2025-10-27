@@ -4,9 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"log"
+	"time"
+
 	"rds-kpi-collector/internal/config"
 	"rds-kpi-collector/internal/kubernetes"
 	"rds-kpi-collector/internal/prometheus"
+	"rds-kpi-collector/internal/logger"
 )
 
 func main() {
@@ -21,10 +25,25 @@ func main() {
 
 	fmt.Printf("Cluster: %s\n", flags.ClusterName)
 
+
+	// Initialize logger
+	logF, err := logger.InitLogger(flags.LogFile)
+	if err != nil {
+		fmt.Printf("Failed to initialize logger: %v\n", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := logF.Close(); err != nil {
+			fmt.Printf("Failed to close log file: %v\n", err)
+		}
+	}()
+
+	log.Println("RDS KPI Collector initialized.")
+
 	// Load KPI queries
 	kpis, err := loadKPIs()
 	if err != nil {
-		fmt.Printf("Failed to load KPI queries: %v\n", err)
+		log.Printf("Failed to load KPI queries: %v\n", err)
 		return
 	}
 
@@ -32,21 +51,32 @@ func main() {
 	if flags.Kubeconfig != "" {
 		flags.ThanosURL, flags.BearerToken, err = kubernetes.SetupKubeconfigAuth(flags.Kubeconfig)
 		if err != nil {
-			fmt.Printf("Failed to setup kubeconfig auth: %v\n", err)
+			log.Printf("Failed to setup kubeconfig auth: %v\n", err)
 			return
 		}
 		fmt.Printf("Discovered Thanos URL: %s\n", flags.ThanosURL)
 		fmt.Printf("Created service account token!\n")
 	}
 
-	// Run queries
-	err = prometheus.RunQueries(kpis, flags)
-	if err != nil {
-		fmt.Printf("Failed to run queries: %v\n", err)
-		return
+	// Calculate number of runs based on sampling frequency and duration
+	numRuns := int(flags.Duration.Seconds()) / flags.SamplingFreq
+
+	for i := 1; i <= numRuns; i++ {
+		log.Printf("Running sample %d/%d\n", i, numRuns)
+
+		// Run Prometheus queries
+		if err := prometheus.RunQueries(kpis, flags); err != nil {
+			log.Printf("RunQueries failed on sample %d: %v\n", i, err)
+		} else {
+			log.Printf("Sample %d completed successfully\n", i)
+		}
+
+		// Sleep between samples
+		time.Sleep(time.Duration(flags.SamplingFreq) * time.Second)
 	}
 
 	fmt.Println("All queries completed successfully!")
+
 }
 
 // loadKPIs loads Prometheus queries from kpis.json file

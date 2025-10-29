@@ -56,7 +56,8 @@ var _ = Describe("Kubernetes Client", func() {
 		// Clean up temporary files created during testing
 		AfterEach(func() {
 			if tmpDir != "" {
-				os.RemoveAll(tmpDir)
+				err := os.RemoveAll(tmpDir)
+				Expect(err).NotTo(HaveOccurred())
 			}
 		})
 
@@ -332,7 +333,8 @@ users:
 		// Clean up temporary files
 		AfterEach(func() {
 			if tmpDir != "" {
-				os.RemoveAll(tmpDir)
+				err := os.RemoveAll(tmpDir)
+				Expect(err).NotTo(HaveOccurred())
 			}
 		})
 

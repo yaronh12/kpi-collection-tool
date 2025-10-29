@@ -174,14 +174,17 @@ var _ = Describe("Client", func() {
 		// Cleanup: Close database and remove temp files after each test
 		AfterEach(func() {
 			if testDB != nil {
-				testDB.Close()
+				err := testDB.Close()
+				Expect(err).NotTo(HaveOccurred())
 			}
 			// Change back to original directory
 			if originalDir != "" {
-				os.Chdir(originalDir)
+				err := os.Chdir(originalDir)
+				Expect(err).NotTo(HaveOccurred())
 			}
 			if tmpDir != "" {
-				os.RemoveAll(tmpDir)
+				err := os.RemoveAll(tmpDir)
+				Expect(err).NotTo(HaveOccurred())
 			}
 		})
 

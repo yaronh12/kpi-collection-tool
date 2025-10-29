@@ -43,11 +43,13 @@ var _ = Describe("Sqlite", func() {
 
 	AfterEach(func() {
 		if db != nil {
-			db.Close()
+			err := db.Close()
+			Expect(err).NotTo(HaveOccurred())
 		}
 		// Clean up temporary directory
 		if tmpDir != "" {
-			os.RemoveAll(tmpDir)
+			err := os.RemoveAll(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
 		}
 	})
 
@@ -140,10 +142,11 @@ var _ = Describe("Sqlite", func() {
 
 			It("should not create a duplicate entry", func() {
 				By("Calls GetOrCreateCluster() again, Counts how many rows exist with that cluster name and verifies count is exactly 1")
-				GetOrCreateCluster(db, "existing-cluster")
+				_, err := GetOrCreateCluster(db, "existing-cluster")
+				Expect(err).NotTo(HaveOccurred())
 
 				var count int
-				err := db.QueryRow("SELECT COUNT(*) FROM clusters WHERE cluster_name = ?", "existing-cluster").Scan(&count)
+				err = db.QueryRow("SELECT COUNT(*) FROM clusters WHERE cluster_name = ?", "existing-cluster").Scan(&count)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(count).To(Equal(1))
 			})

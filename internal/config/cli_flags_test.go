@@ -7,14 +7,33 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const (
+	validClusterName  = "test-cluster"
+	validBearerToken  = "test-token"
+	validThanosURL    = "https://thanos.example.com"
+	validKubeconfig   = "/path/to/kubeconfig"
+	validOutputFile   = "output.json"
+	validLogFile      = "app.log"
+	validSamplingFreq = 60
+	validDuration     = 45 * time.Minute
+
+	errClusterNameRequiredMsg = "cluster name is required: use --cluster-name flag"
+	errInvalidFlagComboMsg    = "invalid flag combination: either provide --token and --thanos-url, or provide --kubeconfig"
+	errSamplingFreqMsg        = "sampling frequency must be greater than 0"
+	errDurationMsg            = "duration must be greater than 0"
+	errOutputFileMsg          = "output file must be specified"
+	errLogFileMsg             = "log file must be specified"
+)
+
 var _ = Describe("validateFlags test", func() {
 
 	DescribeTable("flag validation scenarios",
-		func(flags InputFlags, shouldError bool) {
+		func(flags InputFlags, expectedErr string) {
 			err := validateFlags(flags)
 
-			if shouldError {
+			if expectedErr != "" {
 				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal(expectedErr))
 			} else {
 				Expect(err).ToNot(HaveOccurred())
 			}
@@ -23,156 +42,156 @@ var _ = Describe("validateFlags test", func() {
 		// Valid cases
 		Entry("valid token and thanos-url",
 			InputFlags{
-				ClusterName:  "test-cluster",
-				BearerToken:  "test-token",
-				ThanosURL:    "https://thanos.example.com",
-				SamplingFreq: 60,
-				Duration:     45 * time.Minute,
-				OutputFile:   "output.json",
-				LogFile:      "app.log",
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SamplingFreq: validSamplingFreq,
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
 			},
-			false, // shouldError
+			"", // no error expected
 		),
 		Entry("valid kubeconfig",
 			InputFlags{
-				ClusterName:  "test-cluster",
-				Kubeconfig:   "/path/to/kubeconfig",
-				SamplingFreq: 60,
-				Duration:     45 * time.Minute,
-				OutputFile:   "output.json",
-				LogFile:      "app.log",
+				ClusterName:  validClusterName,
+				Kubeconfig:   validKubeconfig,
+				SamplingFreq: validSamplingFreq,
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
 			},
-			false,
+			"",
 		),
 		// Error cases - missing cluster name
 		Entry("missing cluster name",
 			InputFlags{
-				BearerToken: "test-token",
-				ThanosURL:   "https://thanos.example.com",
+				BearerToken: validBearerToken,
+				ThanosURL:   validThanosURL,
 			},
-			true,
+			errClusterNameRequiredMsg,
 		),
 		// Error cases - invalid flag combinations
 		Entry("only token provided",
 			InputFlags{
-				ClusterName: "test-cluster",
-				BearerToken: "test-token",
+				ClusterName: validClusterName,
+				BearerToken: validBearerToken,
 			},
-			true,
+			errInvalidFlagComboMsg,
 		),
 		Entry("only thanos-url provided",
 			InputFlags{
-				ClusterName: "test-cluster",
-				ThanosURL:   "https://thanos.example.com",
+				ClusterName: validClusterName,
+				ThanosURL:   validThanosURL,
 			},
-			true,
+			errInvalidFlagComboMsg,
 		),
 		Entry("all three auth methods provided",
 			InputFlags{
-				ClusterName: "test-cluster",
-				BearerToken: "test-token",
-				ThanosURL:   "https://thanos.example.com",
-				Kubeconfig:  "/path/to/kubeconfig",
+				ClusterName: validClusterName,
+				BearerToken: validBearerToken,
+				ThanosURL:   validThanosURL,
+				Kubeconfig:  validKubeconfig,
 			},
-			true,
+			errInvalidFlagComboMsg,
 		),
 		Entry("no authentication method",
 			InputFlags{
-				ClusterName: "test-cluster",
+				ClusterName: validClusterName,
 			},
-			true,
+			errInvalidFlagComboMsg,
 		),
 		Entry("token and kubeconfig without thanos-url",
 			InputFlags{
-				ClusterName: "test-cluster",
-				BearerToken: "test-token",
-				Kubeconfig:  "/path/to/kubeconfig",
+				ClusterName: validClusterName,
+				BearerToken: validBearerToken,
+				Kubeconfig:  validKubeconfig,
 			},
-			true,
+			errInvalidFlagComboMsg,
 		),
 		Entry("thanos-url and kubeconfig without token",
 			InputFlags{
-				ClusterName: "test-cluster",
-				ThanosURL:   "https://thanos.example.com",
-				Kubeconfig:  "/path/to/kubeconfig",
+				ClusterName: validClusterName,
+				ThanosURL:   validThanosURL,
+				Kubeconfig:  validKubeconfig,
 			},
-			true,
+			errInvalidFlagComboMsg,
 		),
 		// Error cases - invalid sampling frequency
 		Entry("zero sampling frequency",
 			InputFlags{
-				ClusterName:  "test-cluster",
-				BearerToken:  "test-token",
-				ThanosURL:    "https://thanos.example.com",
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
 				SamplingFreq: 0,
-				Duration:     45 * time.Minute,
-				OutputFile:   "output.json",
-				LogFile:      "app.log",
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
 			},
-			true,
+			errSamplingFreqMsg,
 		),
 		Entry("negative sampling frequency",
 			InputFlags{
-				ClusterName:  "test-cluster",
-				BearerToken:  "test-token",
-				ThanosURL:    "https://thanos.example.com",
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
 				SamplingFreq: -10,
-				Duration:     45 * time.Minute,
-				OutputFile:   "output.json",
-				LogFile:      "app.log",
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
 			},
-			true,
+			errSamplingFreqMsg,
 		),
 		// Error cases - invalid duration
 		Entry("zero duration",
 			InputFlags{
-				ClusterName:  "test-cluster",
-				BearerToken:  "test-token",
-				ThanosURL:    "https://thanos.example.com",
-				SamplingFreq: 60,
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SamplingFreq: validSamplingFreq,
 				Duration:     0,
-				OutputFile:   "output.json",
-				LogFile:      "app.log",
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
 			},
-			true,
+			errDurationMsg,
 		),
 		Entry("negative duration",
 			InputFlags{
-				ClusterName:  "test-cluster",
-				BearerToken:  "test-token",
-				ThanosURL:    "https://thanos.example.com",
-				SamplingFreq: 60,
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SamplingFreq: validSamplingFreq,
 				Duration:     -10 * time.Minute,
-				OutputFile:   "output.json",
-				LogFile:      "app.log",
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
 			},
-			true,
+			errDurationMsg,
 		),
 		// Error cases - missing output file
 		Entry("empty output file",
 			InputFlags{
-				ClusterName:  "test-cluster",
-				BearerToken:  "test-token",
-				ThanosURL:    "https://thanos.example.com",
-				SamplingFreq: 60,
-				Duration:     45 * time.Minute,
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SamplingFreq: validSamplingFreq,
+				Duration:     validDuration,
 				OutputFile:   "",
-				LogFile:      "app.log",
+				LogFile:      validLogFile,
 			},
-			true,
+			errOutputFileMsg,
 		),
 		// Error cases - missing log file
 		Entry("empty log file",
 			InputFlags{
-				ClusterName:  "test-cluster",
-				BearerToken:  "test-token",
-				ThanosURL:    "https://thanos.example.com",
-				SamplingFreq: 60,
-				Duration:     45 * time.Minute,
-				OutputFile:   "output.json",
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SamplingFreq: validSamplingFreq,
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
 				LogFile:      "",
 			},
-			true,
+			errLogFileMsg,
 		),
 	)
 })

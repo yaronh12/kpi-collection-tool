@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	authv1 "k8s.io/api/authentication/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -23,12 +22,15 @@ func SetupKubeconfigAuth(kubeconfig string) (string, string, error) {
 		return "", "", fmt.Errorf("failed to setup Kubernetes client: %v", err)
 	}
 
-	thanosURL, err := getThanosURL(clientset)
+	// Wrap the clientset in our interface implementation
+	client := &k8sClientImpl{clientset: clientset}
+
+	thanosURL, err := getThanosURL(client)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get Thanos URL: %v", err)
 	}
 
-	bearerToken, err := createServiceAccountToken(clientset)
+	bearerToken, err := createServiceAccountToken(client)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create service account token: %v", err)
 	}
@@ -53,12 +55,8 @@ func setupKubernetesClient(kubeconfigPath string) (*kubernetes.Clientset, error)
 
 // getThanosURL retrieves the Thanos querier route hostname from OpenShift
 // Equivalent to: oc get route thanos-querier -n openshift-monitoring -o jsonpath='{.spec.host}'
-func getThanosURL(clientset *kubernetes.Clientset) (string, error) {
-	routes, err := clientset.RESTClient().
-		Get().
-		AbsPath(THANOS_ROUTE_API_PATH).
-		DoRaw(context.TODO())
-
+func getThanosURL(client K8sClient) (string, error) {
+	routes, err := client.GetRouteRaw(context.TODO(), THANOS_ROUTE_API_PATH)
 	if err != nil {
 		return "", fmt.Errorf("failed to get thanos-querier route: %v", err)
 	}
@@ -77,15 +75,19 @@ func getThanosURL(clientset *kubernetes.Clientset) (string, error) {
 
 // createServiceAccountToken creates a service account token for authentication
 // Equivalent to: oc create token telemeter-client -n openshift-monitoring --duration=10h
-func createServiceAccountToken(clientset *kubernetes.Clientset) (string, error) {
+func createServiceAccountToken(client K8sClient) (string, error) {
 	tokenRequest := &authv1.TokenRequest{
 		Spec: authv1.TokenRequestSpec{
 			ExpirationSeconds: int64Ptr(36000), // 10 hours = 36000 seconds
 		},
 	}
 
-	result, err := clientset.CoreV1().ServiceAccounts("openshift-monitoring").
-		CreateToken(context.TODO(), "telemeter-client", tokenRequest, metav1.CreateOptions{})
+	result, err := client.CreateServiceAccountToken(
+		context.TODO(),
+		"openshift-monitoring",
+		"telemeter-client",
+		tokenRequest,
+	)
 	if err != nil {
 		return "", fmt.Errorf("failed to create service account token: %v", err)
 	}

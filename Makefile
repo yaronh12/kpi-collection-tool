@@ -25,3 +25,7 @@ endif
 # Lint depends only on golangci-lint installation
 lint: install-golangci-lint
 	golangci-lint run --timeout 10m0s
+
+# Run all tests
+test:
+	go test ./... -v

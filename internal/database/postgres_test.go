@@ -73,8 +73,8 @@ var _ = Describe("Postgres Implementation", func() {
 	AfterEach(func() {
 		if db != nil {
 			// Clean up after test
-			db.Exec("TRUNCATE TABLE query_results, query_errors, clusters RESTART IDENTITY CASCADE")
-			db.Close()
+			_, _ = db.Exec("TRUNCATE TABLE query_results, query_errors, clusters RESTART IDENTITY CASCADE")
+			_ = db.Close()
 		}
 	})
 

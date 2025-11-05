@@ -3,10 +3,7 @@ package config
 import (
 	"flag"
 	"fmt"
-	"os"
 	"time"
-
-	"go.yaml.in/yaml/v2"
 )
 
 // setupFlags parses and validates command line flags, returns InputFlags struct
@@ -33,7 +30,7 @@ func SetupFlags() (InputFlags, error) {
 
 	// If config file is provided, load from YAML and return immediately
 	if configFile != "" {
-		return loadConfigFromYAML(configFile)
+		return LoadConfigFromYAML(configFile)
 	}
 
 	err := validateFlags(flags)
@@ -83,56 +80,4 @@ func validateFlags(flags InputFlags) error {
 	}
 
 	return nil
-}
-
-// LoadConfigFromYAML loads configuration from a YAML file
-func loadConfigFromYAML(filePath string) (InputFlags, error) {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return InputFlags{}, fmt.Errorf("failed to read config file: %v", err)
-	}
-
-	// Start with defaults
-	yamlConfig := DefaultValuesYAMLConfig()
-
-	// Unmarshal will override only the fields present in YAML
-	if err := yaml.Unmarshal(data, &yamlConfig); err != nil {
-		return InputFlags{}, fmt.Errorf("failed to parse YAML config: %v", err)
-	}
-
-	// Convert YAML config to InputFlags
-	flags, err := yamlConfigToInputFlags(yamlConfig)
-	if err != nil {
-		return InputFlags{}, err
-	}
-
-	// Validate the loaded configuration
-	if err := validateFlags(flags); err != nil {
-		return InputFlags{}, err
-	}
-
-	return flags, nil
-}
-
-// yamlConfigToInputFlags converts YAMLConfig to InputFlags
-func yamlConfigToInputFlags(yamlConfig YAMLConfig) (InputFlags, error) {
-	// Parse duration string
-	duration, err := time.ParseDuration(yamlConfig.Duration)
-	if err != nil {
-		return InputFlags{}, fmt.Errorf("invalid duration format: %v", err)
-	}
-
-	return InputFlags{
-		BearerToken:  yamlConfig.BearerToken,
-		ThanosURL:    yamlConfig.ThanosURL,
-		Kubeconfig:   yamlConfig.Kubeconfig,
-		ClusterName:  yamlConfig.ClusterName,
-		InsecureTLS:  yamlConfig.InsecureTLS,
-		SamplingFreq: yamlConfig.SamplingFrequency,
-		Duration:     duration,
-		OutputFile:   yamlConfig.OutputFile,
-		LogFile:      yamlConfig.LogFile,
-		DatabaseType: yamlConfig.Database.Type,
-		PostgresURL:  yamlConfig.Database.PostgresURL,
-	}, nil
 }

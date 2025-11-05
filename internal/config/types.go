@@ -37,20 +37,6 @@ type DatabaseConfig struct {
 	PostgresURL string `yaml:"postgres_url"`
 }
 
-// DefaultValuesYAMLConfig returns a YAMLConfig with default values
-func DefaultValuesYAMLConfig() YAMLConfig {
-	return YAMLConfig{
-		InsecureTLS:       false,
-		SamplingFrequency: 60,
-		Duration:          "45m",
-		OutputFile:        "kpi-output.json",
-		LogFile:           "kpi.log",
-		Database: DatabaseConfig{
-			Type: "sqlite",
-		},
-	}
-}
-
 // KPIs represents the structure of the kpis.json file containing
 // the list of KPI queries to be executed against Prometheus/Thanos
 type KPIs struct {

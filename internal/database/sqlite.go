@@ -9,13 +9,23 @@ import (
 	"github.com/prometheus/common/model"
 )
 
+// SQLiteDB implements the Database interface for SQLite
+const SQLiteDBFilePath = "./collected-data/kpi_metrics.db"
+
+type SQLiteDB struct{}
+
+// NewSQLiteDB creates a new SQLite database instance
+func NewSQLiteDB() *SQLiteDB {
+	return &SQLiteDB{}
+}
+
 // initDB initializes the SQLite database and creates required tables
-func InitDB() (*sql.DB, error) {
+func (sqlite_db *SQLiteDB) InitDB() (*sql.DB, error) {
 	// Create collected-data directory if it doesn't exist
 	if err := os.MkdirAll("./collected-data", 0755); err != nil {
 		return nil, err
 	}
-	db, err := sql.Open("sqlite3", "./collected-data/kpi_metrics.db")
+	db, err := sql.Open("sqlite3", SQLiteDBFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +61,7 @@ func InitDB() (*sql.DB, error) {
 }
 
 // getOrCreateCluster gets existing cluster ID or creates a new cluster record
-func GetOrCreateCluster(db *sql.DB, clusterName string) (int64, error) {
+func (sqlite_db *SQLiteDB) GetOrCreateCluster(db *sql.DB, clusterName string) (int64, error) {
 	var clusterID int64
 	err := db.QueryRow("SELECT id FROM clusters WHERE cluster_name = ?", clusterName).Scan(&clusterID)
 	if err == nil {
@@ -66,7 +76,7 @@ func GetOrCreateCluster(db *sql.DB, clusterName string) (int64, error) {
 }
 
 // increments the error count for a given KPI ID in the query_errors table.
-func IncrementQueryError(db *sql.DB, kpiID string) error {
+func (sqlite_db *SQLiteDB) IncrementQueryError(db *sql.DB, kpiID string) error {
 	_, err := db.Exec(`
         INSERT INTO query_errors (kpi_id, errors) VALUES (?, 1)
         ON CONFLICT(kpi_id) DO UPDATE SET errors = errors + 1
@@ -75,7 +85,7 @@ func IncrementQueryError(db *sql.DB, kpiID string) error {
 }
 
 // returns the error count for a given KPI ID.
-func GetQueryErrorCount(db *sql.DB, kpiID string) (int, error) {
+func (sqlite_db *SQLiteDB) GetQueryErrorCount(db *sql.DB, kpiID string) (int, error) {
 	var count int
 	err := db.QueryRow("SELECT errors FROM query_errors WHERE kpi_id = ?", kpiID).Scan(&count)
 	if err == sql.ErrNoRows {
@@ -85,7 +95,7 @@ func GetQueryErrorCount(db *sql.DB, kpiID string) (int, error) {
 }
 
 // storeQueryResults stores the results of a Prometheus query in the database
-func StoreQueryResults(db *sql.DB, clusterID int64, queryID string, result model.Value) error {
+func (sqlite_db *SQLiteDB) StoreQueryResults(db *sql.DB, clusterID int64, queryID string, result model.Value) error {
 	vector := result.(model.Vector)
 	for _, sample := range vector {
 		metric := sample.Metric

@@ -142,6 +142,7 @@ var _ = Describe("Client", func() {
 	Describe("executeQuery", func() {
 		var (
 			testDB      *sql.DB
+			sqliteDB    database.Database
 			clusterID   int64
 			tmpDir      string
 			originalDir string
@@ -163,11 +164,12 @@ var _ = Describe("Client", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Initialize the test database
-			testDB, err = database.InitDB()
+			sqliteDB = database.NewSQLiteDB()
+			testDB, err = sqliteDB.InitDB()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Create a test cluster
-			clusterID, err = database.GetOrCreateCluster(testDB, "test-cluster")
+			clusterID, err = sqliteDB.GetOrCreateCluster(testDB, "test-cluster")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -205,7 +207,7 @@ var _ = Describe("Client", func() {
 
 			// We execute a query with the mock client
 			ctx := context.Background()
-			err := executeQuery(ctx, mock, testDB, clusterID, "test-query-1", "up")
+			err := executeQuery(ctx, mock, testDB, sqliteDB, clusterID, "test-query-1", "up")
 
 			// The query should succeed
 			Expect(err).NotTo(HaveOccurred())
@@ -231,7 +233,7 @@ var _ = Describe("Client", func() {
 			}
 
 			ctx := context.Background()
-			err := executeQuery(ctx, mock, testDB, clusterID, "test-query-2", "cpu_usage")
+			err := executeQuery(ctx, mock, testDB, sqliteDB, clusterID, "test-query-2", "cpu_usage")
 
 			// The query should succeed
 			Expect(err).NotTo(HaveOccurred())
@@ -254,7 +256,7 @@ var _ = Describe("Client", func() {
 
 			ctx := context.Background()
 			queryID := "test-query-error"
-			err := executeQuery(ctx, mock, testDB, clusterID, queryID, "invalid{query")
+			err := executeQuery(ctx, mock, testDB, sqliteDB, clusterID, queryID, "invalid{query")
 
 			// The query should fail
 			Expect(err).To(HaveOccurred())
@@ -278,7 +280,7 @@ var _ = Describe("Client", func() {
 			}
 
 			ctx := context.Background()
-			err := executeQuery(ctx, mock, testDB, clusterID, "test-query-warnings", "test")
+			err := executeQuery(ctx, mock, testDB, sqliteDB, clusterID, "test-query-warnings", "test")
 
 			// The query should still succeed despite warnings
 			Expect(err).NotTo(HaveOccurred())
@@ -294,7 +296,7 @@ var _ = Describe("Client", func() {
 			}
 
 			ctx := context.Background()
-			err := executeQuery(ctx, mock, testDB, clusterID, "test-query-empty", "nonexistent_metric")
+			err := executeQuery(ctx, mock, testDB, sqliteDB, clusterID, "test-query-empty", "nonexistent_metric")
 
 			// The query should succeed (empty results are valid)
 			Expect(err).NotTo(HaveOccurred())
@@ -322,7 +324,7 @@ var _ = Describe("Client", func() {
 
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
-			err := executeQuery(ctx, mock, testDB, clusterID, "test-query-timeout", "slow_query")
+			err := executeQuery(ctx, mock, testDB, sqliteDB, clusterID, "test-query-timeout", "slow_query")
 
 			// The query should fail with timeout error
 			Expect(err).To(HaveOccurred())

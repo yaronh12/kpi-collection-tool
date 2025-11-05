@@ -16,6 +16,7 @@ const (
 	validLogFile      = "app.log"
 	validSamplingFreq = 60
 	validDuration     = 45 * time.Minute
+	validDatabaseType = "sqlite"
 
 	errClusterNameRequiredMsg = "cluster name is required: use --cluster-name flag"
 	errInvalidFlagComboMsg    = "invalid flag combination: either provide --token and --thanos-url, or provide --kubeconfig"
@@ -23,6 +24,8 @@ const (
 	errDurationMsg            = "duration must be greater than 0"
 	errOutputFileMsg          = "output file must be specified"
 	errLogFileMsg             = "log file must be specified"
+	errInvalidDBTypeMsg       = "invalid db-type: must be 'sqlite' or 'postgres'"
+	errPostgresURLRequiredMsg = "postgres-url is required when db-type=postgres"
 )
 
 var _ = Describe("validateFlags test", func() {
@@ -49,6 +52,7 @@ var _ = Describe("validateFlags test", func() {
 				Duration:     validDuration,
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
+				DatabaseType: validDatabaseType,
 			},
 			"", // no error expected
 		),
@@ -60,6 +64,7 @@ var _ = Describe("validateFlags test", func() {
 				Duration:     validDuration,
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
+				DatabaseType: validDatabaseType,
 			},
 			"",
 		),
@@ -127,6 +132,7 @@ var _ = Describe("validateFlags test", func() {
 				Duration:     validDuration,
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
+				DatabaseType: validDatabaseType,
 			},
 			errSamplingFreqMsg,
 		),
@@ -139,6 +145,7 @@ var _ = Describe("validateFlags test", func() {
 				Duration:     validDuration,
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
+				DatabaseType: validDatabaseType,
 			},
 			errSamplingFreqMsg,
 		),
@@ -152,6 +159,7 @@ var _ = Describe("validateFlags test", func() {
 				Duration:     0,
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
+				DatabaseType: validDatabaseType,
 			},
 			errDurationMsg,
 		),
@@ -164,6 +172,7 @@ var _ = Describe("validateFlags test", func() {
 				Duration:     -10 * time.Minute,
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
+				DatabaseType: validDatabaseType,
 			},
 			errDurationMsg,
 		),
@@ -177,6 +186,7 @@ var _ = Describe("validateFlags test", func() {
 				Duration:     validDuration,
 				OutputFile:   "",
 				LogFile:      validLogFile,
+				DatabaseType: validDatabaseType,
 			},
 			errOutputFileMsg,
 		),
@@ -190,8 +200,66 @@ var _ = Describe("validateFlags test", func() {
 				Duration:     validDuration,
 				OutputFile:   validOutputFile,
 				LogFile:      "",
+				DatabaseType: validDatabaseType,
 			},
 			errLogFileMsg,
+		),
+		// Error cases - invalid database type
+		Entry("invalid database type",
+			InputFlags{
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SamplingFreq: validSamplingFreq,
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
+				DatabaseType: "mysql",
+			},
+			errInvalidDBTypeMsg,
+		),
+		Entry("empty database type",
+			InputFlags{
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SamplingFreq: validSamplingFreq,
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
+				DatabaseType: "",
+			},
+			errInvalidDBTypeMsg,
+		),
+		// Error cases - postgres without URL
+		Entry("postgres database type without postgres-url",
+			InputFlags{
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SamplingFreq: validSamplingFreq,
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
+				DatabaseType: "postgres",
+				PostgresURL:  "",
+			},
+			errPostgresURLRequiredMsg,
+		),
+		// Valid case - postgres with URL
+		Entry("valid postgres with postgres-url",
+			InputFlags{
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SamplingFreq: validSamplingFreq,
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
+				DatabaseType: "postgres",
+				PostgresURL:  "postgresql://user:pass@localhost:5432/dbname",
+			},
+			"",
 		),
 	)
 })

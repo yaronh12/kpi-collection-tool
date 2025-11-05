@@ -3,14 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"log"
+	"os"
 	"time"
 
 	"rds-kpi-collector/internal/config"
 	"rds-kpi-collector/internal/kubernetes"
-	"rds-kpi-collector/internal/prometheus"
 	"rds-kpi-collector/internal/logger"
+	"rds-kpi-collector/internal/prometheus"
 )
 
 func main() {
@@ -24,7 +24,6 @@ func main() {
 	}
 
 	fmt.Printf("Cluster: %s\n", flags.ClusterName)
-
 
 	// Initialize logger
 	logF, err := logger.InitLogger(flags.LogFile)

@@ -13,13 +13,17 @@ import (
 
 var _ = Describe("Sqlite", func() {
 	var (
-		db     *sql.DB
-		tmpDir string
+		db       *sql.DB
+		tmpDir   string
+		sqliteDB *SQLiteDB
 	)
 
 	// Runs before and after each test (It section)
 	// To provide clean, isolated environment for each test
 	BeforeEach(func() {
+		// Create SQLiteDB instance
+		sqliteDB = NewSQLiteDB()
+
 		// Create a temporary directory for test database
 		var err error
 		tmpDir, err = os.MkdirTemp("", "sqlite-test-*")
@@ -32,7 +36,7 @@ var _ = Describe("Sqlite", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// Initialize database
-		db, err = InitDB()
+		db, err = sqliteDB.InitDB()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(db).NotTo(BeNil())
 
@@ -89,7 +93,7 @@ var _ = Describe("Sqlite", func() {
 		Context("when cluster does not exist", func() {
 			It("should create a new cluster and return its ID", func() {
 				By("Calls GetOrCreateCluster() with a cluster name that doesn't exist and Verifies a positive ID is returned")
-				clusterID, err := GetOrCreateCluster(db, "test-cluster")
+				clusterID, err := sqliteDB.GetOrCreateCluster(db, "test-cluster")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(clusterID).To(BeNumerically(">", 0))
 
@@ -102,7 +106,7 @@ var _ = Describe("Sqlite", func() {
 
 			It("should set created_at timestamp", func() {
 				By("Creates a cluster, queries the created_at aolumn and verifies its not empty.")
-				clusterID, err := GetOrCreateCluster(db, "test-cluster")
+				clusterID, err := sqliteDB.GetOrCreateCluster(db, "test-cluster")
 				Expect(err).NotTo(HaveOccurred())
 
 				var createdAt string
@@ -113,10 +117,10 @@ var _ = Describe("Sqlite", func() {
 
 			It("should create different IDs for different clusters", func() {
 				By("Creates two clusters with different names and verifies they get different IDs")
-				clusterID1, err := GetOrCreateCluster(db, "cluster-1")
+				clusterID1, err := sqliteDB.GetOrCreateCluster(db, "cluster-1")
 				Expect(err).NotTo(HaveOccurred())
 
-				clusterID2, err := GetOrCreateCluster(db, "cluster-2")
+				clusterID2, err := sqliteDB.GetOrCreateCluster(db, "cluster-2")
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(clusterID1).NotTo(Equal(clusterID2))
@@ -129,20 +133,20 @@ var _ = Describe("Sqlite", func() {
 			BeforeEach(func() {
 				// Creates a cluster named "existing-cluster" and stores its ID
 				var err error
-				existingClusterID, err = GetOrCreateCluster(db, "existing-cluster")
+				existingClusterID, err = sqliteDB.GetOrCreateCluster(db, "existing-cluster")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("should return the existing cluster ID", func() {
 				By("Calls GetOrCreateCluster() again with the same name and verifies it returns the same ID")
-				clusterID, err := GetOrCreateCluster(db, "existing-cluster")
+				clusterID, err := sqliteDB.GetOrCreateCluster(db, "existing-cluster")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(clusterID).To(Equal(existingClusterID))
 			})
 
 			It("should not create a duplicate entry", func() {
 				By("Calls GetOrCreateCluster() again, Counts how many rows exist with that cluster name and verifies count is exactly 1")
-				_, err := GetOrCreateCluster(db, "existing-cluster")
+				_, err := sqliteDB.GetOrCreateCluster(db, "existing-cluster")
 				Expect(err).NotTo(HaveOccurred())
 
 				var count int
@@ -157,10 +161,10 @@ var _ = Describe("Sqlite", func() {
 		Context("when KPI has no previous errors", func() {
 			It("should create a new error record with count 1", func() {
 				By("Calls IncrementQueryError() for a new KPI ID, reads back the countand verifies it's 1")
-				err := IncrementQueryError(db, "test-kpi-1")
+				err := sqliteDB.IncrementQueryError(db, "test-kpi-1")
 				Expect(err).NotTo(HaveOccurred())
 
-				count, err := GetQueryErrorCount(db, "test-kpi-1")
+				count, err := sqliteDB.GetQueryErrorCount(db, "test-kpi-1")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(count).To(Equal(1))
 			})
@@ -169,19 +173,19 @@ var _ = Describe("Sqlite", func() {
 		Context("when KPI already has errors", func() {
 			BeforeEach(func() {
 				// Creates one error (count = 1)
-				err := IncrementQueryError(db, "existing-kpi")
+				err := sqliteDB.IncrementQueryError(db, "existing-kpi")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("should increment the existing error count", func() {
 				By("Increments twice more (count should become 3), reads back the count and verifies it's 3")
-				err := IncrementQueryError(db, "existing-kpi")
+				err := sqliteDB.IncrementQueryError(db, "existing-kpi")
 				Expect(err).NotTo(HaveOccurred())
 
-				err = IncrementQueryError(db, "existing-kpi")
+				err = sqliteDB.IncrementQueryError(db, "existing-kpi")
 				Expect(err).NotTo(HaveOccurred())
 
-				count, err := GetQueryErrorCount(db, "existing-kpi")
+				count, err := sqliteDB.GetQueryErrorCount(db, "existing-kpi")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(count).To(Equal(3))
 			})
@@ -190,19 +194,19 @@ var _ = Describe("Sqlite", func() {
 		Context("with multiple different KPI IDs", func() {
 			It("should handle them independently", func() {
 				By("Increments kpi-a twice (count = 2), Increments kpi-b once (count = 1) and Verifies each has the correct count")
-				err := IncrementQueryError(db, "kpi-a")
+				err := sqliteDB.IncrementQueryError(db, "kpi-a")
 				Expect(err).NotTo(HaveOccurred())
-				err = IncrementQueryError(db, "kpi-a")
-				Expect(err).NotTo(HaveOccurred())
-
-				err = IncrementQueryError(db, "kpi-b")
+				err = sqliteDB.IncrementQueryError(db, "kpi-a")
 				Expect(err).NotTo(HaveOccurred())
 
-				countA, err := GetQueryErrorCount(db, "kpi-a")
+				err = sqliteDB.IncrementQueryError(db, "kpi-b")
+				Expect(err).NotTo(HaveOccurred())
+
+				countA, err := sqliteDB.GetQueryErrorCount(db, "kpi-a")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(countA).To(Equal(2))
 
-				countB, err := GetQueryErrorCount(db, "kpi-b")
+				countB, err := sqliteDB.GetQueryErrorCount(db, "kpi-b")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(countB).To(Equal(1))
 			})
@@ -213,7 +217,7 @@ var _ = Describe("Sqlite", func() {
 		Context("when KPI ID does not exist", func() {
 			It("should return 0", func() {
 				By("Queries a KPI ID that was never created, Verifies it returns 0 (not an error)")
-				count, err := GetQueryErrorCount(db, "non-existent-kpi")
+				count, err := sqliteDB.GetQueryErrorCount(db, "non-existent-kpi")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(count).To(Equal(0))
 			})
@@ -222,14 +226,14 @@ var _ = Describe("Sqlite", func() {
 		Context("when KPI ID exists", func() {
 			BeforeEach(func() {
 				for i := 0; i < 5; i++ {
-					err := IncrementQueryError(db, "test-kpi")
+					err := sqliteDB.IncrementQueryError(db, "test-kpi")
 					Expect(err).NotTo(HaveOccurred())
 				}
 			})
 
 			It("should return the correct count", func() {
 				By("Reads the amount, verifies its 5")
-				count, err := GetQueryErrorCount(db, "test-kpi")
+				count, err := sqliteDB.GetQueryErrorCount(db, "test-kpi")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(count).To(Equal(5))
 			})
@@ -241,7 +245,7 @@ var _ = Describe("Sqlite", func() {
 
 		BeforeEach(func() {
 			var err error
-			clusterID, err = GetOrCreateCluster(db, "test-cluster")
+			clusterID, err = sqliteDB.GetOrCreateCluster(db, "test-cluster")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -261,7 +265,7 @@ var _ = Describe("Sqlite", func() {
 				}
 
 				By("Stores it in the database")
-				err := StoreQueryResults(db, clusterID, "test-query-1", vector)
+				err := sqliteDB.StoreQueryResults(db, clusterID, "test-query-1", vector)
 				Expect(err).NotTo(HaveOccurred())
 
 				By("Verifies one row was created and Verifies all values are correct")
@@ -301,7 +305,7 @@ var _ = Describe("Sqlite", func() {
 					},
 				}
 				By("Stores it")
-				err := StoreQueryResults(db, clusterID, "test-query-3", vector)
+				err := sqliteDB.StoreQueryResults(db, clusterID, "test-query-3", vector)
 				Expect(err).NotTo(HaveOccurred())
 				By("Verifies the JSON contains all label keys and values")
 				var metricLabels string
@@ -323,7 +327,7 @@ var _ = Describe("Sqlite", func() {
 					},
 				}
 				By("Stores a metric, Queries the timestamp columns and verifies they are not empty.")
-				err := StoreQueryResults(db, clusterID, "test-query-4", vector)
+				err := sqliteDB.StoreQueryResults(db, clusterID, "test-query-4", vector)
 				Expect(err).NotTo(HaveOccurred())
 
 				var executionTime, createdAt string
@@ -359,7 +363,7 @@ var _ = Describe("Sqlite", func() {
 					},
 				}
 
-				err := StoreQueryResults(db, clusterID, "test-query-2", vector)
+				err := sqliteDB.StoreQueryResults(db, clusterID, "test-query-2", vector)
 				Expect(err).NotTo(HaveOccurred())
 				By("Counts rows in database and verifies 3 rows were created")
 				var count int
@@ -374,7 +378,7 @@ var _ = Describe("Sqlite", func() {
 
 			BeforeEach(func() {
 				var err error
-				clusterID2, err = GetOrCreateCluster(db, "another-cluster")
+				clusterID2, err = sqliteDB.GetOrCreateCluster(db, "another-cluster")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -398,10 +402,10 @@ var _ = Describe("Sqlite", func() {
 				By("Stores metrics for cluster 1 with query ID 'query-cluster-1'")
 				By("Stores metrics for cluster 2 with query ID 'query-cluster-2'")
 				By("Verifies each result is associated with the correct cluster ID")
-				err := StoreQueryResults(db, clusterID, "query-cluster-1", vector1)
+				err := sqliteDB.StoreQueryResults(db, clusterID, "query-cluster-1", vector1)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = StoreQueryResults(db, clusterID2, "query-cluster-2", vector2)
+				err = sqliteDB.StoreQueryResults(db, clusterID2, "query-cluster-2", vector2)
 				Expect(err).NotTo(HaveOccurred())
 
 				var storedClusterID int64

@@ -43,8 +43,8 @@ func setupPromClient(thanosURL, bearerToken string, insecureTLS bool) (promv1.AP
 
 // runQueries executes all Prometheus queries and stores results in database
 func RunQueries(kpisToRun config.KPIs, flags config.InputFlags) error {
-	// Initialize Database
-	db, err := database.InitDB()
+	// Initialize Database based on configuration
+	db, dbImpl, err := database.InitDatabaseWithConfig(flags)
 	if err != nil {
 		return fmt.Errorf("failed to init database: %v", err)
 	}
@@ -55,7 +55,7 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags) error {
 	}()
 
 	// Get or create cluster in DB
-	clusterID, err := database.GetOrCreateCluster(db, flags.ClusterName)
+	clusterID, err := dbImpl.GetOrCreateCluster(db, flags.ClusterName)
 	if err != nil {
 		return fmt.Errorf("failed to get cluster ID: %v", err)
 	}
@@ -71,7 +71,7 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags) error {
 	defer cancel()
 
 	for _, query := range kpisToRun.Queries {
-		err := executeQuery(ctx, v1api, db, clusterID, query.ID, query.PromQuery)
+		err := executeQuery(ctx, v1api, db, dbImpl, clusterID, query.ID, query.PromQuery)
 		if err != nil {
 			fmt.Printf("Query execution failed: %v\n", err)
 			// Continue with next query even if one fails
@@ -82,7 +82,7 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags) error {
 }
 
 // executeQuery executes a single Prometheus query and handles the result
-func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, clusterID int64, queryID string, queryText string) error {
+func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl database.Database, clusterID int64, queryID string, queryText string) error {
 	fmt.Println("------------------------")
 	fmt.Printf("Running: %s\n", queryText)
 
@@ -90,7 +90,7 @@ func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, clusterID i
 	result, warnings, err := v1api.Query(ctx, queryText, time.Now())
 	if err != nil {
 		fmt.Println("query failed: ", err)
-		if storeErr := database.IncrementQueryError(db, queryID); storeErr != nil {
+		if storeErr := dbImpl.IncrementQueryError(db, queryID); storeErr != nil {
 			fmt.Printf("Failed to increment error count: %v\n", storeErr)
 		}
 		return fmt.Errorf("query execution failed: %v", err)
@@ -101,7 +101,7 @@ func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, clusterID i
 	}
 
 	// Store results
-	err = database.StoreQueryResults(db, clusterID, queryID, result)
+	err = dbImpl.StoreQueryResults(db, clusterID, queryID, result)
 	if err != nil {
 		fmt.Printf("Failed to store results: %v\n", err)
 		return fmt.Errorf("failed to store results: %v", err)

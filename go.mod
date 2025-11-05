@@ -3,6 +3,7 @@ module rds-kpi-collector
 go 1.25.1
 
 require (
+	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/onsi/ginkgo/v2 v2.25.1
 	github.com/onsi/gomega v1.38.2

@@ -2,3 +2,4 @@ main
 kpi-collector
 collected-data/
 .DS_Store
+kpi.log

@@ -17,6 +17,40 @@ type InputFlags struct {
 	PostgresURL  string // PostgreSQL connection string
 }
 
+// YAMLConfig represents the YAML configuration file structure
+type YAMLConfig struct {
+	ClusterName       string         `yaml:"cluster_name"`
+	BearerToken       string         `yaml:"bearer_token"`
+	ThanosURL         string         `yaml:"thanos_url"`
+	Kubeconfig        string         `yaml:"kubeconfig"`
+	InsecureTLS       bool           `yaml:"insecure_tls"`
+	SamplingFrequency int            `yaml:"sampling_frequency"`
+	Duration          string         `yaml:"duration"`
+	OutputFile        string         `yaml:"output_file"`
+	LogFile           string         `yaml:"log_file"`
+	Database          DatabaseConfig `yaml:"database"`
+}
+
+// DatabaseConfig holds database-specific configuration
+type DatabaseConfig struct {
+	Type        string `yaml:"type"`
+	PostgresURL string `yaml:"postgres_url"`
+}
+
+// DefaultValuesYAMLConfig returns a YAMLConfig with default values
+func DefaultValuesYAMLConfig() YAMLConfig {
+	return YAMLConfig{
+		InsecureTLS:       false,
+		SamplingFrequency: 60,
+		Duration:          "45m",
+		OutputFile:        "kpi-output.json",
+		LogFile:           "kpi.log",
+		Database: DatabaseConfig{
+			Type: "sqlite",
+		},
+	}
+}
+
 // KPIs represents the structure of the kpis.json file containing
 // the list of KPI queries to be executed against Prometheus/Thanos
 type KPIs struct {

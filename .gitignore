@@ -3,3 +3,4 @@ kpi-collector
 collected-data/
 .DS_Store
 kpi.log
+kpi_collector_configs.yaml

@@ -23,6 +23,26 @@ go build -o kpi-collector ./cmd/rds-kpi-collector
 
 The tool supports two authentication modes and two database backends (SQLite and PostgreSQL).
 
+### Using Configuration File
+
+You can use a YAML configuration file instead of CLI flags for easier management:
+
+```bash
+# Create your config from the example
+cp kpi_collector_config.example.yaml my_config.yaml
+
+# Edit with your settings
+vim my_config.yaml
+
+# Run with config file
+./kpi-collector -f my_config.yaml
+```
+
+See `kpi_collector_config.example.yaml` for all available options and examples.
+
+
+Alternatively, you can use command-line flags directly.
+
 ### Authentication Modes
 
 #### 1. Using Kubeconfig (Automatic Discovery)

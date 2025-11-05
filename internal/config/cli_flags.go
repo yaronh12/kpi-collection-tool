@@ -3,12 +3,19 @@ package config
 import (
 	"flag"
 	"fmt"
+	"os"
 	"time"
+
+	"go.yaml.in/yaml/v2"
 )
 
 // setupFlags parses and validates command line flags, returns InputFlags struct
 func SetupFlags() (InputFlags, error) {
 	var flags InputFlags
+	var configFile string
+
+	flag.StringVar(&configFile, "f", "", "path to YAML configuration file")
+	flag.StringVar(&configFile, "config-file", "", "path to YAML configuration file (alternative to -f)")
 
 	flag.StringVar(&flags.BearerToken, "token", "", "bearer token for thanos-queries")
 	flag.StringVar(&flags.ThanosURL, "thanos-url", "", "thanos url for http requests")
@@ -23,6 +30,11 @@ func SetupFlags() (InputFlags, error) {
 	flag.StringVar(&flags.DatabaseType, "db-type", "sqlite", "database type: sqlite or postgres (default: sqlite)")
 	flag.StringVar(&flags.PostgresURL, "postgres-url", "", "PostgreSQL connection string (required if db-type=postgres)")
 	flag.Parse()
+
+	// If config file is provided, load from YAML and return immediately
+	if configFile != "" {
+		return loadConfigFromYAML(configFile)
+	}
 
 	err := validateFlags(flags)
 	return flags, err
@@ -71,4 +83,56 @@ func validateFlags(flags InputFlags) error {
 	}
 
 	return nil
+}
+
+// LoadConfigFromYAML loads configuration from a YAML file
+func loadConfigFromYAML(filePath string) (InputFlags, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return InputFlags{}, fmt.Errorf("failed to read config file: %v", err)
+	}
+
+	// Start with defaults
+	yamlConfig := DefaultValuesYAMLConfig()
+
+	// Unmarshal will override only the fields present in YAML
+	if err := yaml.Unmarshal(data, &yamlConfig); err != nil {
+		return InputFlags{}, fmt.Errorf("failed to parse YAML config: %v", err)
+	}
+
+	// Convert YAML config to InputFlags
+	flags, err := yamlConfigToInputFlags(yamlConfig)
+	if err != nil {
+		return InputFlags{}, err
+	}
+
+	// Validate the loaded configuration
+	if err := validateFlags(flags); err != nil {
+		return InputFlags{}, err
+	}
+
+	return flags, nil
+}
+
+// yamlConfigToInputFlags converts YAMLConfig to InputFlags
+func yamlConfigToInputFlags(yamlConfig YAMLConfig) (InputFlags, error) {
+	// Parse duration string
+	duration, err := time.ParseDuration(yamlConfig.Duration)
+	if err != nil {
+		return InputFlags{}, fmt.Errorf("invalid duration format: %v", err)
+	}
+
+	return InputFlags{
+		BearerToken:  yamlConfig.BearerToken,
+		ThanosURL:    yamlConfig.ThanosURL,
+		Kubeconfig:   yamlConfig.Kubeconfig,
+		ClusterName:  yamlConfig.ClusterName,
+		InsecureTLS:  yamlConfig.InsecureTLS,
+		SamplingFreq: yamlConfig.SamplingFrequency,
+		Duration:     duration,
+		OutputFile:   yamlConfig.OutputFile,
+		LogFile:      yamlConfig.LogFile,
+		DatabaseType: yamlConfig.Database.Type,
+		PostgresURL:  yamlConfig.Database.PostgresURL,
+	}, nil
 }

@@ -1,0 +1,29 @@
+# Example configuration for KPI Collection Tool
+# Usage: ./kpi-collector -f your_config.yaml
+
+# Cluster name (required)
+cluster_name: "my-cluster"
+
+# Authentication: Choose ONE method
+# Option 1: Kubeconfig (auto-discovers Thanos)
+kubeconfig: "/path/to/kubeconfig"
+
+# Option 2: Direct Thanos access (comment out kubeconfig if using this)
+# bearer_token: "your-token-here"
+# thanos_url: "thanos-querier.example.com"
+
+# TLS settings (optional, default: false, set to true for dev environments)
+insecure_tls: true
+
+# Sampling settings (optional)
+sampling_frequency: 60  # seconds, default: 60
+duration: "45m"         # default: 45m
+
+# Output files (optional)
+output_file: "kpi-output.json"  # default: kpi-output.json
+log_file: "kpi.log"             # default: kpi.log
+
+# Database (optional, default: sqlite)
+database:
+  type: "sqlite"  # "sqlite" or "postgres"
+  # postgres_url: "postgresql://user@localhost:5432/dbname?sslmode=disable"

@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"go.yaml.in/yaml/v2"
+	"gopkg.in/yaml.v3"
 )
 
 // LoadConfigFromYAML loads configuration from a YAML file

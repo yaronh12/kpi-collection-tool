@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"rds-kpi-collector/internal/config"
+	"rds-kpi-collector/internal/database"
 	"rds-kpi-collector/internal/kubernetes"
 	"rds-kpi-collector/internal/logger"
 	"rds-kpi-collector/internal/prometheus"
@@ -57,6 +58,26 @@ func main() {
 		fmt.Printf("Created service account token!\n")
 	}
 
+	// Initialize Database once (NEW)
+	db, dbImpl, err := database.InitDatabaseWithConfig(flags)
+	if err != nil {
+		log.Printf("Failed to init database: %v\n", err)
+		return
+	}
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("Failed to close database: %v\n", closeErr)
+		}
+	}()
+	log.Println("Database initialized successfully")
+
+	// Get or create cluster in DB (NEW)
+	clusterID, err := dbImpl.GetOrCreateCluster(db, flags.ClusterName)
+	if err != nil {
+		log.Printf("Failed to get cluster ID: %v\n", err)
+		return
+	}
+
 	// Calculate number of runs based on sampling frequency and duration
 	numRuns := int(flags.Duration.Seconds()) / flags.SamplingFreq
 
@@ -64,14 +85,16 @@ func main() {
 		log.Printf("Running sample %d/%d\n", i, numRuns)
 
 		// Run Prometheus queries
-		if err := prometheus.RunQueries(kpis, flags); err != nil {
+		if err := prometheus.RunQueries(kpis, flags, db, dbImpl, clusterID); err != nil {
 			log.Printf("RunQueries failed on sample %d: %v\n", i, err)
 		} else {
 			log.Printf("Sample %d completed successfully\n", i)
 		}
 
-		// Sleep between samples
-		time.Sleep(time.Duration(flags.SamplingFreq) * time.Second)
+		// Sleep between samples (skip sleep after last sample)
+		if i < numRuns {
+			time.Sleep(time.Duration(flags.SamplingFreq) * time.Second)
+		}
 	}
 
 	fmt.Println("All queries completed successfully!")

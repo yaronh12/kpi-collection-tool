@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"rds-kpi-collector/internal/config"
@@ -42,24 +41,7 @@ func setupPromClient(thanosURL, bearerToken string, insecureTLS bool) (promv1.AP
 }
 
 // runQueries executes all Prometheus queries and stores results in database
-func RunQueries(kpisToRun config.KPIs, flags config.InputFlags) error {
-	// Initialize Database based on configuration
-	db, dbImpl, err := database.InitDatabaseWithConfig(flags)
-	if err != nil {
-		return fmt.Errorf("failed to init database: %v", err)
-	}
-	defer func() {
-		if closeErr := db.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close database: %v\n", closeErr)
-		}
-	}()
-
-	// Get or create cluster in DB
-	clusterID, err := dbImpl.GetOrCreateCluster(db, flags.ClusterName)
-	if err != nil {
-		return fmt.Errorf("failed to get cluster ID: %v", err)
-	}
-
+func RunQueries(kpisToRun config.KPIs, flags config.InputFlags, db *sql.DB, dbImpl database.Database, clusterID int64) error {
 	// Create Prometheus client
 	v1api, err := setupPromClient(flags.ThanosURL, flags.BearerToken, flags.InsecureTLS)
 	if err != nil {

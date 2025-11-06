@@ -44,7 +44,7 @@ func setupPromClient(thanosURL, bearerToken string, insecureTLS bool) (promv1.AP
 // runQueries executes all Prometheus queries and stores results in database
 func RunQueries(kpisToRun config.KPIs, flags config.InputFlags) error {
 	// Initialize Database based on configuration
-	db, dbImpl, err := database.InitDatabaseWithConfig(flags)
+	db, dbImpl, err := database.InitDatabaseWithConfig(flags.DatabaseType, flags.PostgresURL)
 	if err != nil {
 		return fmt.Errorf("failed to init database: %v", err)
 	}

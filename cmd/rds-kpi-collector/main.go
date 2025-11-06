@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"time"
 
 	"rds-kpi-collector/internal/config"
@@ -57,25 +58,59 @@ func main() {
 		fmt.Printf("Created service account token!\n")
 	}
 
-	// Calculate number of runs based on sampling frequency and duration
-	numRuns := int(flags.Duration.Seconds()) / flags.SamplingFreq
-
-	for i := 1; i <= numRuns; i++ {
-		log.Printf("Running sample %d/%d\n", i, numRuns)
-
-		// Run Prometheus queries
-		if err := prometheus.RunQueries(kpis, flags); err != nil {
-			log.Printf("RunQueries failed on sample %d: %v\n", i, err)
-		} else {
-			log.Printf("Sample %d completed successfully\n", i)
-		}
-
-		// Sleep between samples
-		time.Sleep(time.Duration(flags.SamplingFreq) * time.Second)
-	}
+	// Run the collection loop
+	runCollectionLoop(kpis, flags)
 
 	fmt.Println("All queries completed successfully!")
 
+}
+
+// runCollectionLoop runs the KPI collection with timer and ticker
+func runCollectionLoop(kpis config.KPIs, flags config.InputFlags) {
+	durationTimer := time.NewTimer(flags.Duration)
+	defer durationTimer.Stop()
+
+	sampleTicker := time.NewTicker(time.Duration(flags.SamplingFreq) * time.Second)
+	defer sampleTicker.Stop()
+
+	interruptChan := make(chan os.Signal, 1)
+	signal.Notify(interruptChan, os.Interrupt)
+
+	log.Printf("Running for %s, deadline time: %s\n",
+		flags.Duration.String(),
+		time.Now().Add(flags.Duration).Format(time.RFC3339))
+
+	// Run the first sample immediately
+	runSample(kpis, flags, 1)
+	sampleCount := 2
+
+	// Then continue with the ticker-based loop
+	for {
+		select {
+		case <-sampleTicker.C:
+			runSample(kpis, flags, sampleCount)
+			sampleCount++
+
+		case <-durationTimer.C:
+			log.Printf("Duration timer expired after %d samples", sampleCount)
+			return
+
+		case <-interruptChan:
+			log.Printf("Program interrupted after %d samples", sampleCount)
+			return
+		}
+	}
+}
+
+// runSample executes a single KPI collection sample
+func runSample(kpis config.KPIs, flags config.InputFlags, sampleCount int) {
+	log.Printf("Running sample %d", sampleCount)
+
+	if err := prometheus.RunQueries(kpis, flags); err != nil {
+		log.Printf("RunQueries failed: %v\n", err)
+	} else {
+		log.Printf("Sample %d completed successfully", sampleCount)
+	}
 }
 
 // loadKPIs loads Prometheus queries from kpis.json file

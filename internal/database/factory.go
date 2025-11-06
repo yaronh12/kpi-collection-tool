@@ -3,27 +3,26 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"rds-kpi-collector/internal/config"
 )
 
 // NewDatabase creates a database instance based on the configuration
-func NewDatabase(flags config.InputFlags) (Database, error) {
-	switch flags.DatabaseType {
+func NewDatabase(databaseType string, postgresURL string) (Database, error) {
+	switch databaseType {
 	case "sqlite":
 		return NewSQLiteDB(), nil
 	case "postgres":
-		if flags.PostgresURL == "" {
+		if postgresURL == "" {
 			return nil, fmt.Errorf("postgres-url is required for postgres database type")
 		}
-		return NewPostgresDB(flags.PostgresURL), nil
+		return NewPostgresDB(postgresURL), nil
 	default:
-		return nil, fmt.Errorf("unsupported database type: %s", flags.DatabaseType)
+		return nil, fmt.Errorf("unsupported database type: %s", databaseType)
 	}
 }
 
 // InitDatabaseWithConfig initializes a database based on configuration flags
-func InitDatabaseWithConfig(flags config.InputFlags) (*sql.DB, Database, error) {
-	dbImpl, err := NewDatabase(flags)
+func InitDatabaseWithConfig(databaseType string, postgresURL string) (*sql.DB, Database, error) {
+	dbImpl, err := NewDatabase(databaseType, postgresURL)
 	if err != nil {
 		return nil, nil, err
 	}

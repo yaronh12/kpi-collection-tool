@@ -203,3 +203,76 @@ The tool supports two database backends. **SQLite is used by default** when no `
   - **Standard URL**: `postgresql://user:password@host:port/dbname?sslmode=disable`
   - **Key-value**: `host=host port=port user=user password=pass dbname=dbname sslmode=disable`
 
+# Local Grafana Setup for KPI Dashboard
+
+This guide explains how developers can quickly run a local Grafana instance with the KPI dashboard pre-installed.
+
+## Using Make
+
+Run Grafana locally with one command:
+
+make install-grafana
+
+This will:
+
+- Launch a Docker container named grafana-kpi
+- Map local folders for provisioning Datasources and Dashboards
+- Expose Grafana on port 3000
+
+## Verify Grafana is running
+
+docker ps | grep grafana-kpi
+
+- Status should show Up
+- Port mapping should show 0.0.0.0:3000->3000/tcp
+
+## Open Grafana in browser
+
+http://localhost:3000
+
+- Default login: admin/admin
+- Change password on first login
+
+## Verify Datasource
+
+1. Go to Settings → Data Sources
+2. Select frser-sqlite-datasource
+3. Click Test connection → should see "Data source is working"
+
+## Verify KPI Dashboard
+
+In disconnected environments, dashboards are automatically provisioned.
+
+Ensure these files exist in the repository:
+
+1. grafana/provisioning/dashboards/dashboard.yaml
+2. grafana/dashboard/sqlite-dashboard.json
+3. grafana/datasource/sqlite-datasource.yaml
+
+- Run Grafana with:
+
+  make install-grafana
+
+- Open http://localhost:3000 and verify:
+  1. Datasource frser-sqlite-datasource is listed under Configuration → Data Sources
+  2. KPI dashboard appears under Dashboards → Manage and all graphs load
+
+## Directory structure
+
+kpi-collection-tool/
+├── grafana/
+│   ├── datasource/
+│   │   └── sqlite-datasource.yaml
+│   ├── dashboard/
+│   │   └── sqlite-dashboard.json
+│   └── provisioning/
+│       └── dashboards/
+│           └── dashboard.yaml
+├── cmd/
+│   └── rds-kpi-collector/
+│       └── main.go
+└── Makefile
+
+- grafana/datasource → Datasource YAML files
+- grafana/dashboard → Dashboard JSON files
+- Makefile → Automates running Grafana locally

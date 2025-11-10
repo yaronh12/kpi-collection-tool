@@ -1,3 +1,9 @@
+# =========================
+# Global Variables
+# =========================
+GRAFANA_VERSION ?= latest
+GRAFANA_PORT ?= 3000
+
 # Detect the operating system
 UNAME_S := $(shell uname -s)
 # Binary name
@@ -29,3 +35,14 @@ lint: install-golangci-lint
 # Run all tests
 test:
 	go test ./... -v
+
+
+install-grafana:
+	docker rm -f grafana-kpi || true
+	docker run -d \
+		--name grafana-kpi \
+		-p $(GRAFANA_PORT):3000 \
+		-v $(PWD)/grafana/datasource:/etc/grafana/provisioning/datasources:ro \
+		-v $(PWD)/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro \
+		-v $(PWD)/grafana/dashboard:/var/lib/grafana/dashboards:ro \
+		grafana/grafana:$(GRAFANA_VERSION)

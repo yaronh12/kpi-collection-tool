@@ -1,0 +1,34 @@
+name: Test Grafana Setup
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  grafana-setup:
+    name: Test Grafana install
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Run Grafana via Makefile
+        run: |
+          # Set default Grafana port and version
+          export GRAFANA_PORT=3000
+          export GRAFANA_VERSION=latest
+          
+          # Run the Makefile target
+          make install-grafana
+          
+          # Wait a few seconds for Grafana to start
+          sleep 10
+          
+          # Verify container is running
+          docker ps | grep grafana-kpi
+
+      - name: Clean up Grafana container
+        run: docker rm -f grafana-kpi || true

@@ -25,10 +25,22 @@ jobs:
           make install-grafana
           
           # Wait a few seconds for Grafana to start
-          sleep 10
+          sleep 20
           
           # Verify container is running
           docker ps | grep grafana-kpi
 
+          # Verify provisioning files exist
+          docker exec grafana-kpi ls -l /etc/grafana/provisioning/dashboards/dashboard.yaml
+          docker exec grafana-kpi ls -l /var/lib/grafana/dashboard/sqlite-dashboard.json
+          docker exec grafana-kpi ls -l /etc/grafana/provisioning/datasource/sqlite-datasource.yaml
+
+          # Verify datasource is loaded in Grafana via API
+          docker exec grafana-kpi curl -s -u admin:admin http://localhost:3000/api/datasources | grep frser-sqlite-datasource || echo "Datasource not found"
+
+          # Verify dashboard is loaded in Grafana via API
+          docker exec grafana-kpi curl -s -u admin:admin \
+          "http://localhost:3000/api/search?query=Certsuite" | grep "Certsuite KPI per Cluster" || echo "Dashboard not found"
+        
       - name: Clean up Grafana container
         run: docker rm -f grafana-kpi || true

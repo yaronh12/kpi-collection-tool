@@ -32,8 +32,8 @@ jobs:
 
           # Verify provisioning files exist
           docker exec grafana-kpi ls -l /etc/grafana/provisioning/dashboards/dashboard.yaml
-          docker exec grafana-kpi ls -l /var/lib/grafana/dashboard/sqlite-dashboard.json
-          docker exec grafana-kpi ls -l /etc/grafana/provisioning/datasource/sqlite-datasource.yaml
+          docker exec grafana-kpi ls -l /var/lib/grafana/dashboards/sqlite-dashboard.json
+          docker exec grafana-kpi ls -l /etc/grafana/provisioning/datasources/sqlite-datasource.yaml
 
           # Verify datasource is loaded in Grafana via API
           docker exec grafana-kpi curl -s -u admin:admin http://localhost:3000/api/datasources | grep frser-sqlite-datasource || echo "Datasource not found"

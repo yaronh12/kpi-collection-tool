@@ -2,15 +2,43 @@
     "kpis": [
         {
             "id": "cpu-system",
-            "promquery":"sort_desc(rate(container_cpu_usage_seconds_total{id=~\"/system.slice/.*\"}[30m]))"
+            "promquery": "sort_desc(rate(container_cpu_usage_seconds_total{id=~\"/system.slice/.*\"}[30m]))"
         },
         {
             "id": "cpu-ovs",
-            "promquery":"sort_desc((rate(container_cpu_usage_seconds_total{id=~\"/ovs.slice/.*\"}[30m])))"
+            "promquery": "sort_desc((rate(container_cpu_usage_seconds_total{id=~\"/ovs.slice/.*\"}[30m])))"
         },
         {
             "id": "cpu-pods",
-            "promquery":"sort_desc(avg_over_time(pod:container_cpu_usage:sum[30m]))"
+            "promquery": "sort_desc(avg_over_time(pod:container_cpu_usage:sum[30m]))"
+        },
+        {
+            "id": "cpu-reserved-set",
+            "promquery": "rate(node_cpu_seconds_total{cpu=~\"0|1|32|33\"}[30m])"
+        },
+        {
+            "id": "memory-working-set",
+            "promquery": "sort_desc(sum(container_memory_working_set_bytes{cluster=\"\",container!=\"\"}) by (pod))"
+        },
+        {
+            "id": "memory-rss",
+            "promquery": "sort_desc(sum(container_memory_rss{cluster=\"\",container!=\"\"}) by (pod))"
+        },
+        {
+            "id": "networking-primary-cni-only-received-bytes",
+            "promquery": "sort_desc(rate(node_network_receive_bytes_total[30m]))"
+        },
+        {
+            "id": "networking-primary-cni-only-transmit-bytes",
+            "promquery": "sort_desc(rate(node_network_transmit_bytes_total[30m]))"
+        },
+        {
+            "id": "networking-primary-cni-only-container-received-bytes",
+            "promquery": "sort_desc(rate(container_network_receive_bytes_total{interface=\"eth0\"}[30m]))"
+        },
+        {
+            "id": "networking-primary-cni-only-container-transmit-bytes",
+            "promquery": "sort_desc(rate(container_network_transmit_bytes_total{interface=\"eth0\"}[30m]))"
         }
     ]
 }

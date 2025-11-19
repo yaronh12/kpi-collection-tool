@@ -26,6 +26,7 @@ func SetupFlags() (InputFlags, error) {
 	flag.StringVar(&flags.GrafanaFile, "grafana-file", "", "path to exported Grafana dashboard JSON to analyze")
 	flag.BoolVar(&flags.Summarize, "summarize", false, "run Grafana AI summarization after KPI collection")
 	flag.StringVar(&flags.AIModel, "ollama-model", "llama3.2:latest", "local Ollama model to use")
+	flag.StringVar(&flags.KPIsFile, "kpis-file", "configs/kpis.json", "path to KPIs configuration file")
 
 	flag.Parse()
 
@@ -73,6 +74,10 @@ func validateFlags(flags InputFlags) error {
 
 	if flags.DatabaseType == "postgres" && flags.PostgresURL == "" {
 		return fmt.Errorf("postgres-url is required when db-type=postgres")
+	}
+
+	if flags.KPIsFile == "" {
+		return fmt.Errorf("kpis-file must be specified")
 	}
 
 	return nil

@@ -121,6 +121,14 @@ Provide Thanos URL and bearer token directly.
   --log prod-kpi.log
 ```
 
+**Using a custom KPIs configuration file:**
+```bash
+./kpi-collector \
+  --cluster-name my-cluster \
+  --kubeconfig ~/.kube/config \
+  --kpis-file /path/to/custom-kpis.json
+```
+
 ## Command Line Flags
 
 | Flag | Required | Default | Description |
@@ -136,6 +144,7 @@ Provide Thanos URL and bearer token directly.
 | `--log` | No | kpi.log | Log file name |
 | `--db-type` | No | sqlite | Database type: `sqlite` or `postgres` |
 | `--postgres-url` | No** | - | PostgreSQL connection string |
+| `--kpis-file` | No | configs/kpis.json | Path to KPIs configuration file |
 
 \* Either provide `--kubeconfig` OR both `--token` and `--thanos-url`
 

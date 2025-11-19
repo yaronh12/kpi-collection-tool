@@ -17,6 +17,7 @@ const (
 	validSamplingFreq = 60
 	validDuration     = 45 * time.Minute
 	validDatabaseType = "sqlite"
+	validKPIsFile     = "configs/kpis.json"
 
 	errClusterNameRequiredMsg = "cluster name is required: use --cluster-name flag"
 	errInvalidFlagComboMsg    = "invalid flag combination: either provide --token and --thanos-url, or provide --kubeconfig"
@@ -26,6 +27,7 @@ const (
 	errLogFileMsg             = "log file must be specified"
 	errInvalidDBTypeMsg       = "invalid db-type: must be 'sqlite' or 'postgres'"
 	errPostgresURLRequiredMsg = "postgres-url is required when db-type=postgres"
+	errKPIsFileMsg            = "kpis-file must be specified"
 )
 
 var _ = Describe("validateFlags test", func() {
@@ -53,6 +55,7 @@ var _ = Describe("validateFlags test", func() {
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
+				KPIsFile:     validKPIsFile,
 			},
 			"", // no error expected
 		),
@@ -65,6 +68,7 @@ var _ = Describe("validateFlags test", func() {
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
+				KPIsFile:     validKPIsFile,
 			},
 			"",
 		),
@@ -133,6 +137,7 @@ var _ = Describe("validateFlags test", func() {
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
+				KPIsFile:     validKPIsFile,
 			},
 			errSamplingFreqMsg,
 		),
@@ -146,6 +151,7 @@ var _ = Describe("validateFlags test", func() {
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
+				KPIsFile:     validKPIsFile,
 			},
 			errSamplingFreqMsg,
 		),
@@ -160,6 +166,7 @@ var _ = Describe("validateFlags test", func() {
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
+				KPIsFile:     validKPIsFile,
 			},
 			errDurationMsg,
 		),
@@ -173,6 +180,7 @@ var _ = Describe("validateFlags test", func() {
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
+				KPIsFile:     validKPIsFile,
 			},
 			errDurationMsg,
 		),
@@ -187,6 +195,7 @@ var _ = Describe("validateFlags test", func() {
 				OutputFile:   "",
 				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
+				KPIsFile:     validKPIsFile,
 			},
 			errOutputFileMsg,
 		),
@@ -201,6 +210,7 @@ var _ = Describe("validateFlags test", func() {
 				OutputFile:   validOutputFile,
 				LogFile:      "",
 				DatabaseType: validDatabaseType,
+				KPIsFile:     validKPIsFile,
 			},
 			errLogFileMsg,
 		),
@@ -215,6 +225,7 @@ var _ = Describe("validateFlags test", func() {
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
 				DatabaseType: "mysql",
+				KPIsFile:     validKPIsFile,
 			},
 			errInvalidDBTypeMsg,
 		),
@@ -228,6 +239,7 @@ var _ = Describe("validateFlags test", func() {
 				OutputFile:   validOutputFile,
 				LogFile:      validLogFile,
 				DatabaseType: "",
+				KPIsFile:     validKPIsFile,
 			},
 			errInvalidDBTypeMsg,
 		),
@@ -243,6 +255,7 @@ var _ = Describe("validateFlags test", func() {
 				LogFile:      validLogFile,
 				DatabaseType: "postgres",
 				PostgresURL:  "",
+				KPIsFile:     validKPIsFile,
 			},
 			errPostgresURLRequiredMsg,
 		),
@@ -258,8 +271,24 @@ var _ = Describe("validateFlags test", func() {
 				LogFile:      validLogFile,
 				DatabaseType: "postgres",
 				PostgresURL:  "postgresql://user:pass@localhost:5432/dbname",
+				KPIsFile:     validKPIsFile,
 			},
 			"",
+		),
+		// Error cases - missing KPIs file
+		Entry("empty kpis-file",
+			InputFlags{
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SamplingFreq: validSamplingFreq,
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
+				DatabaseType: validDatabaseType,
+				KPIsFile:     "",
+			},
+			errKPIsFileMsg,
 		),
 	)
 })

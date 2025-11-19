@@ -19,6 +19,9 @@ type InputFlags struct {
 	Summarize    bool   // whether to run Grafana AI summarization
 	AIModel      string // local Ollama model to use 
 	
+	DatabaseType string
+	PostgresURL  string
+	KPIsFile     string
 }
 
 // KPIs represents the structure of the kpis.json file containing

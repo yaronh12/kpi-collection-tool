@@ -18,14 +18,27 @@ type InputFlags struct {
 	GrafanaFile  string // path to grafana_exported.json
 	Summarize    bool   // whether to run Grafana AI summarization
 	AIModel      string // local Ollama model to use 
-	
+	KPIsFile     string
+}
+
+// Query represents a single KPI query configuration
+type Query struct {
+	ID              string `json:"id"`
+	PromQuery       string `json:"promquery"`
+	SampleFrequency *int   `json:"sample-frequency,omitempty"`
 }
 
 // KPIs represents the structure of the kpis.json file containing
 // the list of KPI queries to be executed against Prometheus/Thanos
 type KPIs struct {
-	Queries []struct {
-		ID        string `json:"id"`
-		PromQuery string `json:"promquery"`
-	} `json:"kpis"`
+	Queries []Query `json:"kpis"`
+}
+
+// GetEffectiveFrequency returns the sample frequency for this query,
+// falling back to the provided default if not specified
+func (q *Query) GetEffectiveFrequency(defaultFreq int) int {
+	if q.SampleFrequency != nil && *q.SampleFrequency > 0 {
+		return *q.SampleFrequency
+	}
+	return defaultFreq
 }

@@ -22,6 +22,8 @@ func SetupFlags() (InputFlags, error) {
 	flag.StringVar(&flags.LogFile, "log", "kpi.log", "log file name")
 	flag.StringVar(&flags.DatabaseType, "db-type", "sqlite", "database type: sqlite or postgres (default: sqlite)")
 	flag.StringVar(&flags.PostgresURL, "postgres-url", "", "PostgreSQL connection string (required if db-type=postgres)")
+	flag.StringVar(&flags.KPIsFile, "kpis-file", "configs/kpis.json", "path to KPIs configuration file")
+
 	flag.Parse()
 
 	err := validateFlags(flags)
@@ -68,6 +70,10 @@ func validateFlags(flags InputFlags) error {
 
 	if flags.DatabaseType == "postgres" && flags.PostgresURL == "" {
 		return fmt.Errorf("postgres-url is required when db-type=postgres")
+	}
+
+	if flags.KPIsFile == "" {
+		return fmt.Errorf("kpis-file must be specified")
 	}
 
 	return nil

@@ -41,7 +41,7 @@ func main() {
 	log.Println("RDS KPI Collector initialized.")
 
 	// Load KPI queries
-	kpis, err := loadKPIs()
+	kpis, err := loadKPIs(flags.KPIsFile)
 	if err != nil {
 		log.Printf("Failed to load KPI queries: %v\n", err)
 		return
@@ -114,10 +114,10 @@ func runSample(kpis config.KPIs, flags config.InputFlags, sampleCount int) {
 }
 
 // loadKPIs loads Prometheus queries from kpis.json file
-func loadKPIs() (config.KPIs, error) {
-	kpisFile, err := os.Open("configs/kpis.json")
+func loadKPIs(kpisFilePath string) (config.KPIs, error) {
+	kpisFile, err := os.Open(kpisFilePath)
 	if err != nil {
-		return config.KPIs{}, fmt.Errorf("failed to open kpis.json: %v", err)
+		return config.KPIs{}, fmt.Errorf("failed to open kpis file %s: %v", kpisFilePath, err)
 	}
 	defer func() {
 		if closeErr := kpisFile.Close(); closeErr != nil {
@@ -128,7 +128,7 @@ func loadKPIs() (config.KPIs, error) {
 	var kpis config.KPIs
 	decoder := json.NewDecoder(kpisFile)
 	if err := decoder.Decode(&kpis); err != nil {
-		return config.KPIs{}, fmt.Errorf("failed to decode kpis.json: %v", err)
+		return config.KPIs{}, fmt.Errorf("failed to decode kpis file %s: %v", kpisFilePath, err)
 	}
 
 	return kpis, nil

@@ -11,6 +11,10 @@ import (
 	"rds-kpi-collector/internal/logger"
 )
 
+const (
+	DEFAULT_KPIS_FILEPATH = "configs/kpis.json"
+)
+
 func main() {
 	fmt.Println("RDS KPI Collector starting...")
 
@@ -38,7 +42,7 @@ func main() {
 	log.Println("RDS KPI Collector initialized.")
 
 	// Load KPI queries
-	kpis, err := config.LoadKPIs("configs/kpis.json")
+	kpis, err := config.LoadKPIs(DEFAULT_KPIS_FILEPATH)
 	if err != nil {
 		log.Printf("Failed to load KPI queries: %v\n", err)
 		return

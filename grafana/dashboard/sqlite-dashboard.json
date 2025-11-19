@@ -23,22 +23,38 @@
         "title": "Metric value over time",
         "type": "timeseries",
         "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+        "transformations": [
+            {
+              "id": "partitionByValues",
+              "options": {
+                "keepFields": false,
+                "fields": [
+                  "kpi"
+                ]
+              }
+            }
+          ],
         "targets": [
           {
-            "datasource": "frser-sqlite-datasource",
-            "rawSql": "SELECT timestamp_value AS time, metric_value AS value, kpi_id FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '$cluster' ORDER BY time ASC;",
-            "format": "time_series"
+            "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "frser-sqlite-datasource"
+              },
+              "rawQueryText": "SELECT timestamp_value AS time, metric_value, json_extract(metric_labels, '$.id') AS \"kpi\" FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '${cluster}' AND kpi_id = 'cpu-system' AND timestamp_value >= $__from / 1000 AND timestamp_value < $__to / 1000",
+              "refId": "A",
+            "queryType": "table",
+            "timeColumns": ["time", "ts"]
           }
         ]
       },
       {
-        "title": "Errors over time",
-        "type": "timeseries",
+        "title": "Errors by KPI",
+        "type": "barchart",
         "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
         "targets": [
           {
             "datasource": "frser-sqlite-datasource",
-            "rawSql": "SELECT qr.id AS time, qe.errors AS value FROM query_errors qe JOIN query_results qr ON qr.kpi_id = qe.kpi_id JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '$cluster' ORDER BY time ASC;",
+            "rawQueryText": "SELECT kpi_id AS metric, errors AS value FROM query_errors ORDER BY errors DESC;",
             "format": "table"
           }
         ]
@@ -50,7 +66,7 @@
         "targets": [
           {
             "datasource": "frser-sqlite-datasource",
-            "rawSql": "SELECT kpi_id AS metric, AVG(metric_value) AS value FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '$cluster' GROUP BY metric;",
+            "rawQueryText": "SELECT kpi_id AS metric, AVG(metric_value) AS value FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '$cluster' GROUP BY metric;",
             "format": "table"
           }
         ]
@@ -62,7 +78,7 @@
         "targets": [
           {
             "datasource": "frser-sqlite-datasource",
-            "rawSql": "SELECT timestamp_value AS time, execution_time AS value, kpi_id FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '$cluster' ORDER BY time ASC;",
+            "rawQueryText": "SELECT timestamp_value AS time, execution_time AS value, kpi_id FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '$cluster' ORDER BY time ASC;",
             "format": "time_series"
           }
         ]
@@ -74,7 +90,7 @@
         "targets": [
           {
             "datasource": "frser-sqlite-datasource",
-            "rawSql": "SELECT kpi_id, COUNT(*) AS sample_count, AVG(metric_value) AS avg_value, MIN(metric_value) AS min_value, MAX(metric_value) AS max_value FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '$cluster' GROUP BY kpi_id;",
+            "rawQueryText": "SELECT kpi_id, COUNT(*) AS sample_count, AVG(metric_value) AS avg_value, MIN(metric_value) AS min_value, MAX(metric_value) AS max_value FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '$cluster' GROUP BY kpi_id;",
             "format": "table"
           }
         ]

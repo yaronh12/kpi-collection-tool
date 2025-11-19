@@ -45,4 +45,6 @@ install-grafana:
 		-v $(PWD)/grafana/datasource:/etc/grafana/provisioning/datasources:ro \
 		-v $(PWD)/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro \
 		-v $(PWD)/grafana/dashboard:/var/lib/grafana/dashboards:ro \
+		-v $(PWD)/collected-data/kpi_metrics.db:/var/lib/grafana/kpi_metrics.db:ro \
+		-e "GF_INSTALL_PLUGINS=frser-sqlite-datasource" \
 		grafana/grafana:$(GRAFANA_VERSION)

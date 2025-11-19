@@ -13,8 +13,9 @@ type InputFlags struct {
 	Duration     time.Duration
 	OutputFile   string
 	LogFile      string
-	DatabaseType string // "sqlite" or "postgres"
-	PostgresURL  string // PostgreSQL connection string
+	DatabaseType string
+	PostgresURL  string
+	KPIsFile     string
 }
 
 // Query represents a single KPI query configuration

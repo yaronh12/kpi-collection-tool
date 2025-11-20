@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"rds-kpi-collector/internal/config"
+	"kpi-collector/internal/config"
 )
 
 var _ = Describe("Collector", func() {

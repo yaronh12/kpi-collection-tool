@@ -1,27 +1,48 @@
 # KPI Collection Tool
 
-Tool to automate metrics gathering and visualization for RDS KPIs in disconnected environments.
+Tool to automate metrics gathering and visualization for KPIs in disconnected environments.
 
-## Building
+## Installation
 
 ### Using Make (recommended)
 
 ```bash
-# Build the binary
-make build
+# Build and install globally
+make install
 
-# This creates a binary named 'kpi-collector' in the project root
+# This installs kpi-collector to ~/go/bin/
+# Make sure ~/go/bin is in your PATH
 ```
 
-### Using Go directly
+To add `~/go/bin` to your PATH, add this to your `~/.zshrc` (macOS) or `~/.bashrc` (Linux):
+```bash
+export PATH="$HOME/go/bin:$PATH"
+```
+
+Then reload your shell:
+```bash
+source ~/.zshrc  # or source ~/.bashrc on Linux
+```
+
+### Uninstall
 
 ```bash
-go build -o kpi-collector ./cmd/rds-kpi-collector
+make uninstall
 ```
 
-## Running
+## Usage
 
-The tool supports two authentication modes and two database backends (SQLite and PostgreSQL).
+The tool uses subcommands for different operations. Get help anytime with:
+
+```bash
+kpi-collector --help
+kpi-collector collect --help
+kpi-collector version
+```
+
+## Collecting KPI Metrics
+
+The `collect` command gathers KPI metrics from Prometheus/Thanos and stores them in a database.
 
 ### Authentication Modes
 
@@ -31,12 +52,14 @@ Automatically discovers Thanos URL and creates a service account token.
 
 **Basic usage (uses SQLite by default):**
 ```bash
-./kpi-collector --cluster-name my-cluster --kubeconfig ~/.kube/config
+kpi-collector collect \
+  --cluster-name my-cluster \
+  --kubeconfig ~/.kube/config
 ```
 
 **With custom sampling parameters:**
 ```bash
-./kpi-collector \
+kpi-collector collect \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
   --frequency 30 \
@@ -47,7 +70,7 @@ Automatically discovers Thanos URL and creates a service account token.
 
 **Explicitly using SQLite:**
 ```bash
-./kpi-collector \
+kpi-collector collect \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
   --db-type sqlite
@@ -55,7 +78,7 @@ Automatically discovers Thanos URL and creates a service account token.
 
 **Using PostgreSQL:**
 ```bash
-./kpi-collector \
+kpi-collector collect \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
   --db-type postgres \
@@ -68,7 +91,7 @@ Provide Thanos URL and bearer token directly.
 
 **Basic usage (uses SQLite by default):**
 ```bash
-./kpi-collector \
+kpi-collector collect \
   --cluster-name my-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.example.com
@@ -76,7 +99,7 @@ Provide Thanos URL and bearer token directly.
 
 **With custom sampling parameters:**
 ```bash
-./kpi-collector \
+kpi-collector collect \
   --cluster-name my-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.example.com \
@@ -87,7 +110,7 @@ Provide Thanos URL and bearer token directly.
 
 **Using PostgreSQL:**
 ```bash
-./kpi-collector \
+kpi-collector collect \
   --cluster-name my-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.example.com \
@@ -99,7 +122,7 @@ Provide Thanos URL and bearer token directly.
 
 **Development setup with SQLite (default):**
 ```bash
-./kpi-collector \
+kpi-collector collect \
   --cluster-name dev-cluster \
   --kubeconfig ~/.kube/config \
   --frequency 60 \
@@ -109,7 +132,7 @@ Provide Thanos URL and bearer token directly.
 
 **Production setup with PostgreSQL:**
 ```bash
-./kpi-collector \
+kpi-collector collect \
   --cluster-name prod-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.prod.example.com \
@@ -123,13 +146,15 @@ Provide Thanos URL and bearer token directly.
 
 **Using a custom KPIs configuration file:**
 ```bash
-./kpi-collector \
+kpi-collector collect \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
   --kpis-file /path/to/custom-kpis.json
 ```
 
 ## Command Line Flags
+
+### Collect Command Flags
 
 | Flag | Required | Default | Description |
 |------|----------|---------|-------------|
@@ -145,6 +170,9 @@ Provide Thanos URL and bearer token directly.
 | `--db-type` | No | sqlite | Database type: `sqlite` or `postgres` |
 | `--postgres-url` | No** | - | PostgreSQL connection string |
 | `--kpis-file` | No | configs/kpis.json | Path to KPIs configuration file |
+| `--grafana-file` | No | - | Path to exported Grafana dashboard JSON to analyze |
+| `--summarize` | No | false | Run Grafana AI summarization after KPI collection |
+| `--ollama-model` | No | llama3.2:latest | Local Ollama model to use for AI analysis |
 
 \* Either provide `--kubeconfig` OR both `--token` and `--thanos-url`
 
@@ -278,7 +306,7 @@ kpi-collection-tool/
 │       └── dashboards/
 │           └── dashboard.yaml
 ├── cmd/
-│   └── rds-kpi-collector/
+│   └── kpi-collector/
 │       └── main.go
 └── Makefile
 
@@ -292,25 +320,25 @@ This tool provides offline AI-based summarization for exported Grafana dashboard
 
 ### Usage
 
-After building or running the `rds-kpi-collector`, use the following command to analyze a Grafana JSON export:
+Use the `collect` command with the `--summarize` flag to analyze a Grafana JSON export:
 
 ```bash
-go run ./cmd/rds-kpi-collector \
-  --cluster-name=<your-cluster> \
-  --duration=10m \
-  --frequency=30 \
-  --kubeconfig=<path-to-kubeconfig> \
+kpi-collector collect \
+  --cluster-name my-cluster \
+  --kubeconfig ~/.kube/config \
+  --duration 10m \
+  --frequency 30 \
   --summarize \
-  --grafana-file=<path-to-exported-grafana.json> \
-  --ollama-model=llama3.2:latest
-Flags:
+  --grafana-file /path/to/exported-grafana.json \
+  --ollama-model llama3.2:latest
+```
 
---grafana-file – path to the exported Grafana dashboard JSON.
+**Flags:**
 
---summarize – triggers the AI summarization process.
+- `--grafana-file` – Path to the exported Grafana dashboard JSON
+- `--summarize` – Triggers the AI summarization process after KPI collection
+- `--ollama-model` – Choose any local Ollama model (default: llama3.2:latest)
 
---ollama-model – choose any local Ollama model (default: llama3.2:latest).
+The AI summary and metadata will be saved in the `out/` directory and printed to stdout.
 
-The AI summary and metadata will be saved in the out/ directory and printed to stdout.
-
-Note: The selected AI model must be installed locally, support text generation, and be capable enough to produce meaningful summaries.
+**Note:** The selected AI model must be installed locally, support text generation, and be capable enough to produce meaningful summaries.

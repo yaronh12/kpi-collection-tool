@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"rds-kpi-collector/internal/config"
+	"kpi-collector/internal/config"
 )
 
 func Run(flags config.InputFlags) error {

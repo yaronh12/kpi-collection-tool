@@ -94,7 +94,11 @@ func init() {
 		"path to KPIs configuration file")
 
 	// Mark required flags
-	collectCmd.MarkFlagRequired("cluster-name")
+	err := collectCmd.MarkFlagRequired("cluster-name")
+	if err != nil {
+		panic(fmt.Sprintf("failed to mark cluster-name as required: %v", err))
+	}
+
 }
 
 func runCollect(cmd *cobra.Command, args []string) error {

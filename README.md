@@ -94,6 +94,28 @@ Provide Thanos URL and bearer token directly.
   --db-type postgres \
   --postgres-url "postgresql://myuser:mypass@localhost:5432/kpi_metrics?sslmode=disable"
 ```
+## --insecure-tls
+
+Use this flag when running the tool against clusters or Prometheus/Thanos servers with self-signed or untrusted certificates.
+
+```bash
+./kpi-collector \
+  --cluster-name my-cluster \
+  --kubeconfig ~/.kube/config \
+  --insecure-tls
+```  
+### What it does
+- Skips TLS certificate verification for all HTTPS requests:
+- Kubernetes API calls
+- Thanos/Prometheus queries
+- Allows execution in environments where the certificate cannot be validated.
+
+### When to use
+- Self-signed certificates
+- Disconnected / lab / air-gapped clusters
+- kubeconfig without a valid CA
+- TLS errors such as:
+  x509: certificate signed by unknown authority
 
 ### Complete Examples
 

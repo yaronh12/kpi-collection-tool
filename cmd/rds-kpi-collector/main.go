@@ -7,13 +7,9 @@ import (
 
 	"rds-kpi-collector/internal/collector"
 	"rds-kpi-collector/internal/config"
+	"rds-kpi-collector/internal/grafana_ai"
 	"rds-kpi-collector/internal/kubernetes"
 	"rds-kpi-collector/internal/logger"
-	"rds-kpi-collector/internal/grafana_ai"
-)
-
-const (
-	DEFAULT_KPIS_FILEPATH = "configs/kpis.json"
 )
 
 func main() {
@@ -43,7 +39,7 @@ func main() {
 	log.Println("RDS KPI Collector initialized.")
 
 	// Load KPI queries
-	kpis, err := config.LoadKPIs(DEFAULT_KPIS_FILEPATH)
+	kpis, err := config.LoadKPIs(flags.KPIsFile)
 	if err != nil {
 		log.Printf("Failed to load KPI queries: %v\n", err)
 		return
@@ -66,13 +62,12 @@ func main() {
 	fmt.Println("All queries completed successfully!")
 
 	if flags.Summarize && flags.GrafanaFile != "" {
-    log.Println("Starting Grafana AI Analysis...")
-    if err := grafana_ai.Run(flags); err != nil {
-        log.Printf("Grafana AI analysis failed: %v\n", err)
-    } else {
-        log.Println("Grafana AI analysis finished.")
-    }
-}
-
+		log.Println("Starting Grafana AI Analysis...")
+		if err := grafana_ai.Run(flags); err != nil {
+			log.Printf("Grafana AI analysis failed: %v\n", err)
+		} else {
+			log.Println("Grafana AI analysis finished.")
+		}
+	}
 
 }

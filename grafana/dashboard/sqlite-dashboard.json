@@ -40,7 +40,7 @@
                 "type": "frser-sqlite-datasource",
                 "uid": "frser-sqlite-datasource"
               },
-              "rawQueryText": "SELECT timestamp_value AS time, metric_value, json_extract(metric_labels, '$.id') AS \"kpi\" FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '${cluster}' AND kpi_id = 'cpu-system' AND timestamp_value >= $__from / 1000 AND timestamp_value < $__to / 1000",
+              "rawQueryText": "SELECT timestamp_value AS time, metric_value, json_extract(metric_labels, '$.id') AS \"kpi\" FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND kpi_id = 'cpu-system' AND timestamp_value >= $__from / 1000 AND timestamp_value < $__to / 1000 AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}')",
               "refId": "A",
             "queryType": "table",
             "timeColumns": ["time", "ts"]
@@ -66,7 +66,7 @@
         "targets": [
           {
             "datasource": "frser-sqlite-datasource",
-            "rawQueryText": "SELECT kpi_id AS metric, AVG(metric_value) AS value FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '$cluster' GROUP BY metric;",
+            "rawQueryText": "SELECT kpi_id AS metric, AVG(metric_value) AS value FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY metric;",
             "format": "table"
           }
         ]
@@ -78,7 +78,7 @@
         "targets": [
           {
             "datasource": "frser-sqlite-datasource",
-            "rawQueryText": "SELECT timestamp_value AS time, execution_time AS value, kpi_id FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '$cluster' ORDER BY time ASC;",
+            "rawQueryText": "SELECT timestamp_value AS time, execution_time AS value, kpi_id FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') ORDER BY time ASC;",
             "format": "time_series"
           }
         ]
@@ -90,7 +90,7 @@
         "targets": [
           {
             "datasource": "frser-sqlite-datasource",
-            "rawQueryText": "SELECT kpi_id, COUNT(*) AS sample_count, AVG(metric_value) AS avg_value, MIN(metric_value) AS min_value, MAX(metric_value) AS max_value FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE c.cluster_name = '$cluster' GROUP BY kpi_id;",
+            "rawQueryText": "SELECT kpi_id, COUNT(*) AS sample_count, AVG(metric_value) AS avg_value, MIN(metric_value) AS min_value, MAX(metric_value) AS max_value FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY kpi_id;",
             "format": "table"
           }
         ]
@@ -105,15 +105,32 @@
     "templating": {
       "list": [
         {
+          "name": "cluster_type",
+          "label": "Cluster Type",
+          "type": "query",
+          "datasource": "frser-sqlite-datasource",
+          "query": "SELECT DISTINCT cluster_type FROM clusters WHERE cluster_type IS NOT NULL ORDER BY cluster_type;",
+          "hide": 0,
+          "refresh": 1,
+          "multi": false,
+          "includeAll": true,
+          "allValue": "$__all",
+          "current": {},
+          "options": []
+        },
+        {
           "name": "cluster",
           "label": "Cluster",
           "type": "query",
           "datasource": "frser-sqlite-datasource",
-          "query": "SELECT cluster_name FROM clusters;",
+          "query": "SELECT cluster_name FROM clusters WHERE ('${cluster_type}' = '$__all' OR cluster_type = '${cluster_type}' OR cluster_type IS NULL) ORDER BY cluster_name;",
           "hide": 0,
           "refresh": 1,
           "multi": false,
-          "includeAll": false
+          "includeAll": true,
+          "allValue": "$__all",
+          "current": {},
+          "options": []
         }
       ]
     },

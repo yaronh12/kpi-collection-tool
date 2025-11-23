@@ -14,6 +14,7 @@ func SetupFlags() (InputFlags, error) {
 	flag.StringVar(&flags.ThanosURL, "thanos-url", "", "thanos url for http requests")
 	flag.StringVar(&flags.Kubeconfig, "kubeconfig", "", "kubeconfig file path")
 	flag.StringVar(&flags.ClusterName, "cluster-name", "", "cluster name (required)")
+	flag.StringVar(&flags.ClusterType, "cluster-type", "", "cluster type: ran, core, or hub (optional)")
 	flag.BoolVar(&flags.InsecureTLS, "insecure-tls", false, "skip TLS certificate verification")
 
 	flag.IntVar(&flags.SamplingFreq, "frequency", 60, "sampling frequency in seconds")
@@ -22,7 +23,7 @@ func SetupFlags() (InputFlags, error) {
 	flag.StringVar(&flags.LogFile, "log", "kpi.log", "log file name")
 	flag.StringVar(&flags.DatabaseType, "db-type", "sqlite", "database type: sqlite or postgres (default: sqlite)")
 	flag.StringVar(&flags.PostgresURL, "postgres-url", "", "PostgreSQL connection string (required if db-type=postgres)")
-	
+
 	flag.StringVar(&flags.GrafanaFile, "grafana-file", "", "path to exported Grafana dashboard JSON to analyze")
 	flag.BoolVar(&flags.Summarize, "summarize", false, "run Grafana AI summarization after KPI collection")
 	flag.StringVar(&flags.AIModel, "ollama-model", "llama3.2:latest", "local Ollama model to use")
@@ -38,6 +39,13 @@ func SetupFlags() (InputFlags, error) {
 func validateFlags(flags InputFlags) error {
 	if flags.ClusterName == "" {
 		return fmt.Errorf("cluster name is required: use --cluster-name flag")
+	}
+
+	if flags.ClusterType != "" {
+		validTypes := map[string]bool{"ran": true, "core": true, "hub": true}
+		if !validTypes[flags.ClusterType] {
+			return fmt.Errorf("invalid cluster-type: must be 'ran', 'core', or 'hub'")
+		}
 	}
 
 	if flags.InsecureTLS {

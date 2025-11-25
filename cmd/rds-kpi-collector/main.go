@@ -9,7 +9,6 @@ import (
 	"rds-kpi-collector/internal/config"
 	"rds-kpi-collector/internal/kubernetes"
 	"rds-kpi-collector/internal/logger"
-	"rds-kpi-collector/internal/grafana_ai"
 )
 
 const (
@@ -64,15 +63,5 @@ func main() {
 	collector.Run(kpis, flags)
 
 	fmt.Println("All queries completed successfully!")
-
-	if flags.Summarize && flags.GrafanaFile != "" {
-    log.Println("Starting Grafana AI Analysis...")
-    if err := grafana_ai.Run(flags); err != nil {
-        log.Printf("Grafana AI analysis failed: %v\n", err)
-    } else {
-        log.Println("Grafana AI analysis finished.")
-    }
-}
-
 
 }

@@ -23,13 +23,6 @@ func SetupFlags() (InputFlags, error) {
 	flag.StringVar(&flags.LogFile, "log", "kpi.log", "log file name")
 	flag.StringVar(&flags.DatabaseType, "db-type", "sqlite", "database type: sqlite or postgres (default: sqlite)")
 	flag.StringVar(&flags.PostgresURL, "postgres-url", "", "PostgreSQL connection string (required if db-type=postgres)")
-<<<<<<< HEAD
-
-	flag.StringVar(&flags.GrafanaFile, "grafana-file", "", "path to exported Grafana dashboard JSON to analyze")
-	flag.BoolVar(&flags.Summarize, "summarize", false, "run Grafana AI summarization after KPI collection")
-	flag.StringVar(&flags.AIModel, "ollama-model", "llama3.2:latest", "local Ollama model to use")
-=======
->>>>>>> upstream/main
 	flag.StringVar(&flags.KPIsFile, "kpis-file", "configs/kpis.json", "path to KPIs configuration file")
 
 	flag.Parse()

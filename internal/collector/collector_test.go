@@ -10,7 +10,7 @@ import (
 )
 
 var _ = Describe("Collector", func() {
-	Describe("separateByFrequency", func() {
+	Describe("groupKPIsByFrequency", func() {
 		var (
 			kpis        config.KPIs
 			defaultFreq int
@@ -30,13 +30,13 @@ var _ = Describe("Collector", func() {
 				}
 			})
 
-			It("should put all KPIs in default frequency group", func() {
-				defaultKPIs, customKPIs := separateByFrequency(kpis, defaultFreq)
+			It("should group all KPIs under default frequency", func() {
+				grouped := groupKPIsByFrequency(kpis, defaultFreq)
 
-				Expect(defaultKPIs.Queries).To(HaveLen(2))
-				Expect(customKPIs.Queries).To(BeEmpty())
-				Expect(defaultKPIs.Queries[0].ID).To(Equal("kpi-1"))
-				Expect(defaultKPIs.Queries[1].ID).To(Equal("kpi-2"))
+				Expect(grouped).To(HaveLen(1))
+				Expect(grouped[60].Queries).To(HaveLen(2))
+				Expect(grouped[60].Queries[0].ID).To(Equal("kpi-1"))
+				Expect(grouped[60].Queries[1].ID).To(Equal("kpi-2"))
 			})
 		})
 
@@ -52,13 +52,14 @@ var _ = Describe("Collector", func() {
 				}
 			})
 
-			It("should put all KPIs in custom frequency group", func() {
-				defaultKPIs, customKPIs := separateByFrequency(kpis, defaultFreq)
+			It("should group KPIs by their custom frequencies", func() {
+				grouped := groupKPIsByFrequency(kpis, defaultFreq)
 
-				Expect(defaultKPIs.Queries).To(BeEmpty())
-				Expect(customKPIs.Queries).To(HaveLen(2))
-				Expect(customKPIs.Queries[0].ID).To(Equal("kpi-1"))
-				Expect(customKPIs.Queries[1].ID).To(Equal("kpi-2"))
+				Expect(grouped).To(HaveLen(2))
+				Expect(grouped[10].Queries).To(HaveLen(1))
+				Expect(grouped[10].Queries[0].ID).To(Equal("kpi-1"))
+				Expect(grouped[30].Queries).To(HaveLen(1))
+				Expect(grouped[30].Queries[0].ID).To(Equal("kpi-2"))
 			})
 		})
 
@@ -74,14 +75,15 @@ var _ = Describe("Collector", func() {
 				}
 			})
 
-			It("should separate KPIs correctly", func() {
-				defaultKPIs, customKPIs := separateByFrequency(kpis, defaultFreq)
+			It("should group KPIs correctly by frequency", func() {
+				grouped := groupKPIsByFrequency(kpis, defaultFreq)
 
-				Expect(defaultKPIs.Queries).To(HaveLen(2))
-				Expect(customKPIs.Queries).To(HaveLen(1))
-				Expect(defaultKPIs.Queries[0].ID).To(Equal("default-1"))
-				Expect(defaultKPIs.Queries[1].ID).To(Equal("default-2"))
-				Expect(customKPIs.Queries[0].ID).To(Equal("custom-1"))
+				Expect(grouped).To(HaveLen(2))
+				Expect(grouped[60].Queries).To(HaveLen(2))
+				Expect(grouped[60].Queries[0].ID).To(Equal("default-1"))
+				Expect(grouped[60].Queries[1].ID).To(Equal("default-2"))
+				Expect(grouped[15].Queries).To(HaveLen(1))
+				Expect(grouped[15].Queries[0].ID).To(Equal("custom-1"))
 			})
 		})
 
@@ -90,11 +92,33 @@ var _ = Describe("Collector", func() {
 				kpis = config.KPIs{Queries: []config.Query{}}
 			})
 
-			It("should return empty groups", func() {
-				defaultKPIs, customKPIs := separateByFrequency(kpis, defaultFreq)
+			It("should return empty map", func() {
+				grouped := groupKPIsByFrequency(kpis, defaultFreq)
 
-				Expect(defaultKPIs.Queries).To(BeEmpty())
-				Expect(customKPIs.Queries).To(BeEmpty())
+				Expect(grouped).To(BeEmpty())
+			})
+		})
+
+		Context("when multiple KPIs share the same custom frequency", func() {
+			BeforeEach(func() {
+				freq := 30
+				kpis = config.KPIs{
+					Queries: []config.Query{
+						{ID: "kpi-1", PromQuery: "query1", SampleFrequency: &freq},
+						{ID: "kpi-2", PromQuery: "query2", SampleFrequency: &freq},
+						{ID: "kpi-3", PromQuery: "query3", SampleFrequency: &freq},
+					},
+				}
+			})
+
+			It("should group all KPIs under the same frequency", func() {
+				grouped := groupKPIsByFrequency(kpis, defaultFreq)
+
+				Expect(grouped).To(HaveLen(1))
+				Expect(grouped[30].Queries).To(HaveLen(3))
+				Expect(grouped[30].Queries[0].ID).To(Equal("kpi-1"))
+				Expect(grouped[30].Queries[1].ID).To(Equal("kpi-2"))
+				Expect(grouped[30].Queries[2].ID).To(Equal("kpi-3"))
 			})
 		})
 	})
@@ -162,44 +186,7 @@ var _ = Describe("Collector", func() {
 		})
 	})
 
-	Describe("setupDefaultKPITicker", func() {
-		var flags config.InputFlags
-
-		BeforeEach(func() {
-			flags = config.InputFlags{
-				SamplingFreq: 10,
-				Duration:     30 * time.Second,
-			}
-		})
-
-		Context("when there are default frequency KPIs", func() {
-			It("should return a ticker channel and initial count of 1", func() {
-				kpis := config.KPIs{
-					Queries: []config.Query{
-						{ID: "kpi-1", PromQuery: "query1"},
-					},
-				}
-
-				tickerChan, sampleCount := setupDefaultKPITicker(kpis, flags)
-
-				Expect(tickerChan).NotTo(BeNil())
-				Expect(sampleCount).To(Equal(1))
-			})
-		})
-
-		Context("when there are no default frequency KPIs", func() {
-			It("should return a dummy channel and count of 0", func() {
-				kpis := config.KPIs{Queries: []config.Query{}}
-
-				tickerChan, sampleCount := setupDefaultKPITicker(kpis, flags)
-
-				Expect(tickerChan).NotTo(BeNil())
-				Expect(sampleCount).To(Equal(0))
-			})
-		})
-	})
-
-	Describe("startCustomFrequencyGoroutines", func() {
+	Describe("startKPIGoroutines", func() {
 		var flags config.InputFlags
 
 		BeforeEach(func() {
@@ -209,16 +196,17 @@ var _ = Describe("Collector", func() {
 			}
 		})
 
-		Context("when there are custom frequency KPIs", func() {
+		Context("when there are KPIs with various frequencies", func() {
 			It("should return cancel function and WaitGroup", func() {
 				freq := 5
 				kpis := config.KPIs{
 					Queries: []config.Query{
 						{ID: "kpi-1", PromQuery: "query1", SampleFrequency: &freq},
+						{ID: "kpi-2", PromQuery: "query2"}, // default frequency
 					},
 				}
 
-				cancel, wg := startCustomFrequencyGoroutines(kpis, flags)
+				cancel, wg := startKPIGoroutines(kpis, flags)
 
 				Expect(cancel).NotTo(BeNil())
 				Expect(wg).NotTo(BeNil())
@@ -229,11 +217,31 @@ var _ = Describe("Collector", func() {
 			})
 		})
 
-		Context("when there are no custom frequency KPIs", func() {
+		Context("when there are only default frequency KPIs", func() {
+			It("should start goroutines for default frequency", func() {
+				kpis := config.KPIs{
+					Queries: []config.Query{
+						{ID: "kpi-1", PromQuery: "query1"},
+						{ID: "kpi-2", PromQuery: "query2"},
+					},
+				}
+
+				cancel, wg := startKPIGoroutines(kpis, flags)
+
+				Expect(cancel).NotTo(BeNil())
+				Expect(wg).NotTo(BeNil())
+
+				// Cancel and wait to clean up goroutines
+				cancel()
+				wg.Wait()
+			})
+		})
+
+		Context("when there are no KPIs", func() {
 			It("should return cancel function and empty WaitGroup", func() {
 				kpis := config.KPIs{Queries: []config.Query{}}
 
-				cancel, wg := startCustomFrequencyGoroutines(kpis, flags)
+				cancel, wg := startKPIGoroutines(kpis, flags)
 
 				Expect(cancel).NotTo(BeNil())
 				Expect(wg).NotTo(BeNil())

@@ -7,7 +7,6 @@ import (
 
 	"kpi-collector/internal/collector"
 	"kpi-collector/internal/config"
-	"kpi-collector/internal/grafana_ai"
 	"kpi-collector/internal/kubernetes"
 	"kpi-collector/internal/logger"
 
@@ -83,13 +82,6 @@ func init() {
 	runCmd.Flags().StringVar(&flags.PostgresURL, "postgres-url", "",
 		"PostgreSQL connection string (required if db-type=postgres)")
 
-	// Grafana AI flags
-	runCmd.Flags().StringVar(&flags.GrafanaFile, "grafana-file", "",
-		"path to exported Grafana dashboard JSON to analyze")
-	runCmd.Flags().BoolVar(&flags.Summarize, "summarize", false,
-		"run Grafana AI summarization after KPI collection")
-	runCmd.Flags().StringVar(&flags.AIModel, "ollama-model", "llama3.2:latest",
-		"local Ollama model to use")
 	runCmd.Flags().StringVar(&flags.KPIsFile, "kpis-file", defaultKPIsFilepath,
 		"path to KPIs configuration file")
 
@@ -144,16 +136,6 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	collector.Run(kpis, flags)
 
 	fmt.Println("All queries completed successfully!")
-
-	// Run Grafana AI analysis if requested
-	if flags.Summarize && flags.GrafanaFile != "" {
-		log.Println("Starting Grafana AI Analysis...")
-		if err := grafana_ai.Run(flags); err != nil {
-			log.Printf("Grafana AI analysis failed: %v\n", err)
-		} else {
-			log.Println("Grafana AI analysis finished.")
-		}
-	}
 
 	return nil
 }

@@ -10,6 +10,13 @@ func ValidateFlags(flags InputFlags) error {
 		return fmt.Errorf("cluster name is required: use --cluster-name flag")
 	}
 
+	if flags.ClusterType != "" {
+		validTypes := map[string]bool{"ran": true, "core": true, "hub": true}
+		if !validTypes[flags.ClusterType] {
+			return fmt.Errorf("invalid cluster-type: must be 'ran', 'core', or 'hub'")
+		}
+	}
+
 	if flags.InsecureTLS {
 		fmt.Println("WARNING: TLS certificate verification is disabled. Use only in development environments.")
 	}

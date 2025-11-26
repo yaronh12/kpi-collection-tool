@@ -34,6 +34,7 @@ func (sqlite_db *SQLiteDB) InitDB() (*sql.DB, error) {
     CREATE TABLE IF NOT EXISTS clusters (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         cluster_name TEXT UNIQUE NOT NULL,
+		cluster_type TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     
@@ -61,14 +62,20 @@ func (sqlite_db *SQLiteDB) InitDB() (*sql.DB, error) {
 }
 
 // getOrCreateCluster gets existing cluster ID or creates a new cluster record
-func (sqlite_db *SQLiteDB) GetOrCreateCluster(db *sql.DB, clusterName string) (int64, error) {
+func (sqlite_db *SQLiteDB) GetOrCreateCluster(db *sql.DB, clusterName string, clusterType string) (int64, error) {
 	var clusterID int64
 	err := db.QueryRow("SELECT id FROM clusters WHERE cluster_name = ?", clusterName).Scan(&clusterID)
 	if err == nil {
+		if clusterType != "" {
+			_, updateErr := db.Exec("UPDATE clusters SET cluster_type = ? WHERE id = ?", clusterType, clusterID)
+			if updateErr != nil {
+				return clusterID, updateErr
+			}
+		}
 		return clusterID, nil
 	}
 
-	result, err := db.Exec("INSERT INTO clusters (cluster_name) VALUES (?)", clusterName)
+	result, err := db.Exec("INSERT INTO clusters (cluster_name, cluster_type) VALUES (?, ?)", clusterName, clusterType)
 	if err != nil {
 		return 0, err
 	}

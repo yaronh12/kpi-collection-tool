@@ -61,6 +61,7 @@ kpi-collector run \
 ```bash
 kpi-collector run \
   --cluster-name my-cluster \
+  --cluster-type ran \
   --kubeconfig ~/.kube/config \
   --frequency 30 \
   --duration 1h \
@@ -117,6 +118,28 @@ kpi-collector run \
   --db-type postgres \
   --postgres-url "postgresql://myuser:mypass@localhost:5432/kpi_metrics?sslmode=disable"
 ```
+## --insecure-tls
+
+Use this flag when running the tool against clusters or Prometheus/Thanos servers with self-signed or untrusted certificates.
+
+```bash
+./kpi-collector \
+  --cluster-name my-cluster \
+  --kubeconfig ~/.kube/config \
+  --insecure-tls
+```  
+### What it does
+- Skips TLS certificate verification for all HTTPS requests:
+- Kubernetes API calls
+- Thanos/Prometheus queries
+- Allows execution in environments where the certificate cannot be validated.
+
+### When to use
+- Self-signed certificates
+- Disconnected / lab / air-gapped clusters
+- kubeconfig without a valid CA
+- TLS errors such as:
+  x509: certificate signed by unknown authority
 
 ### Complete Examples
 
@@ -159,6 +182,7 @@ kpi-collector run \
 | Flag | Required | Default | Description |
 |------|----------|---------|-------------|
 | `--cluster-name` | Yes | - | Name of the cluster being monitored |
+| `--cluster-type` | No | - | Cluster type for categorization: `ran`, `core`, or `hub` |
 | `--kubeconfig` | No* | - | Path to kubeconfig file for auto-discovery |
 | `--token` | No* | - | Bearer token for Thanos authentication |
 | `--thanos-url` | No* | - | Thanos querier URL (without https://) |
@@ -314,31 +338,3 @@ kpi-collection-tool/
 - grafana/dashboard → Dashboard JSON files
 - Makefile → Automates running Grafana locally
 
-## Grafana AI Analyzer
-
-This tool provides offline AI-based summarization for exported Grafana dashboards. You can generate structured insights using a locally installed AI model.
-
-### Usage
-
-Use the `collect` command with the `--summarize` flag to analyze a Grafana JSON export:
-
-```bash
-kpi-collector run \
-  --cluster-name my-cluster \
-  --kubeconfig ~/.kube/config \
-  --duration 10m \
-  --frequency 30 \
-  --summarize \
-  --grafana-file /path/to/exported-grafana.json \
-  --ollama-model llama3.2:latest
-```
-
-**Flags:**
-
-- `--grafana-file` – Path to the exported Grafana dashboard JSON
-- `--summarize` – Triggers the AI summarization process after KPI collection
-- `--ollama-model` – Choose any local Ollama model (default: llama3.2:latest)
-
-The AI summary and metadata will be saved in the `out/` directory and printed to stdout.
-
-**Note:** The selected AI model must be installed locally, support text generation, and be capable enough to produce meaningful summaries.

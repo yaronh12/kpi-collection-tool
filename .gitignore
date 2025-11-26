@@ -1,5 +1,5 @@
 main
-kpi-collector
+/kpi-collector
 collected-data/
 .DS_Store
 kpi.log

@@ -1,27 +1,48 @@
 # KPI Collection Tool
 
-Tool to automate metrics gathering and visualization for RDS KPIs in disconnected environments.
+Tool to automate metrics gathering and visualization for KPIs in disconnected environments.
 
-## Building
+## Installation
 
 ### Using Make (recommended)
 
 ```bash
-# Build the binary
-make build
+# Build and install globally
+make install
 
-# This creates a binary named 'kpi-collector' in the project root
+# This installs kpi-collector to ~/go/bin/
+# Make sure ~/go/bin is in your PATH
 ```
 
-### Using Go directly
+To add `~/go/bin` to your PATH, add this to your `~/.zshrc` (macOS) or `~/.bashrc` (Linux):
+```bash
+export PATH="$HOME/go/bin:$PATH"
+```
+
+Then reload your shell:
+```bash
+source ~/.zshrc  # or source ~/.bashrc on Linux
+```
+
+### Uninstall
 
 ```bash
-go build -o kpi-collector ./cmd/rds-kpi-collector
+make uninstall
 ```
 
-## Running
+## Usage
 
-The tool supports two authentication modes and two database backends (SQLite and PostgreSQL).
+The tool uses subcommands for different operations. Get help anytime with:
+
+```bash
+kpi-collector --help
+kpi-collector run --help
+kpi-collector version
+```
+
+## Collecting KPI Metrics
+
+The `run` command gathers KPI metrics from Prometheus/Thanos and stores them in a database.
 
 ### Authentication Modes
 
@@ -31,12 +52,14 @@ Automatically discovers Thanos URL and creates a service account token.
 
 **Basic usage (uses SQLite by default):**
 ```bash
-./kpi-collector --cluster-name my-cluster --kubeconfig ~/.kube/config
+kpi-collector run \
+  --cluster-name my-cluster \
+  --kubeconfig ~/.kube/config
 ```
 
 **With custom sampling parameters:**
 ```bash
-./kpi-collector \
+kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
@@ -48,7 +71,7 @@ Automatically discovers Thanos URL and creates a service account token.
 
 **Explicitly using SQLite:**
 ```bash
-./kpi-collector \
+kpi-collector run \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
   --db-type sqlite
@@ -56,7 +79,7 @@ Automatically discovers Thanos URL and creates a service account token.
 
 **Using PostgreSQL:**
 ```bash
-./kpi-collector \
+kpi-collector run \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
   --db-type postgres \
@@ -69,7 +92,7 @@ Provide Thanos URL and bearer token directly.
 
 **Basic usage (uses SQLite by default):**
 ```bash
-./kpi-collector \
+kpi-collector run \
   --cluster-name my-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.example.com
@@ -77,7 +100,7 @@ Provide Thanos URL and bearer token directly.
 
 **With custom sampling parameters:**
 ```bash
-./kpi-collector \
+kpi-collector run \
   --cluster-name my-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.example.com \
@@ -88,7 +111,7 @@ Provide Thanos URL and bearer token directly.
 
 **Using PostgreSQL:**
 ```bash
-./kpi-collector \
+kpi-collector run \
   --cluster-name my-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.example.com \
@@ -122,7 +145,7 @@ Use this flag when running the tool against clusters or Prometheus/Thanos server
 
 **Development setup with SQLite (default):**
 ```bash
-./kpi-collector \
+kpi-collector run \
   --cluster-name dev-cluster \
   --kubeconfig ~/.kube/config \
   --frequency 60 \
@@ -132,7 +155,7 @@ Use this flag when running the tool against clusters or Prometheus/Thanos server
 
 **Production setup with PostgreSQL:**
 ```bash
-./kpi-collector \
+kpi-collector run \
   --cluster-name prod-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.prod.example.com \
@@ -146,13 +169,15 @@ Use this flag when running the tool against clusters or Prometheus/Thanos server
 
 **Using a custom KPIs configuration file:**
 ```bash
-./kpi-collector \
+kpi-collector run \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
   --kpis-file /path/to/custom-kpis.json
 ```
 
 ## Command Line Flags
+
+### Collect Command Flags
 
 | Flag | Required | Default | Description |
 |------|----------|---------|-------------|
@@ -169,6 +194,9 @@ Use this flag when running the tool against clusters or Prometheus/Thanos server
 | `--db-type` | No | sqlite | Database type: `sqlite` or `postgres` |
 | `--postgres-url` | No** | - | PostgreSQL connection string |
 | `--kpis-file` | No | configs/kpis.json | Path to KPIs configuration file |
+| `--grafana-file` | No | - | Path to exported Grafana dashboard JSON to analyze |
+| `--summarize` | No | false | Run Grafana AI summarization after KPI collection |
+| `--ollama-model` | No | llama3.2:latest | Local Ollama model to use for AI analysis |
 
 \* Either provide `--kubeconfig` OR both `--token` and `--thanos-url`
 
@@ -302,7 +330,7 @@ kpi-collection-tool/
 │       └── dashboards/
 │           └── dashboard.yaml
 ├── cmd/
-│   └── rds-kpi-collector/
+│   └── kpi-collector/
 │       └── main.go
 └── Makefile
 

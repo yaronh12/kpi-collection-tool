@@ -1,38 +1,11 @@
 package config
 
 import (
-	"flag"
 	"fmt"
-	"time"
 )
 
-// setupFlags parses and validates command line flags, returns InputFlags struct
-func SetupFlags() (InputFlags, error) {
-	var flags InputFlags
-
-	flag.StringVar(&flags.BearerToken, "token", "", "bearer token for thanos-queries")
-	flag.StringVar(&flags.ThanosURL, "thanos-url", "", "thanos url for http requests")
-	flag.StringVar(&flags.Kubeconfig, "kubeconfig", "", "kubeconfig file path")
-	flag.StringVar(&flags.ClusterName, "cluster-name", "", "cluster name (required)")
-	flag.StringVar(&flags.ClusterType, "cluster-type", "", "cluster type: ran, core, or hub (optional)")
-	flag.BoolVar(&flags.InsecureTLS, "insecure-tls", false, "skip TLS certificate verification")
-
-	flag.IntVar(&flags.SamplingFreq, "frequency", 60, "sampling frequency in seconds")
-	flag.DurationVar(&flags.Duration, "duration", 45*time.Minute, "total duration for sampling (e.g. 10s, 1m, 2h)")
-	flag.StringVar(&flags.OutputFile, "output", "kpi-output.json", "output file name for results")
-	flag.StringVar(&flags.LogFile, "log", "kpi.log", "log file name")
-	flag.StringVar(&flags.DatabaseType, "db-type", "sqlite", "database type: sqlite or postgres (default: sqlite)")
-	flag.StringVar(&flags.PostgresURL, "postgres-url", "", "PostgreSQL connection string (required if db-type=postgres)")
-	flag.StringVar(&flags.KPIsFile, "kpis-file", "configs/kpis.json", "path to KPIs configuration file")
-
-	flag.Parse()
-
-	err := validateFlags(flags)
-	return flags, err
-}
-
 // validateFlags ensures the correct combination of flags is provided
-func validateFlags(flags InputFlags) error {
+func ValidateFlags(flags InputFlags) error {
 	if flags.ClusterName == "" {
 		return fmt.Errorf("cluster name is required: use --cluster-name flag")
 	}

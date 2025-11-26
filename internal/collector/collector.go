@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"rds-kpi-collector/internal/config"
-	"rds-kpi-collector/internal/prometheus"
+	"kpi-collector/internal/config"
+	"kpi-collector/internal/prometheus"
 )
 
 const HUNDRED_MILLIS_DURATION_BUFFER = 100 * time.Millisecond

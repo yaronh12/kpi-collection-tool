@@ -34,7 +34,7 @@ var _ = Describe("validateFlags test", func() {
 
 	DescribeTable("flag validation scenarios",
 		func(flags InputFlags, expectedErr string) {
-			err := validateFlags(flags)
+			err := ValidateFlags(flags)
 
 			if expectedErr != "" {
 				Expect(err).To(HaveOccurred())

@@ -9,8 +9,8 @@ import (
 	"os"
 	"time"
 
-	"rds-kpi-collector/internal/config"
-	"rds-kpi-collector/internal/database"
+	"kpi-collector/internal/config"
+	"kpi-collector/internal/database"
 
 	"github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"

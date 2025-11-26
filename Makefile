@@ -10,7 +10,7 @@ UNAME_S := $(shell uname -s)
 BINARY_NAME=kpi-collector
 
 build:
-	go build -o $(BINARY_NAME) ./cmd/rds-kpi-collector
+	go build -o $(BINARY_NAME) ./cmd/kpi-collector
 
 # Mac installation via Homebrew
 install-golangci-lint-mac:
@@ -48,3 +48,14 @@ install-grafana:
 		-v $(PWD)/collected-data/kpi_metrics.db:/var/lib/grafana/kpi_metrics.db:ro \
 		-e "GF_INSTALL_PLUGINS=frser-sqlite-datasource" \
 		grafana/grafana:$(GRAFANA_VERSION)
+
+
+# Install kpi-collector to user's Go bin directory
+install:
+	go install ./cmd/kpi-collector
+	echo "✓ Installed to $(HOME)/go/bin/$(BINARY_NAME)"
+
+# Uninstall kpi-collector
+uninstall:
+	rm -f $(HOME)/go/bin/$(BINARY_NAME)
+	echo "✓ Uninstalled"

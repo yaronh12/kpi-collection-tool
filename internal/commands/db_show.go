@@ -116,7 +116,7 @@ func runShowKPIs(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Parse time filters
 	var sinceTime, untilTime *time.Time
@@ -175,7 +175,7 @@ func runShowClusters(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	clusters, err := listClusters(db, clusterQueryFlags.clusterName)
 	if err != nil {
@@ -196,7 +196,7 @@ func runShowErrors(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	errors, err := listErrors(db)
 	if err != nil {
@@ -310,7 +310,7 @@ func queryKPIs(db *sql.DB, dbImpl database.Database, params KPIQueryParams) ([]K
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var results []KPIResult
 	for rows.Next() {
@@ -375,7 +375,7 @@ func listClusters(db *sql.DB, clusterName string) ([]ClusterInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var clusters []ClusterInfo
 	for rows.Next() {
@@ -402,7 +402,7 @@ func listErrors(db *sql.DB) ([]ErrorInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var errors []ErrorInfo
 	for rows.Next() {
@@ -419,45 +419,45 @@ func listErrors(db *sql.DB) ([]ErrorInfo, error) {
 
 func displayKPIsTable(results []KPIResult) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tKPI_NAME\tCLUSTER\tVALUE\tTIMESTAMP\tEXECUTION_TIME\tLABELS")
-	fmt.Fprintln(w, "---\t---\t---\t---\t---\t---\t---")
+	_, _ = fmt.Fprintln(w, "ID\tKPI_NAME\tCLUSTER\tVALUE\tTIMESTAMP\tEXECUTION_TIME\tLABELS")
+	_, _ = fmt.Fprintln(w, "---\t---\t---\t---\t---\t---\t---")
 
 	for _, r := range results {
 		labels := r.MetricLabels
 		if len(labels) > 50 {
 			labels = labels[:47] + "..."
 		}
-		fmt.Fprintf(w, "%d\t%s\t%s\t%.6f\t%.0f\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%.6f\t%.0f\t%s\t%s\n",
 			r.ID, r.KPIName, r.ClusterName, r.MetricValue,
 			r.TimestampValue, r.ExecutionTime.Format("2006-01-02 15:04:05"), labels)
 	}
-	w.Flush()
+	_ = w.Flush()
 
 	fmt.Printf("\nTotal results: %d\n", len(results))
 }
 
 func displayClustersTable(clusters []ClusterInfo) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tCLUSTER_NAME\tCREATED_AT\tTOTAL_METRICS")
-	fmt.Fprintln(w, "---\t---\t---\t---")
+	_, _ = fmt.Fprintln(w, "ID\tCLUSTER_NAME\tCREATED_AT\tTOTAL_METRICS")
+	_, _ = fmt.Fprintln(w, "---\t---\t---\t---")
 
 	for _, c := range clusters {
-		fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
 			c.ID, c.Name, c.CreatedAt.Format("2006-01-02 15:04:05"),
 			humanize.Comma(c.TotalMetrics))
 	}
-	w.Flush()
+	_ = w.Flush()
 }
 
 func displayErrorsTable(errors []ErrorInfo) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "KPI_ID\tERROR_COUNT")
-	fmt.Fprintln(w, "---\t---")
+	_, _ = fmt.Fprintln(w, "KPI_ID\tERROR_COUNT")
+	_, _ = fmt.Fprintln(w, "---\t---")
 
 	for _, e := range errors {
-		fmt.Fprintf(w, "%s\t%d\n", e.KPIID, e.ErrorCount)
+		_, _ = fmt.Fprintf(w, "%s\t%d\n", e.KPIID, e.ErrorCount)
 	}
-	w.Flush()
+	_ = w.Flush()
 }
 
 func convertPostgresToSQLitePlaceholders(query string) string {

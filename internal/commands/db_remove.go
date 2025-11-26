@@ -65,14 +65,14 @@ func init() {
 	// Flags for 'remove clusters'
 	removeClustersCmd.Flags().StringVar(&removeClusterName, "name", "",
 		"cluster name to remove (required)")
-	removeClustersCmd.MarkFlagRequired("name")
+	_ = removeClustersCmd.MarkFlagRequired("name")
 
 	// Flags for 'remove kpis'
 	removeKPIsCmd.Flags().StringVar(&removeClusterName, "cluster-name", "",
 		"cluster name (required)")
 	removeKPIsCmd.Flags().StringVar(&removeKPIName, "name", "",
 		"KPI name to remove (optional)")
-	removeKPIsCmd.MarkFlagRequired("cluster-name")
+	_ = removeKPIsCmd.MarkFlagRequired("cluster-name")
 
 	// Flags for 'remove errors'
 	removeErrorsCmd.Flags().StringVar(&removeKPIName, "name", "",
@@ -86,7 +86,7 @@ func runRemoveClusters(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Check if cluster exists
 	clusters, err := listClusters(db, removeClusterName)
@@ -122,7 +122,7 @@ func runRemoveKPIs(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Get cluster ID
 	clusters, err := listClusters(db, removeClusterName)
@@ -164,7 +164,7 @@ func runRemoveErrors(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	var query string
 	var queryArgs []interface{}

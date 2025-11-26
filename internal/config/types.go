@@ -16,9 +16,6 @@ type InputFlags struct {
 	LogFile      string
 	DatabaseType string // "sqlite" or "postgres"
 	PostgresURL  string // PostgreSQL connection string
-	GrafanaFile  string // path to grafana_exported.json
-	Summarize    bool   // whether to run Grafana AI summarization
-	AIModel      string // local Ollama model to use
 	KPIsFile     string
 }
 

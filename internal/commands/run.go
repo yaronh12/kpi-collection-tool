@@ -21,9 +21,9 @@ const (
 // Use the existing InputFlags struct directly!
 var flags config.InputFlags
 
-// collectCmd represents the collect command
-var collectCmd = &cobra.Command{
-	Use:   "collect",
+// runCmd represents the collect command
+var runCmd = &cobra.Command{
+	Use:   "run",
 	Short: "Collect KPI metrics from Prometheus/Thanos",
 	Long: `Collect KPI metrics from Prometheus/Thanos endpoints and store them 
 in a database (SQLite or PostgreSQL). Supports two authentication modes:
@@ -49,52 +49,52 @@ for the specified duration.`,
 }
 
 func init() {
-	rootCmd.AddCommand(collectCmd)
+	rootCmd.AddCommand(runCmd)
 
 	// Bind flags directly to config.InputFlags fields!
 
 	// Authentication flags
-	collectCmd.Flags().StringVar(&flags.BearerToken, "token", "",
+	runCmd.Flags().StringVar(&flags.BearerToken, "token", "",
 		"bearer token for Thanos authentication")
-	collectCmd.Flags().StringVar(&flags.ThanosURL, "thanos-url", "",
+	runCmd.Flags().StringVar(&flags.ThanosURL, "thanos-url", "",
 		"Thanos querier URL (without https://)")
-	collectCmd.Flags().StringVar(&flags.Kubeconfig, "kubeconfig", "",
+	runCmd.Flags().StringVar(&flags.Kubeconfig, "kubeconfig", "",
 		"path to kubeconfig file for auto-discovery")
-	collectCmd.Flags().StringVar(&flags.ClusterName, "cluster-name", "",
+	runCmd.Flags().StringVar(&flags.ClusterName, "cluster-name", "",
 		"cluster name (required)")
-	collectCmd.Flags().BoolVar(&flags.InsecureTLS, "insecure-tls", false,
+	runCmd.Flags().BoolVar(&flags.InsecureTLS, "insecure-tls", false,
 		"skip TLS certificate verification (development only)")
 
 	// Sampling flags
-	collectCmd.Flags().IntVar(&flags.SamplingFreq, "frequency", 60,
+	runCmd.Flags().IntVar(&flags.SamplingFreq, "frequency", 60,
 		"sampling frequency in seconds")
-	collectCmd.Flags().DurationVar(&flags.Duration, "duration", 45*time.Minute,
+	runCmd.Flags().DurationVar(&flags.Duration, "duration", 45*time.Minute,
 		"total duration for sampling (e.g. 10s, 1m, 2h)")
 
 	// Output flags
-	collectCmd.Flags().StringVar(&flags.OutputFile, "output", "kpi-output.json",
+	runCmd.Flags().StringVar(&flags.OutputFile, "output", "kpi-output.json",
 		"output file name for results")
-	collectCmd.Flags().StringVar(&flags.LogFile, "log", "kpi.log",
+	runCmd.Flags().StringVar(&flags.LogFile, "log", "kpi.log",
 		"log file name")
 
 	// Database flags
-	collectCmd.Flags().StringVar(&flags.DatabaseType, "db-type", "sqlite",
+	runCmd.Flags().StringVar(&flags.DatabaseType, "db-type", "sqlite",
 		"database type: sqlite or postgres")
-	collectCmd.Flags().StringVar(&flags.PostgresURL, "postgres-url", "",
+	runCmd.Flags().StringVar(&flags.PostgresURL, "postgres-url", "",
 		"PostgreSQL connection string (required if db-type=postgres)")
 
 	// Grafana AI flags
-	collectCmd.Flags().StringVar(&flags.GrafanaFile, "grafana-file", "",
+	runCmd.Flags().StringVar(&flags.GrafanaFile, "grafana-file", "",
 		"path to exported Grafana dashboard JSON to analyze")
-	collectCmd.Flags().BoolVar(&flags.Summarize, "summarize", false,
+	runCmd.Flags().BoolVar(&flags.Summarize, "summarize", false,
 		"run Grafana AI summarization after KPI collection")
-	collectCmd.Flags().StringVar(&flags.AIModel, "ollama-model", "llama3.2:latest",
+	runCmd.Flags().StringVar(&flags.AIModel, "ollama-model", "llama3.2:latest",
 		"local Ollama model to use")
-	collectCmd.Flags().StringVar(&flags.KPIsFile, "kpis-file", defaultKPIsFilepath,
+	runCmd.Flags().StringVar(&flags.KPIsFile, "kpis-file", defaultKPIsFilepath,
 		"path to KPIs configuration file")
 
 	// Mark required flags
-	err := collectCmd.MarkFlagRequired("cluster-name")
+	err := runCmd.MarkFlagRequired("cluster-name")
 	if err != nil {
 		panic(fmt.Sprintf("failed to mark cluster-name as required: %v", err))
 	}

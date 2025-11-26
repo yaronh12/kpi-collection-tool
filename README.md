@@ -36,13 +36,13 @@ The tool uses subcommands for different operations. Get help anytime with:
 
 ```bash
 kpi-collector --help
-kpi-collector collect --help
+kpi-collector run --help
 kpi-collector version
 ```
 
 ## Collecting KPI Metrics
 
-The `collect` command gathers KPI metrics from Prometheus/Thanos and stores them in a database.
+The `run` command gathers KPI metrics from Prometheus/Thanos and stores them in a database.
 
 ### Authentication Modes
 
@@ -52,14 +52,14 @@ Automatically discovers Thanos URL and creates a service account token.
 
 **Basic usage (uses SQLite by default):**
 ```bash
-kpi-collector collect \
+kpi-collector run \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config
 ```
 
 **With custom sampling parameters:**
 ```bash
-kpi-collector collect \
+kpi-collector run \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
   --frequency 30 \
@@ -70,7 +70,7 @@ kpi-collector collect \
 
 **Explicitly using SQLite:**
 ```bash
-kpi-collector collect \
+kpi-collector run \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
   --db-type sqlite
@@ -78,7 +78,7 @@ kpi-collector collect \
 
 **Using PostgreSQL:**
 ```bash
-kpi-collector collect \
+kpi-collector run \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
   --db-type postgres \
@@ -91,7 +91,7 @@ Provide Thanos URL and bearer token directly.
 
 **Basic usage (uses SQLite by default):**
 ```bash
-kpi-collector collect \
+kpi-collector run \
   --cluster-name my-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.example.com
@@ -99,7 +99,7 @@ kpi-collector collect \
 
 **With custom sampling parameters:**
 ```bash
-kpi-collector collect \
+kpi-collector run \
   --cluster-name my-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.example.com \
@@ -110,7 +110,7 @@ kpi-collector collect \
 
 **Using PostgreSQL:**
 ```bash
-kpi-collector collect \
+kpi-collector run \
   --cluster-name my-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.example.com \
@@ -122,7 +122,7 @@ kpi-collector collect \
 
 **Development setup with SQLite (default):**
 ```bash
-kpi-collector collect \
+kpi-collector run \
   --cluster-name dev-cluster \
   --kubeconfig ~/.kube/config \
   --frequency 60 \
@@ -132,7 +132,7 @@ kpi-collector collect \
 
 **Production setup with PostgreSQL:**
 ```bash
-kpi-collector collect \
+kpi-collector run \
   --cluster-name prod-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.prod.example.com \
@@ -146,7 +146,7 @@ kpi-collector collect \
 
 **Using a custom KPIs configuration file:**
 ```bash
-kpi-collector collect \
+kpi-collector run \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
   --kpis-file /path/to/custom-kpis.json
@@ -323,7 +323,7 @@ This tool provides offline AI-based summarization for exported Grafana dashboard
 Use the `collect` command with the `--summarize` flag to analyze a Grafana JSON export:
 
 ```bash
-kpi-collector collect \
+kpi-collector run \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
   --duration 10m \

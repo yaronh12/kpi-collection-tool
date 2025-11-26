@@ -51,9 +51,8 @@ install-grafana:
 
 
 # Install kpi-collector to user's Go bin directory
-install: build
-	mkdir -p $(HOME)/go/bin
-	cp $(BINARY_NAME) $(HOME)/go/bin/
+install:
+	go install ./cmd/kpi-collector
 	echo "✓ Installed to $(HOME)/go/bin/$(BINARY_NAME)"
 
 # Uninstall kpi-collector

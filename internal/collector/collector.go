@@ -26,63 +26,31 @@ func Run(kpis config.KPIs, flags config.InputFlags) {
 		flags.Duration.String(),
 		time.Now().Add(flags.Duration).Format(time.RFC3339))
 
-	defaultFreqKPIs, customFreqKPIs := separateByFrequency(kpis, flags.SamplingFreq)
-
-	cancel, wg := startCustomFrequencyGoroutines(customFreqKPIs, flags)
+	// Start all KPI goroutines grouped by frequency
+	cancel, wg := startKPIGoroutines(kpis, flags)
 	defer cancel()
 
-	tickerChan, defaultSampleCount := setupDefaultKPITicker(defaultFreqKPIs, flags)
+	// Main goroutine only handles duration timer and interrupts
+	select {
+	case <-durationTimer.C:
+		log.Printf("Duration timer expired")
+		shutdown(cancel, wg)
+		return
 
-	for {
-		select {
-		case <-tickerChan:
-			defaultSampleCount++
-			runKPIs(defaultFreqKPIs, flags, defaultSampleCount, flags.SamplingFreq)
-		case <-durationTimer.C:
-			log.Printf("Duration timer expired")
-			shutdown(defaultFreqKPIs, defaultSampleCount, cancel, wg)
-			return
-
-		case <-interruptChan:
-			log.Printf("Program interrupted")
-			shutdown(defaultFreqKPIs, defaultSampleCount, cancel, wg)
-			return
-		}
+	case <-interruptChan:
+		log.Printf("Program interrupted")
+		shutdown(cancel, wg)
+		return
 	}
-}
-
-func separateByFrequency(kpis config.KPIs, defaultFreq int) (config.KPIs, config.KPIs) {
-	var defaultFreqKPIs, customFreqKPIs config.KPIs
-
-	for _, kpi := range kpis.Queries {
-		effectiveFreq := kpi.GetEffectiveFrequency(defaultFreq)
-
-		if effectiveFreq == defaultFreq {
-			defaultFreqKPIs.Queries = append(defaultFreqKPIs.Queries, kpi)
-		} else {
-			customFreqKPIs.Queries = append(customFreqKPIs.Queries, kpi)
-		}
-	}
-
-	log.Printf("KPIs with default frequency (%ds): %d", defaultFreq, len(defaultFreqKPIs.Queries))
-	log.Printf("KPIs with custom frequency: %d", len(customFreqKPIs.Queries))
-
-	return defaultFreqKPIs, customFreqKPIs
 }
 
 // groupKPIsByFrequency groups KPIs by their effective sampling frequency
-// Excludes KPIs that use the default frequency (those are handled by the main goroutine)
+// This includes both default and custom frequency KPIs
 func groupKPIsByFrequency(kpis config.KPIs, defaultFreq int) map[int]config.KPIs {
-	// key - frequency, value - kpi
 	kpisByFreq := make(map[int]config.KPIs)
 
 	for _, kpi := range kpis.Queries {
 		effectiveFreq := kpi.GetEffectiveFrequency(defaultFreq)
-
-		// Skip KPIs with default frequency - they're handled by the main goroutine
-		if effectiveFreq == defaultFreq {
-			continue
-		}
 
 		group := kpisByFreq[effectiveFreq]
 		group.Queries = append(group.Queries, kpi)
@@ -90,7 +58,7 @@ func groupKPIsByFrequency(kpis config.KPIs, defaultFreq int) map[int]config.KPIs
 	}
 
 	if len(kpisByFreq) > 0 {
-		log.Printf("Grouped custom frequency KPIs into %d unique frequency groups", len(kpisByFreq))
+		log.Printf("Grouped all KPIs into %d unique frequency groups", len(kpisByFreq))
 		for freq, group := range kpisByFreq {
 			log.Printf("  Frequency %ds: %d KPIs", freq, len(group.Queries))
 		}
@@ -99,15 +67,15 @@ func groupKPIsByFrequency(kpis config.KPIs, defaultFreq int) map[int]config.KPIs
 	return kpisByFreq
 }
 
-func startCustomFrequencyGoroutines(kpis config.KPIs, flags config.InputFlags) (context.CancelFunc, *sync.WaitGroup) {
+// startKPIGoroutines starts one goroutine per unique frequency for all KPIs
+func startKPIGoroutines(kpis config.KPIs, flags config.InputFlags) (context.CancelFunc, *sync.WaitGroup) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 
-	defaultFrequency := flags.SamplingFreq
-	// Group KPIs by their sampling frequency (excluding default frequency)
-	kpisByFreq := groupKPIsByFrequency(kpis, defaultFrequency)
+	// Group ALL KPIs by their sampling frequency (including default frequency)
+	kpisByFreq := groupKPIsByFrequency(kpis, flags.SamplingFreq)
 
-	// Start one goroutine per unique frequency (only for non-default frequencies)
+	// Start one goroutine per unique frequency
 	for freq, kpisForFreq := range kpisByFreq {
 		wg.Add(1)
 		go func(frequency int, kpiGroup config.KPIs) {
@@ -119,31 +87,7 @@ func startCustomFrequencyGoroutines(kpis config.KPIs, flags config.InputFlags) (
 	return cancel, &wg
 }
 
-func setupDefaultKPITicker(kpis config.KPIs, flags config.InputFlags) (<-chan time.Time, int) {
-	var tickerChan <-chan time.Time
-	sampleCount := 0
-
-	if len(kpis.Queries) > 0 {
-		ticker := time.NewTicker(time.Duration(flags.SamplingFreq) * time.Second)
-		tickerChan = ticker.C
-
-		log.Printf("Starting main loop for %d KPIs with default frequency", len(kpis.Queries))
-
-		sampleCount++
-		runKPIs(kpis, flags, sampleCount, flags.SamplingFreq)
-	} else {
-		// Return a channel that never sends (blocks forever)
-		// This is safe because it's used in a select statement with other cases
-		tickerChan = make(<-chan time.Time)
-	}
-
-	return tickerChan, sampleCount
-}
-
-func shutdown(kpis config.KPIs, sampleCount int, cancel context.CancelFunc, wg *sync.WaitGroup) {
-	if len(kpis.Queries) > 0 {
-		log.Printf("Default frequency KPIs: %d samples collected", sampleCount)
-	}
+func shutdown(cancel context.CancelFunc, wg *sync.WaitGroup) {
 	cancel()
 	wg.Wait()
 }

@@ -42,7 +42,7 @@ func main() {
 	log.Println("RDS KPI Collector initialized.")
 
 	// Load KPI queries
-	kpis, err := config.LoadKPIs(DEFAULT_KPIS_FILEPATH)
+	kpis, err := config.LoadKPIs(flags.KPIsFile)
 	if err != nil {
 		log.Printf("Failed to load KPI queries: %v\n", err)
 		return

@@ -194,9 +194,6 @@ kpi-collector run \
 | `--db-type` | No | sqlite | Database type: `sqlite` or `postgres` |
 | `--postgres-url` | No** | - | PostgreSQL connection string |
 | `--kpis-file` | No | configs/kpis.json | Path to KPIs configuration file |
-| `--grafana-file` | No | - | Path to exported Grafana dashboard JSON to analyze |
-| `--summarize` | No | false | Run Grafana AI summarization after KPI collection |
-| `--ollama-model` | No | llama3.2:latest | Local Ollama model to use for AI analysis |
 
 \* Either provide `--kubeconfig` OR both `--token` and `--thanos-url`
 

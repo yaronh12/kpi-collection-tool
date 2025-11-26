@@ -38,6 +38,7 @@ Automatically discovers Thanos URL and creates a service account token.
 ```bash
 ./kpi-collector \
   --cluster-name my-cluster \
+  --cluster-type ran \
   --kubeconfig ~/.kube/config \
   --frequency 30 \
   --duration 1h \
@@ -156,6 +157,7 @@ Use this flag when running the tool against clusters or Prometheus/Thanos server
 | Flag | Required | Default | Description |
 |------|----------|---------|-------------|
 | `--cluster-name` | Yes | - | Name of the cluster being monitored |
+| `--cluster-type` | No | - | Cluster type for categorization: `ran`, `core`, or `hub` |
 | `--kubeconfig` | No* | - | Path to kubeconfig file for auto-discovery |
 | `--token` | No* | - | Bearer token for Thanos authentication |
 | `--thanos-url` | No* | - | Thanos querier URL (without https://) |

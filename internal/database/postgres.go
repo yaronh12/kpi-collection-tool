@@ -35,6 +35,7 @@ func (p *PostgresDB) InitDB() (*sql.DB, error) {
     CREATE TABLE IF NOT EXISTS clusters (
         id SERIAL PRIMARY KEY,
         cluster_name TEXT UNIQUE NOT NULL,
+		cluster_type TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     
@@ -67,19 +68,25 @@ func (p *PostgresDB) InitDB() (*sql.DB, error) {
 }
 
 // GetOrCreateCluster gets existing cluster ID or creates a new cluster record
-func (p *PostgresDB) GetOrCreateCluster(db *sql.DB, clusterName string) (int64, error) {
+func (p *PostgresDB) GetOrCreateCluster(db *sql.DB, clusterName string, clusterType string) (int64, error) {
 	var clusterID int64
 
 	// Try to get existing cluster
 	err := db.QueryRow("SELECT id FROM clusters WHERE cluster_name = $1", clusterName).Scan(&clusterID)
 	if err == nil {
+		if clusterType != "" {
+			_, updateErr := db.Exec("UPDATE clusters SET cluster_type = $1 WHERE id = $2", clusterType, clusterID)
+			if updateErr != nil {
+				return clusterID, updateErr
+			}
+		}
 		return clusterID, nil
 	}
 
 	// Insert new cluster and return ID
 	err = db.QueryRow(
-		"INSERT INTO clusters (cluster_name) VALUES ($1) ON CONFLICT (cluster_name) DO UPDATE SET cluster_name = EXCLUDED.cluster_name RETURNING id",
-		clusterName,
+		"INSERT INTO clusters (cluster_name, cluster_type) VALUES ($1, $2) ON CONFLICT (cluster_name) DO UPDATE SET cluster_type = EXCLUDED.cluster_type RETURNING id",
+		clusterName, clusterType,
 	).Scan(&clusterID)
 
 	return clusterID, err

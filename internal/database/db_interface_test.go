@@ -28,7 +28,7 @@ func RunDatabaseInterfaceTests(getImpl func() (Database, *sql.DB)) {
 	Describe("GetOrCreateCluster", func() {
 		Context("when cluster does not exist", func() {
 			It("should create a new cluster and return its ID", func() {
-				clusterID, err := dbImpl.GetOrCreateCluster(db, "test-cluster")
+				clusterID, err := dbImpl.GetOrCreateCluster(db, "test-cluster", "")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(clusterID).To(BeNumerically(">", 0))
 
@@ -39,7 +39,7 @@ func RunDatabaseInterfaceTests(getImpl func() (Database, *sql.DB)) {
 			})
 
 			It("should set created_at timestamp", func() {
-				clusterID, err := dbImpl.GetOrCreateCluster(db, "test-cluster")
+				clusterID, err := dbImpl.GetOrCreateCluster(db, "test-cluster", "")
 				Expect(err).NotTo(HaveOccurred())
 
 				var createdAt string
@@ -49,10 +49,10 @@ func RunDatabaseInterfaceTests(getImpl func() (Database, *sql.DB)) {
 			})
 
 			It("should create different IDs for different clusters", func() {
-				clusterID1, err := dbImpl.GetOrCreateCluster(db, "cluster-1")
+				clusterID1, err := dbImpl.GetOrCreateCluster(db, "cluster-1", "")
 				Expect(err).NotTo(HaveOccurred())
 
-				clusterID2, err := dbImpl.GetOrCreateCluster(db, "cluster-2")
+				clusterID2, err := dbImpl.GetOrCreateCluster(db, "cluster-2", "")
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(clusterID1).NotTo(Equal(clusterID2))
@@ -64,18 +64,18 @@ func RunDatabaseInterfaceTests(getImpl func() (Database, *sql.DB)) {
 
 			BeforeEach(func() {
 				var err error
-				existingClusterID, err = dbImpl.GetOrCreateCluster(db, "existing-cluster")
+				existingClusterID, err = dbImpl.GetOrCreateCluster(db, "existing-cluster", "")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("should return the existing cluster ID", func() {
-				clusterID, err := dbImpl.GetOrCreateCluster(db, "existing-cluster")
+				clusterID, err := dbImpl.GetOrCreateCluster(db, "existing-cluster", "")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(clusterID).To(Equal(existingClusterID))
 			})
 
 			It("should not create a duplicate entry", func() {
-				_, err := dbImpl.GetOrCreateCluster(db, "existing-cluster")
+				_, err := dbImpl.GetOrCreateCluster(db, "existing-cluster", "")
 				Expect(err).NotTo(HaveOccurred())
 
 				var count int
@@ -168,7 +168,7 @@ func RunDatabaseInterfaceTests(getImpl func() (Database, *sql.DB)) {
 
 		BeforeEach(func() {
 			var err error
-			clusterID, err = dbImpl.GetOrCreateCluster(db, "test-cluster")
+			clusterID, err = dbImpl.GetOrCreateCluster(db, "test-cluster", "")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -294,7 +294,7 @@ func RunDatabaseInterfaceTests(getImpl func() (Database, *sql.DB)) {
 
 			BeforeEach(func() {
 				var err error
-				clusterID2, err = dbImpl.GetOrCreateCluster(db, "another-cluster")
+				clusterID2, err = dbImpl.GetOrCreateCluster(db, "another-cluster", "")
 				Expect(err).NotTo(HaveOccurred())
 			})
 

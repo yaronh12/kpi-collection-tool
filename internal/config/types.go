@@ -8,13 +8,14 @@ type InputFlags struct {
 	ThanosURL    string
 	Kubeconfig   string
 	ClusterName  string
+	ClusterType  string
 	InsecureTLS  bool
 	SamplingFreq int
 	Duration     time.Duration
 	OutputFile   string
 	LogFile      string
 	DatabaseType string // "sqlite" or "postgres"
-	PostgresURL  string // PostgreSQL connection string 
+	PostgresURL  string // PostgreSQL connection string
 	KPIsFile     string
 }
 

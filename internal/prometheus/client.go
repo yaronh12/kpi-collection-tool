@@ -55,7 +55,7 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags) error {
 	}()
 
 	// Get or create cluster in DB
-	clusterID, err := dbImpl.GetOrCreateCluster(db, flags.ClusterName)
+	clusterID, err := dbImpl.GetOrCreateCluster(db, flags.ClusterName, flags.ClusterType)
 	if err != nil {
 		return fmt.Errorf("failed to get cluster ID: %v", err)
 	}

@@ -169,7 +169,7 @@ var _ = Describe("Client", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Create a test cluster
-			clusterID, err = sqliteDB.GetOrCreateCluster(testDB, "test-cluster")
+			clusterID, err = sqliteDB.GetOrCreateCluster(testDB, "test-cluster", "")
 			Expect(err).NotTo(HaveOccurred())
 		})
 

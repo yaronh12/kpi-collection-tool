@@ -1,142 +1,856 @@
 {
-    "annotations": {
-      "list": [
-        {
-          "builtIn": 1,
-          "datasource": {
-            "type": "grafana",
-            "uid": "-- Grafana --"
-          },
-          "enable": true,
-          "hide": true,
-          "iconColor": "rgba(0, 211, 255, 1)",
-          "name": "Annotations & Alerts",
-          "type": "dashboard"
-        }
-      ]
-    },
-    "editable": true,
-    "graphTooltip": 0,
-    "id": null,
-    "panels": [
+  "annotations": {
+    "list": [
       {
-        "title": "Metric value over time",
-        "type": "timeseries",
-        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
-        "transformations": [
-            {
-              "id": "partitionByValues",
-              "options": {
-                "keepFields": false,
-                "fields": [
-                  "kpi"
-                ]
-              }
-            }
-          ],
-        "targets": [
-          {
-            "datasource": {
-                "type": "frser-sqlite-datasource",
-                "uid": "frser-sqlite-datasource"
-              },
-              "rawQueryText": "SELECT timestamp_value AS time, metric_value, json_extract(metric_labels, '$.id') AS \"kpi\" FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND kpi_id = 'cpu-system' AND timestamp_value >= $__from / 1000 AND timestamp_value < $__to / 1000 AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}')",
-              "refId": "A",
-            "queryType": "table",
-            "timeColumns": ["time", "ts"]
-          }
-        ]
-      },
-      {
-        "title": "Errors by KPI",
-        "type": "barchart",
-        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
-        "targets": [
-          {
-            "datasource": "frser-sqlite-datasource",
-            "rawQueryText": "SELECT kpi_id AS metric, errors AS value FROM query_errors ORDER BY errors DESC;",
-            "format": "table"
-          }
-        ]
-      },
-      {
-        "title": "Metric values grouped by KPI",
-        "type": "barchart",
-        "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
-        "targets": [
-          {
-            "datasource": "frser-sqlite-datasource",
-            "rawQueryText": "SELECT kpi_id AS metric, AVG(metric_value) AS value FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY metric;",
-            "format": "table"
-          }
-        ]
-      },
-      {
-        "title": "Execution time over time",
-        "type": "timeseries",
-        "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
-        "targets": [
-          {
-            "datasource": "frser-sqlite-datasource",
-            "rawQueryText": "SELECT timestamp_value AS time, execution_time AS value, kpi_id FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') ORDER BY time ASC;",
-            "format": "time_series"
-          }
-        ]
-      },
-      {
-        "title": "Summary table per KPI",
-        "type": "table",
-        "gridPos": { "x": 0, "y": 16, "w": 24, "h": 8 },
-        "targets": [
-          {
-            "datasource": "frser-sqlite-datasource",
-            "rawQueryText": "SELECT kpi_id, COUNT(*) AS sample_count, AVG(metric_value) AS avg_value, MIN(metric_value) AS min_value, MAX(metric_value) AS max_value FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY kpi_id;",
-            "format": "table"
-          }
-        ]
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
       }
-    ],
-    "refresh": "10s",
-    "schemaVersion": 40,
-    "time": {
-      "from": "now-7d",
-      "to": "now"
-    },
-    "templating": {
-      "list": [
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "frser-sqlite-datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 18,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": ["last", "mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
         {
-          "name": "cluster_type",
-          "label": "Cluster Type",
-          "type": "query",
-          "datasource": "frser-sqlite-datasource",
-          "query": "SELECT DISTINCT cluster_type FROM clusters WHERE cluster_type IS NOT NULL ORDER BY cluster_type;",
-          "hide": 0,
-          "refresh": 1,
-          "multi": false,
-          "includeAll": true,
-          "allValue": "$__all",
-          "current": {},
-          "options": []
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "frser-sqlite-datasource"
+          },
+          "queryType": "table",
+          "rawQueryText": "SELECT timestamp_value AS time, metric_value, metric_labels FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE kpi_id = '${kpi}' AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND timestamp_value >= $__from / 1000 AND timestamp_value < $__to / 1000 AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') ORDER BY time ASC",
+          "refId": "A",
+          "timeColumns": ["time", "ts"]
+        }
+      ],
+      "title": "Metric Values Over Time (Selected KPI: ${kpi})",
+      "type": "timeseries",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "metric_labels",
+            "format": "json",
+            "replace": false,
+            "keepTime": true
+          }
         },
         {
-          "name": "cluster",
-          "label": "Cluster",
-          "type": "query",
-          "datasource": "frser-sqlite-datasource",
-          "query": "SELECT cluster_name FROM clusters WHERE ('${cluster_type}' = '$__all' OR cluster_type = '${cluster_type}' OR cluster_type IS NULL) ORDER BY cluster_name;",
-          "hide": 0,
-          "refresh": 1,
-          "multi": false,
-          "includeAll": true,
-          "allValue": "$__all",
-          "current": {},
-          "options": []
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "metric_labels": true
+            },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        },
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
         }
       ]
     },
-    "timezone": "",
-    "title": "Certsuite KPI per Cluster",
-    "version": 1,
-    "weekStart": ""
-  }
-  
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "frser-sqlite-datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "textMode": "value_and_name",
+        "showPercentChange": false
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "frser-sqlite-datasource"
+          },
+          "queryType": "table",
+          "rawQueryText": "SELECT COUNT(*) as 'Samples', ROUND(AVG(metric_value), 6) as 'Average', ROUND(MIN(metric_value), 6) as 'Minimum', ROUND(MAX(metric_value), 6) as 'Maximum' FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE kpi_id = '${kpi}' AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}')",
+          "refId": "A"
+        }
+      ],
+      "title": "KPI Statistics (${kpi})",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "frser-sqlite-datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Value"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              },
+              {
+                "id": "decimals",
+                "value": 6
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "min_value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Min Value"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              },
+              {
+                "id": "decimals",
+                "value": 6
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max_value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Max Value"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              },
+              {
+                "id": "decimals",
+                "value": 6
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "samples"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Samples"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 3,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": ["sum"],
+          "countRows": false,
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "Avg Value",
+            "desc": true
+          }
+        ]
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "frser-sqlite-datasource"
+          },
+          "queryType": "table",
+          "rawQueryText": "SELECT metric_labels, ROUND(AVG(metric_value), 6) AS avg_value, ROUND(MIN(metric_value), 6) AS min_value, ROUND(MAX(metric_value), 6) AS max_value, COUNT(*) AS samples FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE kpi_id = '${kpi}' AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY metric_labels ORDER BY avg_value DESC LIMIT 100",
+          "refId": "A"
+        }
+      ],
+      "title": "Detailed Metrics with All Labels (${kpi})",
+      "type": "table",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "metric_labels",
+            "format": "json",
+            "replace": true
+          }
+        }
+      ]
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "frser-sqlite-datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 5,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "frser-sqlite-datasource"
+          },
+          "queryType": "table",
+          "rawQueryText": "SELECT kpi_id AS metric, errors AS value FROM query_errors WHERE errors > 0 ORDER BY errors DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Query Errors by KPI",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "frser-sqlite-datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false,
+            "filterable": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kpi_id"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "KPI ID"
+              },
+              {
+                "id": "custom.width",
+                "value": 300
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sample_count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Samples"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Avg Value"
+              },
+              {
+                "id": "decimals",
+                "value": 6
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "min_value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Min Value"
+              },
+              {
+                "id": "decimals",
+                "value": 6
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max_value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Max Value"
+              },
+              {
+                "id": "decimals",
+                "value": 6
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "range"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Range"
+              },
+              {
+                "id": "decimals",
+                "value": 6
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "unique_metrics"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Unique Metrics"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "id": 6,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": ["sum"],
+          "countRows": false,
+          "fields": ""
+        },
+        "sortBy": [
+          {
+            "displayName": "KPI ID",
+            "desc": false
+          }
+        ]
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "frser-sqlite-datasource"
+          },
+          "queryType": "table",
+          "rawQueryText": "SELECT kpi_id, COUNT(*) AS sample_count, ROUND(AVG(metric_value), 6) AS avg_value, ROUND(MIN(metric_value), 6) AS min_value, ROUND(MAX(metric_value), 6) AS max_value, ROUND(MAX(metric_value) - MIN(metric_value), 6) AS range, COUNT(DISTINCT metric_labels) AS unique_metrics FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY kpi_id ORDER BY kpi_id",
+          "refId": "A"
+        }
+      ],
+      "title": "All KPIs - Summary Statistics",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "frser-sqlite-datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cluster_name"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Cluster"
+              },
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cluster_type"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Type"
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kpi_count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "KPIs"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total_samples"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Total Samples"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last_collection"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Last Collection"
+              },
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "id": 7,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": ["sum"],
+          "countRows": false,
+          "fields": ""
+        },
+        "sortBy": []
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "frser-sqlite-datasource"
+          },
+          "queryType": "table",
+          "rawQueryText": "SELECT c.cluster_name, c.cluster_type, COUNT(DISTINCT qr.kpi_id) AS kpi_count, COUNT(*) AS total_samples, MAX(qr.created_at) AS last_collection FROM clusters c LEFT JOIN query_results qr ON c.id = qr.cluster_id WHERE ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY c.cluster_name, c.cluster_type ORDER BY c.cluster_name",
+          "refId": "A"
+        }
+      ],
+      "title": "Cluster Monitoring Status",
+      "type": "table"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["kpi", "metrics", "monitoring"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "frser-sqlite-datasource"
+        },
+        "definition": "SELECT DISTINCT cluster_type FROM clusters WHERE cluster_type IS NOT NULL ORDER BY cluster_type;",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Cluster Type",
+        "multi": false,
+        "name": "cluster_type",
+        "options": [],
+        "query": "SELECT DISTINCT cluster_type FROM clusters WHERE cluster_type IS NOT NULL ORDER BY cluster_type;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query",
+        "allValue": "$__all"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "frser-sqlite-datasource"
+        },
+        "definition": "SELECT cluster_name FROM clusters WHERE ('${cluster_type}' = '$__all' OR cluster_type = '${cluster_type}') ORDER BY cluster_name;",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Cluster",
+        "multi": false,
+        "name": "cluster",
+        "options": [],
+        "query": "SELECT cluster_name FROM clusters WHERE ('${cluster_type}' = '$__all' OR cluster_type = '${cluster_type}') ORDER BY cluster_name;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query",
+        "allValue": "$__all"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "cpu-system",
+          "value": "cpu-system"
+        },
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "frser-sqlite-datasource"
+        },
+        "definition": "SELECT DISTINCT kpi_id FROM query_results ORDER BY kpi_id;",
+        "hide": 0,
+        "includeAll": false,
+        "label": "KPI",
+        "multi": false,
+        "name": "kpi",
+        "options": [],
+        "query": "SELECT DISTINCT kpi_id FROM query_results ORDER BY kpi_id;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "KPI Collection Tool - Dynamic Dashboard",
+  "uid": "kpi-collector-dynamic",
+  "version": 1,
+  "weekStart": ""
+}

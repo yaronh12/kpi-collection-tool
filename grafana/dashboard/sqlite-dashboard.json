@@ -818,11 +818,7 @@
         "allValue": "$__all"
       },
       {
-        "current": {
-          "selected": false,
-          "text": "cpu-system",
-          "value": "cpu-system"
-        },
+        "current": {},
         "datasource": {
           "type": "frser-sqlite-datasource",
           "uid": "frser-sqlite-datasource"

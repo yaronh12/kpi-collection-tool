@@ -261,77 +261,159 @@ The tool supports two database backends. **SQLite is used by default** when no `
   - **Standard URL**: `postgresql://user:password@host:port/dbname?sslmode=disable`
   - **Key-value**: `host=host port=port user=user password=pass dbname=dbname sslmode=disable`
 
-# Local Grafana Setup for KPI Dashboard
+# Visualizing Data with Grafana
 
-This guide explains how developers can quickly run a local Grafana instance with the KPI dashboard pre-installed.
+View your collected KPI metrics in Grafana with a pre-configured dashboard.
 
-## Using Make
+**Note:** This command must be run from the kpi-collector source directory.
 
-Run Grafana locally with one command:
+## Quick Start
 
-make install-grafana
+Launch Grafana with the `grafana` subcommand:
 
-This will:
+### Using SQLite (Default)
 
-- Launch a Docker container named grafana-kpi
-- Map local folders for provisioning Datasources and Dashboards
-- Expose Grafana on port 3000
+```bash
+kpi-collector grafana --datasource=sqlite
+```
 
-## Verify Grafana is running
+### Using PostgreSQL
 
-docker ps | grep grafana-kpi
+```bash
+kpi-collector grafana --datasource=postgres \
+  --postgres-url "postgresql://user:password@host:5432/dbname"
+```
 
-- Status should show Up
-- Port mapping should show 0.0.0.0:3000->3000/tcp
+### Custom Port
 
-## Open Grafana in browser
+```bash
+kpi-collector grafana --datasource=sqlite --port 3001
+```
 
-http://localhost:3000
+## Command Reference
 
-- Default login: admin/admin
-- Change password on first login
+```bash
+kpi-collector grafana --datasource=<sqlite|postgres> [flags]
+```
 
-## Verify Datasource
+### Flags
 
-1. Go to Settings → Data Sources
-2. Select frser-sqlite-datasource
-3. Click Test connection → should see "Data source is working"
+| Flag | Required | Description | Example |
+|------|----------|-------------|---------|
+| `--datasource` | Yes | Database type: `sqlite` or `postgres` | `--datasource=postgres` |
+| `--postgres-url` | If postgres | PostgreSQL connection string | `--postgres-url="postgresql://user:pass@host:5432/db"` |
+| `--port` | No | Grafana port (default: 3000) | `--port=3001` |
 
-## Verify KPI Dashboard
+## PostgreSQL Connection URLs
 
-In disconnected environments, dashboards are automatically provisioned.
+When using PostgreSQL as the datasource, provide a connection URL in one of these formats:
 
-Ensure these files exist in the repository:
+**Standard Format:**
+```bash
+postgresql://username:password@host:port/database
+```
 
-1. grafana/provisioning/dashboards/dashboard.yaml
-2. grafana/dashboard/sqlite-dashboard.json
-3. grafana/datasource/sqlite-datasource.yaml
+**With SSL:**
+```bash
+postgresql://username:password@host:port/database?sslmode=require
+```
 
-- Run Grafana with:
+**Without Password:**
+```bash
+postgresql://username@host:port/database
+```
 
-  make install-grafana
+### Important: Docker Networking
 
-- Open http://localhost:3000 and verify:
-  1. Datasource frser-sqlite-datasource is listed under Configuration → Data Sources
-  2. KPI dashboard appears under Dashboards → Manage and all graphs load
+Since Grafana runs in Docker, use the appropriate hostname:
 
-## Directory structure
+| PostgreSQL Location | Hostname to Use |
+|---------------------|----------------|
+| **Mac/Windows Host** | `host.docker.internal` |
+| **Linux Host** | `172.17.0.1` |
+| **Docker Container** | Container name or IP |
+| **Remote Server** | Server hostname/IP |
 
-kpi-collection-tool/
-├── grafana/
-│   ├── datasource/
-│   │   └── sqlite-datasource.yaml
-│   ├── dashboard/
-│   │   └── sqlite-dashboard.json
-│   └── provisioning/
-│       └── dashboards/
-│           └── dashboard.yaml
-├── cmd/
-│   └── kpi-collector/
-│       └── main.go
-└── Makefile
+**Examples:**
 
-- grafana/datasource → Datasource YAML files
-- grafana/dashboard → Dashboard JSON files
-- Makefile → Automates running Grafana locally
+```bash
+# PostgreSQL on your Mac/Windows machine
+kpi-collector grafana --datasource=postgres \
+  --postgres-url "postgresql://user@host.docker.internal:5432/kpi_metrics"
+
+# PostgreSQL on Linux host
+kpi-collector grafana --datasource=postgres \
+  --postgres-url "postgresql://user@172.17.0.1:5432/kpi_metrics"
+
+# Remote PostgreSQL server
+kpi-collector grafana --datasource=postgres \
+  --postgres-url "postgresql://user:pass@db.example.com:5432/kpi_metrics"
+```
+
+## Accessing Grafana
+
+1. **Open Browser:** http://localhost:3000 (or your custom port)
+2. **Login:** 
+   - Username: `admin`
+   - Password: `admin`
+   - You'll be prompted to change the password on first login
+3. **View Dashboard:** Navigate to **Dashboards** → **KPI Collection Tool - Dynamic Dashboard**
+
+## Dashboard Features
+
+The dashboard includes:
+
+- **Dynamic KPI Selection:** Choose any KPI from the dropdown
+- **Time-series Visualization:** View metric values over time
+- **Statistical Summary:** Average, min, max, sample count
+- **Detailed Metrics Table:** All labels and values
+- **Query Error Tracking:** Monitor failed queries
+- **Multi-cluster Support:** Filter by cluster and cluster type
+
+## Stopping Grafana
+
+```bash
+docker stop grafana-kpi
+docker rm grafana-kpi
+```
+
+## Alternative: Using Make
+
+You can also use the Makefile directly (legacy method):
+
+```bash
+# SQLite
+make install-grafana DB_TYPE=sqlite
+
+# PostgreSQL (Note: requires manually creating datasource config)
+make install-grafana DB_TYPE=postgres
+```
+
+**Recommended:** Use the `kpi-collector grafana` command instead, as it handles all configuration automatically.
+
+## Troubleshooting
+
+### "Directory not found" errors
+
+The command must be run from the source directory where the `grafana/` folder exists:
+
+```bash
+cd /path/to/kpi-collection-tool
+./kpi-collector grafana --datasource=sqlite
+```
+
+### "No data" in dashboard
+
+1. Ensure you've collected data first using `kpi-collector run`
+2. Check the time range in Grafana (top-right corner) - try "Last 24 hours" or "Last 7 days"
+3. Verify the KPI dropdown has a selection
+4. For SQLite: Check that `collected-data/kpi_metrics.db` exists
+5. For PostgreSQL: Test the datasource connection in Grafana Settings → Data Sources
+
+### PostgreSQL connection errors
+
+1. Verify PostgreSQL is running: `psql -l`
+2. Check the connection URL is correct
+3. For local PostgreSQL with Docker, use `host.docker.internal` (Mac/Windows) or `172.17.0.1` (Linux)
+4. Test connection: `psql "your-connection-url"`
 

@@ -55,6 +55,8 @@ func init() {
 		"path to kubeconfig file for auto-discovery")
 	runCmd.Flags().StringVar(&flags.ClusterName, "cluster-name", "",
 		"cluster name (required)")
+	runCmd.Flags().StringVar(&flags.ClusterType, "cluster-type", "",
+		"cluster type for categorization: ran, core, or hub")
 	runCmd.Flags().BoolVar(&flags.InsecureTLS, "insecure-tls", false,
 		"skip TLS certificate verification (development only)")
 

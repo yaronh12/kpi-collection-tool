@@ -39,18 +39,12 @@ for the specified duration.`,
 
   # With PostgreSQL backend
   kpi-collector collect --cluster-name prod --kubeconfig ~/.kube/config \
-    --db-type postgres --postgres-url "postgresql://user:pass@localhost/kpi"
-
-  # With Grafana AI analysis
-  kpi-collector collect --cluster-name prod --kubeconfig ~/.kube/config \
-    --summarize --grafana-file dashboard.json`,
+    --db-type postgres --postgres-url "postgresql://user:pass@localhost/kpi`,
 	RunE: runCollect,
 }
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-
-	// Bind flags directly to config.InputFlags fields!
 
 	// Authentication flags
 	runCmd.Flags().StringVar(&flags.BearerToken, "token", "",

@@ -3,3 +3,4 @@ main
 collected-data/
 .DS_Store
 kpi.log
+grafana/datasource/datasource.yaml

@@ -24,7 +24,7 @@
   "panels": [
     {
       "datasource": {
-        "type": "frser-sqlite-datasource",
+        "type": "postgres",
         "uid": "kpi-datasource"
       },
       "fieldConfig": {
@@ -98,11 +98,11 @@
       "targets": [
         {
           "datasource": {
-            "type": "frser-sqlite-datasource",
+            "type": "postgres",
             "uid": "kpi-datasource"
           },
-          "queryType": "table",
-          "rawQueryText": "SELECT timestamp_value AS time, metric_value, metric_labels FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE kpi_id = '${kpi}' AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND timestamp_value >= $__from / 1000 AND timestamp_value < $__to / 1000 AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') ORDER BY time ASC",
+          "format": "table",
+          "rawSql": "SELECT timestamp_value AS time, metric_value, metric_labels FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE kpi_id = '${kpi}' AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND timestamp_value >= $__from / 1000 AND timestamp_value < $__to / 1000 AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') ORDER BY time ASC",
           "refId": "A",
           "timeColumns": ["time", "ts"]
         }
@@ -139,7 +139,7 @@
     },
     {
       "datasource": {
-        "type": "frser-sqlite-datasource",
+        "type": "postgres",
         "uid": "kpi-datasource"
       },
       "fieldConfig": {
@@ -184,11 +184,11 @@
       "targets": [
         {
           "datasource": {
-            "type": "frser-sqlite-datasource",
+            "type": "postgres",
             "uid": "kpi-datasource"
           },
-          "queryType": "table",
-          "rawQueryText": "SELECT COUNT(*) as 'Samples', ROUND(AVG(metric_value), 6) as 'Average', ROUND(MIN(metric_value), 6) as 'Minimum', ROUND(MAX(metric_value), 6) as 'Maximum' FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE kpi_id = '${kpi}' AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}')",
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) as \"Samples\", ROUND(CAST(AVG(metric_value) AS numeric), 6) as \"Average\", ROUND(CAST(MIN(metric_value) AS numeric), 6) as \"Minimum\", ROUND(CAST(MAX(metric_value) AS numeric), 6) as \"Maximum\" FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE kpi_id = '${kpi}' AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}')",
           "refId": "A"
         }
       ],
@@ -197,7 +197,7 @@
     },
     {
       "datasource": {
-        "type": "frser-sqlite-datasource",
+        "type": "postgres",
         "uid": "kpi-datasource"
       },
       "fieldConfig": {
@@ -330,11 +330,11 @@
       "targets": [
         {
           "datasource": {
-            "type": "frser-sqlite-datasource",
+            "type": "postgres",
             "uid": "kpi-datasource"
           },
-          "queryType": "table",
-          "rawQueryText": "SELECT metric_labels, ROUND(AVG(metric_value), 6) AS avg_value, ROUND(MIN(metric_value), 6) AS min_value, ROUND(MAX(metric_value), 6) AS max_value, COUNT(*) AS samples FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE kpi_id = '${kpi}' AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY metric_labels ORDER BY avg_value DESC LIMIT 100",
+          "format": "table",
+          "rawSql": "SELECT metric_labels, ROUND(CAST(AVG(metric_value) AS numeric), 6) AS avg_value, ROUND(CAST(MIN(metric_value) AS numeric), 6) AS min_value, ROUND(CAST(MAX(metric_value) AS numeric), 6) AS max_value, COUNT(*) AS samples FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE kpi_id = '${kpi}' AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY metric_labels ORDER BY avg_value DESC LIMIT 100",
           "refId": "A"
         }
       ],
@@ -353,7 +353,7 @@
     },
     {
       "datasource": {
-        "type": "frser-sqlite-datasource",
+        "type": "postgres",
         "uid": "kpi-datasource"
       },
       "fieldConfig": {
@@ -431,11 +431,11 @@
       "targets": [
         {
           "datasource": {
-            "type": "frser-sqlite-datasource",
+            "type": "postgres",
             "uid": "kpi-datasource"
           },
-          "queryType": "table",
-          "rawQueryText": "SELECT kpi_id AS metric, errors AS value FROM query_errors WHERE errors > 0 ORDER BY errors DESC",
+          "format": "table",
+          "rawSql": "SELECT kpi_id AS metric, errors AS value FROM query_errors WHERE errors > 0 ORDER BY errors DESC",
           "refId": "A"
         }
       ],
@@ -444,7 +444,7 @@
     },
     {
       "datasource": {
-        "type": "frser-sqlite-datasource",
+        "type": "postgres",
         "uid": "kpi-datasource"
       },
       "fieldConfig": {
@@ -613,11 +613,11 @@
       "targets": [
         {
           "datasource": {
-            "type": "frser-sqlite-datasource",
+            "type": "postgres",
             "uid": "kpi-datasource"
           },
-          "queryType": "table",
-          "rawQueryText": "SELECT kpi_id, COUNT(*) AS sample_count, ROUND(AVG(metric_value), 6) AS avg_value, ROUND(MIN(metric_value), 6) AS min_value, ROUND(MAX(metric_value), 6) AS max_value, ROUND(MAX(metric_value) - MIN(metric_value), 6) AS range, COUNT(DISTINCT metric_labels) AS unique_metrics FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY kpi_id ORDER BY kpi_id",
+          "format": "table",
+          "rawSql": "SELECT kpi_id, COUNT(*) AS sample_count, ROUND(CAST(AVG(metric_value) AS numeric), 6) AS avg_value, ROUND(CAST(MIN(metric_value) AS numeric), 6) AS min_value, ROUND(CAST(MAX(metric_value) AS numeric), 6) AS max_value, ROUND(CAST(MAX(metric_value) - MIN(metric_value) AS numeric), 6) AS range, COUNT(DISTINCT metric_labels) AS unique_metrics FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY kpi_id ORDER BY kpi_id",
           "refId": "A"
         }
       ],
@@ -626,7 +626,7 @@
     },
     {
       "datasource": {
-        "type": "frser-sqlite-datasource",
+        "type": "postgres",
         "uid": "kpi-datasource"
       },
       "fieldConfig": {
@@ -757,11 +757,11 @@
       "targets": [
         {
           "datasource": {
-            "type": "frser-sqlite-datasource",
+            "type": "postgres",
             "uid": "kpi-datasource"
           },
-          "queryType": "table",
-          "rawQueryText": "SELECT c.cluster_name, c.cluster_type, COUNT(DISTINCT qr.kpi_id) AS kpi_count, COUNT(*) AS total_samples, MAX(qr.created_at) AS last_collection FROM clusters c LEFT JOIN query_results qr ON c.id = qr.cluster_id WHERE ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY c.cluster_name, c.cluster_type ORDER BY c.cluster_name",
+          "format": "table",
+          "rawSql": "SELECT c.cluster_name, c.cluster_type, COUNT(DISTINCT qr.kpi_id) AS kpi_count, COUNT(*) AS total_samples, MAX(qr.created_at) AS last_collection FROM clusters c LEFT JOIN query_results qr ON c.id = qr.cluster_id WHERE ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') GROUP BY c.cluster_name, c.cluster_type ORDER BY c.cluster_name",
           "refId": "A"
         }
       ],
@@ -778,7 +778,7 @@
       {
         "current": {},
         "datasource": {
-          "type": "frser-sqlite-datasource",
+          "type": "postgres",
           "uid": "kpi-datasource"
         },
         "definition": "SELECT DISTINCT cluster_type FROM clusters WHERE cluster_type IS NOT NULL ORDER BY cluster_type;",
@@ -799,7 +799,7 @@
       {
         "current": {},
         "datasource": {
-          "type": "frser-sqlite-datasource",
+          "type": "postgres",
           "uid": "kpi-datasource"
         },
         "definition": "SELECT cluster_name FROM clusters WHERE ('${cluster_type}' = '$__all' OR cluster_type = '${cluster_type}') ORDER BY cluster_name;",
@@ -820,7 +820,7 @@
       {
         "current": {},
         "datasource": {
-          "type": "frser-sqlite-datasource",
+          "type": "postgres",
           "uid": "kpi-datasource"
         },
         "definition": "SELECT DISTINCT kpi_id FROM query_results ORDER BY kpi_id;",

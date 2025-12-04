@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/dustin/go-humanize"
@@ -84,27 +85,17 @@ func init() {
 func runRemoveClusters(cmd *cobra.Command, args []string) error {
 	db, _, err := connectToDB()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to DB: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
-	// Check if cluster exists
-	clusters, err := listClusters(db, removeClusterName)
-	if err != nil {
-		return fmt.Errorf("failed to query cluster: %w", err)
-	}
-	if len(clusters) == 0 {
-		return fmt.Errorf("cluster '%s' not found", removeClusterName)
-	}
-
-	cluster := clusters[0]
-
 	// Delete metrics first
-	result, err := db.Exec("DELETE FROM query_results WHERE cluster_id = ?", cluster.ID)
+	// Sending empty string because we delete cluster entry, not specific kpi
+	// So we delete all kpis from that cluster
+	cluster, metricsDeleted, err := deleteClusterMetrics(db, removeClusterName, "")
 	if err != nil {
-		return fmt.Errorf("failed to delete metrics: %w", err)
+		return err
 	}
-	metricsDeleted, _ := result.RowsAffected()
 
 	// Delete cluster
 	_, err = db.Exec("DELETE FROM clusters WHERE id = ?", cluster.ID)
@@ -120,35 +111,15 @@ func runRemoveClusters(cmd *cobra.Command, args []string) error {
 func runRemoveKPIs(cmd *cobra.Command, args []string) error {
 	db, _, err := connectToDB()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to DB: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
-	// Get cluster ID
-	clusters, err := listClusters(db, removeClusterName)
+	// Delete metrics
+	_, deleted, err := deleteClusterMetrics(db, removeClusterName, removeKPIName)
 	if err != nil {
-		return fmt.Errorf("failed to query cluster: %w", err)
+		return err
 	}
-	if len(clusters) == 0 {
-		return fmt.Errorf("cluster '%s' not found", removeClusterName)
-	}
-	cluster := clusters[0]
-
-	// Build DELETE query
-	query := "DELETE FROM query_results WHERE cluster_id = ?"
-	queryArgs := []interface{}{cluster.ID}
-
-	if removeKPIName != "" {
-		query += " AND kpi_id = ?"
-		queryArgs = append(queryArgs, removeKPIName)
-	}
-
-	// Execute deletion
-	result, err := db.Exec(query, queryArgs...)
-	if err != nil {
-		return fmt.Errorf("failed to delete metrics: %w", err)
-	}
-	deleted, _ := result.RowsAffected()
 
 	if deleted == 0 {
 		fmt.Println("No metrics found matching the criteria.")
@@ -162,7 +133,7 @@ func runRemoveKPIs(cmd *cobra.Command, args []string) error {
 func runRemoveErrors(cmd *cobra.Command, args []string) error {
 	db, _, err := connectToDB()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to DB: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
@@ -191,4 +162,31 @@ func runRemoveErrors(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("✓ Cleared %d error record(s).\n", deleted)
 	return nil
+}
+
+func deleteClusterMetrics(db *sql.DB, clusterName, kpiName string) (*ClusterInfo, int64, error) {
+	clusters, err := listClusters(db, clusterName)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query cluster: %w", err)
+	}
+	if len(clusters) == 0 {
+		return nil, 0, fmt.Errorf("cluster '%s' not found", clusterName)
+	}
+	cluster := clusters[0]
+
+	query := "DELETE FROM query_results WHERE cluster_id = ?"
+	queryArgs := []interface{}{cluster.ID}
+
+	if kpiName != "" {
+		query += " AND kpi_id = ?"
+		queryArgs = append(queryArgs, kpiName)
+	}
+
+	result, err := db.Exec(query, queryArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to delete metrics: %w", err)
+	}
+
+	deleted, _ := result.RowsAffected()
+	return &cluster, deleted, nil
 }

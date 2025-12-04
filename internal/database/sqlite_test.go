@@ -11,9 +11,10 @@ import (
 
 var _ = Describe("Sqlite", func() {
 	var (
-		db       *sql.DB
-		tmpDir   string
-		sqliteDB *SQLiteDB
+		db          *sql.DB
+		tmpDir      string
+		sqliteDB    *SQLiteDB
+		originalHome string
 	)
 
 	// Runs before and after each test (It section)
@@ -22,30 +23,30 @@ var _ = Describe("Sqlite", func() {
 		// Create SQLiteDB instance
 		sqliteDB = NewSQLiteDB()
 
-		// Create a temporary directory for test database
+		// Create a temporary directory to act as HOME for test isolation
 		var err error
 		tmpDir, err = os.MkdirTemp("", "sqlite-test-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		// Change to temp directory for database creation
-		originalDir, err := os.Getwd()
-		Expect(err).NotTo(HaveOccurred())
-		err = os.Chdir(tmpDir)
+		// Override HOME environment variable so GetSQLiteDBPath() uses our temp dir
+		originalHome = os.Getenv("HOME")
+		err = os.Setenv("HOME", tmpDir)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Initialize database
+		// Initialize database (will create in tmpDir/.local/share/kpi-collector/)
 		db, err = sqliteDB.InitDB()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(db).NotTo(BeNil())
-
-		// Change back to original directory
-		err = os.Chdir(originalDir)
-		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		if db != nil {
 			err := db.Close()
+			Expect(err).NotTo(HaveOccurred())
+		}
+		// Restore original HOME
+		if originalHome != "" {
+			err := os.Setenv("HOME", originalHome)
 			Expect(err).NotTo(HaveOccurred())
 		}
 		// Clean up temporary directory
@@ -74,14 +75,14 @@ var _ = Describe("Sqlite", func() {
 			Expect(tableName).To(Equal("query_errors"))
 		})
 
-		It("should create the collected-data directory", func() {
-			dbPath := filepath.Join(tmpDir, "collected-data")
-			_, err := os.Stat(dbPath)
+		It("should create the data directory", func() {
+			dataDir := filepath.Join(tmpDir, ".local", "share", "kpi-collector")
+			_, err := os.Stat(dataDir)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should create the database file", func() {
-			dbFile := filepath.Join(tmpDir, "collected-data", "kpi_metrics.db")
+			dbFile := filepath.Join(tmpDir, ".local", "share", "kpi-collector", "kpi_metrics.db")
 			_, err := os.Stat(dbFile)
 			Expect(err).NotTo(HaveOccurred())
 		})

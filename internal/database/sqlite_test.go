@@ -76,13 +76,13 @@ var _ = Describe("Sqlite", func() {
 		})
 
 		It("should create the data directory", func() {
-			dataDir := filepath.Join(tmpDir, ".local", "share", "kpi-collector")
+			dataDir := filepath.Join(tmpDir, ".kpi-collector")
 			_, err := os.Stat(dataDir)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should create the database file", func() {
-			dbFile := filepath.Join(tmpDir, ".local", "share", "kpi-collector", "kpi_metrics.db")
+			dbFile := filepath.Join(tmpDir, ".kpi-collector", "kpi_metrics.db")
 			_, err := os.Stat(dbFile)
 			Expect(err).NotTo(HaveOccurred())
 		})

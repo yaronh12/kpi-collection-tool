@@ -254,7 +254,7 @@ You can specify the database connection in three ways (in order of priority):
 
 1. **CLI flags**: `--db-type` and `--postgres-url`
 2. **Environment variables**: `KPI_COLLECTOR_DB_TYPE` and `KPI_COLLECTOR_DB_URL`
-3. **Default**: SQLite at `~/.local/share/kpi-collector/kpi_metrics.db`
+3. **Default**: SQLite at `~/.kpi-collector/kpi_metrics.db`
 
 **Using environment variables (recommended):**
 ```bash
@@ -472,7 +472,7 @@ The tool supports two database backends. **SQLite is used by default** when no `
 
 ### SQLite (Default)
 - **Default behavior** - no configuration needed
-- Data stored in: `~/.local/share/kpi-collector/kpi_metrics.db`
+- Data stored in: `~/.kpi-collector/kpi_metrics.db`
 - Automatically created on first run
 - No external dependencies
 - Works from any directory
@@ -630,7 +630,7 @@ cd /path/to/kpi-collection-tool
 1. Ensure you've collected data first using `kpi-collector run`
 2. Check the time range in Grafana (top-right corner) - try "Last 24 hours" or "Last 7 days"
 3. Verify the KPI dropdown has a selection
-4. For SQLite: Check that `~/.local/share/kpi-collector/kpi_metrics.db` exists
+4. For SQLite: Check that `~/.kpi-collector/kpi_metrics.db` exists
 5. For PostgreSQL: Test the datasource connection in Grafana Settings → Data Sources
 
 ### PostgreSQL connection errors

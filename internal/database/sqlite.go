@@ -20,14 +20,14 @@ const (
 type SQLiteDB struct{}
 
 // GetSQLiteDBPath returns the path to the SQLite database file.
-// The database is stored in ~/.local/share/kpi-collector/kpi_metrics.db
+// The database is stored in ~/.kpi-collector/kpi_metrics.db
 func GetSQLiteDBPath() string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		// Fallback to current directory if home can't be determined
 		return DefaultDBFileName
 	}
-	return filepath.Join(homeDir, ".local", "share", DefaultDataDir, DefaultDBFileName)
+	return filepath.Join(homeDir, ".kpi-collector", DefaultDBFileName)
 }
 
 // NewSQLiteDB creates a new SQLite database instance
@@ -36,7 +36,7 @@ func NewSQLiteDB() *SQLiteDB {
 }
 
 // InitDB initializes the SQLite database and creates required tables.
-// The database is stored in ~/.local/share/kpi-collector/kpi_metrics.db
+// The database is stored in ~/.kpi-collector/kpi_metrics.db
 func (sqlite_db *SQLiteDB) InitDB() (*sql.DB, error) {
 	dbPath := GetSQLiteDBPath()
 

@@ -4,28 +4,49 @@ import (
 	"database/sql"
 	"encoding/json"
 	"os"
+	"path/filepath"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/common/model"
 )
 
-// SQLiteDB implements the Database interface for SQLite
-const SQLiteDBFilePath = "./collected-data/kpi_metrics.db"
+const (
+	// DefaultDataDir is the directory name under user's data folder
+	DefaultDataDir = "kpi-collector"
+	// DefaultDBFileName is the SQLite database file name
+	DefaultDBFileName = "kpi_metrics.db"
+)
 
 type SQLiteDB struct{}
+
+// GetSQLiteDBPath returns the path to the SQLite database file.
+// The database is stored in ~/.kpi-collector/kpi_metrics.db
+func GetSQLiteDBPath() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		// Fallback to current directory if home can't be determined
+		return DefaultDBFileName
+	}
+	return filepath.Join(homeDir, ".kpi-collector", DefaultDBFileName)
+}
 
 // NewSQLiteDB creates a new SQLite database instance
 func NewSQLiteDB() *SQLiteDB {
 	return &SQLiteDB{}
 }
 
-// initDB initializes the SQLite database and creates required tables
+// InitDB initializes the SQLite database and creates required tables.
+// The database is stored in ~/.kpi-collector/kpi_metrics.db
 func (sqlite_db *SQLiteDB) InitDB() (*sql.DB, error) {
-	// Create collected-data directory if it doesn't exist
-	if err := os.MkdirAll("./collected-data", 0755); err != nil {
+	dbPath := GetSQLiteDBPath()
+
+	// Create data directory if it doesn't exist
+	dataDir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return nil, err
 	}
-	db, err := sql.Open("sqlite3", SQLiteDBFilePath)
+
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, err
 	}

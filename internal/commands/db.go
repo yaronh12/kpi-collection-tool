@@ -28,7 +28,7 @@ Works with both SQLite (default) and PostgreSQL databases.
 Database connection can be specified via:
   1. CLI flags: --db-type and --postgres-url
   2. Environment variables: KPI_COLLECTOR_DB_TYPE and KPI_COLLECTOR_DB_URL
-  3. Default: SQLite at ./collected-data/kpi_metrics.db`,
+  3. Default: SQLite at ~/.kpi-collector/kpi_metrics.db`,
 	Example: `  # Using SQLite (default)
   kpi-collector db show clusters
   

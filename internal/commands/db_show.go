@@ -114,7 +114,7 @@ func init() {
 func runShowKPIs(cmd *cobra.Command, args []string) error {
 	db, dbImpl, err := connectToDB()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to DB: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
@@ -173,7 +173,7 @@ func runShowKPIs(cmd *cobra.Command, args []string) error {
 func runShowClusters(cmd *cobra.Command, args []string) error {
 	db, _, err := connectToDB()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to DB: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
@@ -194,7 +194,7 @@ func runShowClusters(cmd *cobra.Command, args []string) error {
 func runShowErrors(cmd *cobra.Command, args []string) error {
 	db, _, err := connectToDB()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to DB: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 

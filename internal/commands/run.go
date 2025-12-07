@@ -116,6 +116,9 @@ func runCollect(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load KPI queries: %w", err)
 	}
 
+	// Warn if any KPI frequency exceeds the duration
+	warnFrequencyExceedsDuration(kpis, flags)
+
 	// If kubeconfig is provided, discover Thanos URL and token
 	if flags.Kubeconfig != "" {
 		flags.ThanosURL, flags.BearerToken, err = kubernetes.SetupKubeconfigAuth(flags.Kubeconfig)
@@ -132,4 +135,25 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	fmt.Println("All queries completed successfully!")
 
 	return nil
+}
+
+// warnFrequencyExceedsDuration prints a warning if any KPI's sampling frequency
+// is longer than the total duration, meaning only one sample will be collected
+func warnFrequencyExceedsDuration(kpis config.KPIs, flags config.InputFlags) {
+	durationSeconds := int(flags.Duration.Seconds())
+
+	for _, kpi := range kpis.Queries {
+		effectiveFreq := kpi.GetEffectiveFrequency(flags.SamplingFreq)
+
+		if effectiveFreq > durationSeconds {
+			fmt.Printf("WARNING: KPI '%s' has frequency %ds which exceeds duration %s. Only 1 sample will be collected.\n",
+				kpi.ID, effectiveFreq, flags.Duration)
+		}
+	}
+
+	// Also warn about the default frequency if no custom frequencies are set
+	if flags.SamplingFreq > durationSeconds {
+		fmt.Printf("WARNING: Default sampling frequency %ds exceeds duration %s. KPIs without custom frequency will only collect 1 sample.\n",
+			flags.SamplingFreq, flags.Duration)
+	}
 }

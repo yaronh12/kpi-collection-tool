@@ -1,0 +1,23 @@
+// KPI Configuration Template
+//
+// Each KPI entry has:
+//   - id:               Unique identifier (used in database and output)
+//   - promquery:        PromQL query to execute against Prometheus/Thanos
+//   - sample-frequency: (Optional) Override global --frequency for this KPI (in seconds)
+
+{
+    "kpis": [
+        {
+            // Basic node CPU usage across all instances
+            "id": "node-cpu-usage",
+            "promquery": "avg by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))"
+        },
+        {
+            // Memory currently in use per node - sampled less frequently (every 2 min)
+            "id": "node-memory-usage",
+            "promquery": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+            "sample-frequency": 120
+        }
+    ]
+}
+

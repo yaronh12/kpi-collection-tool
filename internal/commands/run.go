@@ -13,10 +13,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	defaultKPIsFilepath = "configs/kpis.json"
-)
-
 // Use the existing InputFlags struct directly!
 var flags config.InputFlags
 
@@ -78,13 +74,15 @@ func init() {
 	runCmd.Flags().StringVar(&flags.PostgresURL, "postgres-url", "",
 		"PostgreSQL connection string (required if db-type=postgres)")
 
-	runCmd.Flags().StringVar(&flags.KPIsFile, "kpis-file", defaultKPIsFilepath,
-		"path to KPIs configuration file")
+	runCmd.Flags().StringVar(&flags.KPIsFile, "kpis-file", "",
+		"path to KPIs configuration file (required)")
 
 	// Mark required flags
-	err := runCmd.MarkFlagRequired("cluster-name")
-	if err != nil {
+	if err := runCmd.MarkFlagRequired("cluster-name"); err != nil {
 		panic(fmt.Sprintf("failed to mark cluster-name as required: %v", err))
+	}
+	if err := runCmd.MarkFlagRequired("kpis-file"); err != nil {
+		panic(fmt.Sprintf("failed to mark kpis-file as required: %v", err))
 	}
 
 }

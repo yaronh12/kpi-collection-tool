@@ -24,6 +24,7 @@ var kpiQueryFlags struct {
 	until        string
 	limit        int
 	sort         string
+	noTruncate   bool
 }
 
 // clusterQueryFlags holds the flag for the 'show clusters' command
@@ -105,6 +106,8 @@ func init() {
 		"limit number of results (0 = no limit)")
 	showKPIsCmd.Flags().StringVar(&kpiQueryFlags.sort, "sort", "asc",
 		"sort order by execution time: asc or desc")
+	showKPIsCmd.Flags().BoolVar(&kpiQueryFlags.noTruncate, "no-truncate", false,
+		"show full labels without truncation")
 
 	// Flags for 'show clusters'
 	showClustersCmd.Flags().StringVar(&clusterQueryFlags.clusterName, "name", "",
@@ -419,21 +422,55 @@ func listErrors(db *sql.DB) ([]ErrorInfo, error) {
 
 func displayKPIsTable(results []KPIResult) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "ID\tKPI_NAME\tCLUSTER\tVALUE\tTIMESTAMP\tEXECUTION_TIME\tLABELS")
-	_, _ = fmt.Fprintln(w, "---\t---\t---\t---\t---\t---\t---")
 
-	for _, r := range results {
-		labels := r.MetricLabels
-		if len(labels) > 50 {
-			labels = labels[:47] + "..."
+	if kpiQueryFlags.noTruncate {
+		// Display without labels column, print pretty JSON below each entry
+		_, _ = fmt.Fprintln(w, "ID\tKPI_NAME\tCLUSTER\tVALUE\tTIMESTAMP\tEXECUTION_TIME")
+		_, _ = fmt.Fprintln(w, "---\t---\t---\t---\t---\t---")
+
+		for _, r := range results {
+			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%.6f\t%.0f\t%s\n",
+				r.ID, r.KPIName, r.ClusterName, r.MetricValue,
+				r.TimestampValue, r.ExecutionTime.Format("2006-01-02 15:04:05"))
+			_ = w.Flush()
+
+			// Print pretty JSON labels below the entry
+			fmt.Println("  Labels:")
+			printPrettyLabels(r.MetricLabels)
+			fmt.Println()
 		}
-		_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%.6f\t%.0f\t%s\t%s\n",
-			r.ID, r.KPIName, r.ClusterName, r.MetricValue,
-			r.TimestampValue, r.ExecutionTime.Format("2006-01-02 15:04:05"), labels)
+	} else {
+		// Default: display with truncated labels in table
+		_, _ = fmt.Fprintln(w, "ID\tKPI_NAME\tCLUSTER\tVALUE\tTIMESTAMP\tEXECUTION_TIME\tLABELS")
+		_, _ = fmt.Fprintln(w, "---\t---\t---\t---\t---\t---\t---")
+
+		for _, r := range results {
+			labels := r.MetricLabels
+			if len(labels) > 50 {
+				labels = labels[:47] + "..."
+			}
+			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%.6f\t%.0f\t%s\t%s\n",
+				r.ID, r.KPIName, r.ClusterName, r.MetricValue,
+				r.TimestampValue, r.ExecutionTime.Format("2006-01-02 15:04:05"), labels)
+		}
+		_ = w.Flush()
 	}
-	_ = w.Flush()
 
 	fmt.Printf("\nTotal results: %d\n", len(results))
+}
+
+// printPrettyLabels prints the labels JSON in a readable indented format
+func printPrettyLabels(labelsJSON string) {
+	var labels map[string]string
+	if err := json.Unmarshal([]byte(labelsJSON), &labels); err != nil {
+		// If parsing fails, just print the raw string
+		fmt.Printf("    %s\n", labelsJSON)
+		return
+	}
+
+	for key, value := range labels {
+		fmt.Printf("    %s: %s\n", key, value)
+	}
 }
 
 func displayClustersTable(clusters []ClusterInfo) {

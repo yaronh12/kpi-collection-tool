@@ -39,7 +39,7 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 
 // MarshalJSON implements json.Marshaler for Duration
 func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(d.Duration.String())
+	return json.Marshal(d.String())
 }
 
 // InputFlags holds all command line flag values

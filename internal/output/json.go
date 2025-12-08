@@ -9,16 +9,3 @@ func (p *Printer) printKPIsJSON(records []KPIRecord) error {
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(records)
 }
-
-func (p *Printer) printClustersJSON(records []ClusterRecord) error {
-	encoder := json.NewEncoder(p.writer)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(records)
-}
-
-func (p *Printer) printErrorsJSON(records []ErrorRecord) error {
-	encoder := json.NewEncoder(p.writer)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(records)
-}
-

@@ -97,27 +97,3 @@ func (p *Printer) PrintKPIs(records []KPIRecord) error {
 	}
 }
 
-// PrintClusters outputs cluster records in the configured format
-func (p *Printer) PrintClusters(records []ClusterRecord) error {
-	switch p.format {
-	case FormatJSON:
-		return p.printClustersJSON(records)
-	case FormatCSV:
-		return p.printClustersCSV(records)
-	default:
-		return p.printClustersTable(records)
-	}
-}
-
-// PrintErrors outputs error records in the configured format
-func (p *Printer) PrintErrors(records []ErrorRecord) error {
-	switch p.format {
-	case FormatJSON:
-		return p.printErrorsJSON(records)
-	case FormatCSV:
-		return p.printErrorsCSV(records)
-	default:
-		return p.printErrorsTable(records)
-	}
-}
-

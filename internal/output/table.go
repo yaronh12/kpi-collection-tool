@@ -57,30 +57,6 @@ func (p *Printer) printPrettyLabels(labels map[string]string) {
 	}
 }
 
-func (p *Printer) printClustersTable(records []ClusterRecord) error {
-	w := tabwriter.NewWriter(p.writer, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "ID\tCLUSTER_NAME\tCREATED_AT\tTOTAL_METRICS")
-	_, _ = fmt.Fprintln(w, "---\t---\t---\t---")
-
-	for _, c := range records {
-		_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
-			c.ID, c.Name, c.CreatedAt.Format("2006-01-02 15:04:05"),
-			humanize.Comma(c.TotalMetrics))
-	}
-	return w.Flush()
-}
-
-func (p *Printer) printErrorsTable(records []ErrorRecord) error {
-	w := tabwriter.NewWriter(p.writer, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "KPI_ID\tERROR_COUNT")
-	_, _ = fmt.Fprintln(w, "---\t---")
-
-	for _, e := range records {
-		_, _ = fmt.Fprintf(w, "%s\t%d\n", e.KPIID, e.ErrorCount)
-	}
-	return w.Flush()
-}
-
 // PrintClustersTable prints cluster records as a table to stdout
 func PrintClustersTable(records []ClusterRecord) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)

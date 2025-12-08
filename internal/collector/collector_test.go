@@ -9,15 +9,20 @@ import (
 	"kpi-collector/internal/config"
 )
 
+// Helper function to create a Duration pointer
+func durationPtr(d time.Duration) *config.Duration {
+	return &config.Duration{Duration: d}
+}
+
 var _ = Describe("Collector", func() {
 	Describe("groupKPIsByFrequency", func() {
 		var (
 			kpis        config.KPIs
-			defaultFreq int
+			defaultFreq time.Duration
 		)
 
 		BeforeEach(func() {
-			defaultFreq = 60
+			defaultFreq = 60 * time.Second
 		})
 
 		Context("when all KPIs have default frequency", func() {
@@ -34,20 +39,18 @@ var _ = Describe("Collector", func() {
 				grouped := groupKPIsByFrequency(kpis, defaultFreq)
 
 				Expect(grouped).To(HaveLen(1))
-				Expect(grouped[60].Queries).To(HaveLen(2))
-				Expect(grouped[60].Queries[0].ID).To(Equal("kpi-1"))
-				Expect(grouped[60].Queries[1].ID).To(Equal("kpi-2"))
+				Expect(grouped[60*time.Second].Queries).To(HaveLen(2))
+				Expect(grouped[60*time.Second].Queries[0].ID).To(Equal("kpi-1"))
+				Expect(grouped[60*time.Second].Queries[1].ID).To(Equal("kpi-2"))
 			})
 		})
 
 		Context("when all KPIs have custom frequency", func() {
 			BeforeEach(func() {
-				freq1 := 10
-				freq2 := 30
 				kpis = config.KPIs{
 					Queries: []config.Query{
-						{ID: "kpi-1", PromQuery: "query1", SampleFrequency: &freq1},
-						{ID: "kpi-2", PromQuery: "query2", SampleFrequency: &freq2},
+						{ID: "kpi-1", PromQuery: "query1", SampleFrequency: durationPtr(10 * time.Second)},
+						{ID: "kpi-2", PromQuery: "query2", SampleFrequency: durationPtr(30 * time.Second)},
 					},
 				}
 			})
@@ -56,20 +59,19 @@ var _ = Describe("Collector", func() {
 				grouped := groupKPIsByFrequency(kpis, defaultFreq)
 
 				Expect(grouped).To(HaveLen(2))
-				Expect(grouped[10].Queries).To(HaveLen(1))
-				Expect(grouped[10].Queries[0].ID).To(Equal("kpi-1"))
-				Expect(grouped[30].Queries).To(HaveLen(1))
-				Expect(grouped[30].Queries[0].ID).To(Equal("kpi-2"))
+				Expect(grouped[10*time.Second].Queries).To(HaveLen(1))
+				Expect(grouped[10*time.Second].Queries[0].ID).To(Equal("kpi-1"))
+				Expect(grouped[30*time.Second].Queries).To(HaveLen(1))
+				Expect(grouped[30*time.Second].Queries[0].ID).To(Equal("kpi-2"))
 			})
 		})
 
 		Context("when KPIs have mixed frequencies", func() {
 			BeforeEach(func() {
-				freq := 15
 				kpis = config.KPIs{
 					Queries: []config.Query{
 						{ID: "default-1", PromQuery: "query1"},
-						{ID: "custom-1", PromQuery: "query2", SampleFrequency: &freq},
+						{ID: "custom-1", PromQuery: "query2", SampleFrequency: durationPtr(15 * time.Second)},
 						{ID: "default-2", PromQuery: "query3"},
 					},
 				}
@@ -79,11 +81,11 @@ var _ = Describe("Collector", func() {
 				grouped := groupKPIsByFrequency(kpis, defaultFreq)
 
 				Expect(grouped).To(HaveLen(2))
-				Expect(grouped[60].Queries).To(HaveLen(2))
-				Expect(grouped[60].Queries[0].ID).To(Equal("default-1"))
-				Expect(grouped[60].Queries[1].ID).To(Equal("default-2"))
-				Expect(grouped[15].Queries).To(HaveLen(1))
-				Expect(grouped[15].Queries[0].ID).To(Equal("custom-1"))
+				Expect(grouped[60*time.Second].Queries).To(HaveLen(2))
+				Expect(grouped[60*time.Second].Queries[0].ID).To(Equal("default-1"))
+				Expect(grouped[60*time.Second].Queries[1].ID).To(Equal("default-2"))
+				Expect(grouped[15*time.Second].Queries).To(HaveLen(1))
+				Expect(grouped[15*time.Second].Queries[0].ID).To(Equal("custom-1"))
 			})
 		})
 
@@ -101,12 +103,12 @@ var _ = Describe("Collector", func() {
 
 		Context("when multiple KPIs share the same custom frequency", func() {
 			BeforeEach(func() {
-				freq := 30
+				freq := durationPtr(30 * time.Second)
 				kpis = config.KPIs{
 					Queries: []config.Query{
-						{ID: "kpi-1", PromQuery: "query1", SampleFrequency: &freq},
-						{ID: "kpi-2", PromQuery: "query2", SampleFrequency: &freq},
-						{ID: "kpi-3", PromQuery: "query3", SampleFrequency: &freq},
+						{ID: "kpi-1", PromQuery: "query1", SampleFrequency: freq},
+						{ID: "kpi-2", PromQuery: "query2", SampleFrequency: freq},
+						{ID: "kpi-3", PromQuery: "query3", SampleFrequency: freq},
 					},
 				}
 			})
@@ -115,32 +117,31 @@ var _ = Describe("Collector", func() {
 				grouped := groupKPIsByFrequency(kpis, defaultFreq)
 
 				Expect(grouped).To(HaveLen(1))
-				Expect(grouped[30].Queries).To(HaveLen(3))
-				Expect(grouped[30].Queries[0].ID).To(Equal("kpi-1"))
-				Expect(grouped[30].Queries[1].ID).To(Equal("kpi-2"))
-				Expect(grouped[30].Queries[2].ID).To(Equal("kpi-3"))
+				Expect(grouped[30*time.Second].Queries).To(HaveLen(3))
+				Expect(grouped[30*time.Second].Queries[0].ID).To(Equal("kpi-1"))
+				Expect(grouped[30*time.Second].Queries[1].ID).To(Equal("kpi-2"))
+				Expect(grouped[30*time.Second].Queries[2].ID).To(Equal("kpi-3"))
 			})
 		})
 	})
 
 	Describe("Query.GetEffectiveFrequency", func() {
-		var defaultFreq int
+		var defaultFreq time.Duration
 
 		BeforeEach(func() {
-			defaultFreq = 60
+			defaultFreq = 60 * time.Second
 		})
 
 		Context("when query has custom frequency", func() {
 			It("should return the custom frequency", func() {
-				customFreq := 30
 				query := config.Query{
 					ID:              "test-kpi",
 					PromQuery:       "test_query",
-					SampleFrequency: &customFreq,
+					SampleFrequency: durationPtr(30 * time.Second),
 				}
 
 				effectiveFreq := query.GetEffectiveFrequency(defaultFreq)
-				Expect(effectiveFreq).To(Equal(30))
+				Expect(effectiveFreq).To(Equal(30 * time.Second))
 			})
 		})
 
@@ -153,35 +154,33 @@ var _ = Describe("Collector", func() {
 				}
 
 				effectiveFreq := query.GetEffectiveFrequency(defaultFreq)
-				Expect(effectiveFreq).To(Equal(60))
+				Expect(effectiveFreq).To(Equal(60 * time.Second))
 			})
 		})
 
 		Context("when query has zero custom frequency", func() {
 			It("should return the default frequency", func() {
-				zeroFreq := 0
 				query := config.Query{
 					ID:              "test-kpi",
 					PromQuery:       "test_query",
-					SampleFrequency: &zeroFreq,
+					SampleFrequency: durationPtr(0),
 				}
 
 				effectiveFreq := query.GetEffectiveFrequency(defaultFreq)
-				Expect(effectiveFreq).To(Equal(60))
+				Expect(effectiveFreq).To(Equal(60 * time.Second))
 			})
 		})
 
 		Context("when query has negative custom frequency", func() {
 			It("should return the default frequency", func() {
-				negativeFreq := -10
 				query := config.Query{
 					ID:              "test-kpi",
 					PromQuery:       "test_query",
-					SampleFrequency: &negativeFreq,
+					SampleFrequency: durationPtr(-10 * time.Second),
 				}
 
 				effectiveFreq := query.GetEffectiveFrequency(defaultFreq)
-				Expect(effectiveFreq).To(Equal(60))
+				Expect(effectiveFreq).To(Equal(60 * time.Second))
 			})
 		})
 	})
@@ -191,17 +190,16 @@ var _ = Describe("Collector", func() {
 
 		BeforeEach(func() {
 			flags = config.InputFlags{
-				SamplingFreq: 60,
+				SamplingFreq: 60 * time.Second,
 				Duration:     1 * time.Second,
 			}
 		})
 
 		Context("when there are KPIs with various frequencies", func() {
 			It("should return cancel function and WaitGroup", func() {
-				freq := 5
 				kpis := config.KPIs{
 					Queries: []config.Query{
-						{ID: "kpi-1", PromQuery: "query1", SampleFrequency: &freq},
+						{ID: "kpi-1", PromQuery: "query1", SampleFrequency: durationPtr(5 * time.Second)},
 						{ID: "kpi-2", PromQuery: "query2"}, // default frequency
 					},
 				}

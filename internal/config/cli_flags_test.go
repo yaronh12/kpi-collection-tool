@@ -14,7 +14,7 @@ const (
 	validKubeconfig   = "/path/to/kubeconfig"
 	validOutputFile   = "output.json"
 	validLogFile      = "app.log"
-	validSamplingFreq = 60
+	validSamplingFreq = 60 * time.Second
 	validDuration     = 45 * time.Minute
 	validDatabaseType = "sqlite"
 	validKPIsFile     = "configs/kpis.json"

@@ -46,8 +46,8 @@ func Run(kpis config.KPIs, flags config.InputFlags) {
 
 // groupKPIsByFrequency groups KPIs by their effective sampling frequency
 // This includes both default and custom frequency KPIs
-func groupKPIsByFrequency(kpis config.KPIs, defaultFreq int) map[int]config.KPIs {
-	kpisByFreq := make(map[int]config.KPIs)
+func groupKPIsByFrequency(kpis config.KPIs, defaultFreq time.Duration) map[time.Duration]config.KPIs {
+	kpisByFreq := make(map[time.Duration]config.KPIs)
 
 	for _, kpi := range kpis.Queries {
 		effectiveFreq := kpi.GetEffectiveFrequency(defaultFreq)
@@ -78,7 +78,7 @@ func startKPIGoroutines(kpis config.KPIs, flags config.InputFlags) (context.Canc
 	// Start one goroutine per unique frequency
 	for freq, kpisForFreq := range kpisByFreq {
 		wg.Add(1)
-		go func(frequency int, kpiGroup config.KPIs) {
+		go func(frequency time.Duration, kpiGroup config.KPIs) {
 			defer wg.Done()
 			runKPIGroupLoop(ctx, kpiGroup, frequency, flags)
 		}(freq, kpisForFreq)
@@ -93,8 +93,8 @@ func shutdown(cancel context.CancelFunc, wg *sync.WaitGroup) {
 }
 
 // runKPIGroupLoop runs a group of KPIs that share the same sampling frequency
-func runKPIGroupLoop(ctx context.Context, kpis config.KPIs, frequency int, flags config.InputFlags) {
-	ticker := time.NewTicker(time.Duration(frequency) * time.Second)
+func runKPIGroupLoop(ctx context.Context, kpis config.KPIs, frequency time.Duration, flags config.InputFlags) {
+	ticker := time.NewTicker(frequency)
 	defer ticker.Stop()
 
 	sampleCount := 0
@@ -118,7 +118,7 @@ func runKPIGroupLoop(ctx context.Context, kpis config.KPIs, frequency int, flags
 }
 
 // runKPIs executes a group of KPIs and logs the results
-func runKPIs(kpis config.KPIs, flags config.InputFlags, sampleCount int, frequency int) {
+func runKPIs(kpis config.KPIs, flags config.InputFlags, sampleCount int, frequency time.Duration) {
 	if len(kpis.Queries) == 0 {
 		return
 	}

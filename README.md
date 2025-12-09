@@ -583,9 +583,25 @@ kpi-collector grafana --datasource=postgres \
 
 ## Dashboard Features
 
+### Dashboard Filters
+The dashboard includes filters, supported for both SQLite and PostgreSQL datasources:
+
+- **Cluster Name**
+- **Cluster Type**
+- **KPI**
+
+#### The following new filters are available **only when using SQLite:
+
+- **Node**
+- **Pod**
+- **Job**
+- **Container**
+
+All filters default to **All**.
+
 The dashboard includes:
 
-- **Dynamic KPI Selection:** Choose any KPI from the dropdown
+- **Dynamic Metric Selection:** Choose any metric from the dropdown
 - **Time-series Visualization:** View metric values over time
 - **Statistical Summary:** Average, min, max, sample count
 - **Detailed Metrics Table:** All labels and values

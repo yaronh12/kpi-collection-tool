@@ -57,8 +57,8 @@ func init() {
 		"skip TLS certificate verification (development only)")
 
 	// Sampling flags
-	runCmd.Flags().IntVar(&flags.SamplingFreq, "frequency", 60,
-		"sampling frequency in seconds")
+	runCmd.Flags().DurationVar(&flags.SamplingFreq, "frequency", 60*time.Second,
+		"sampling frequency (e.g. 30s, 1m, 2h)")
 	runCmd.Flags().DurationVar(&flags.Duration, "duration", 45*time.Minute,
 		"total duration for sampling (e.g. 10s, 1m, 2h)")
 
@@ -140,19 +140,17 @@ func runCollect(cmd *cobra.Command, args []string) error {
 // warnFrequencyExceedsDuration prints a warning if any KPI's sampling frequency
 // is longer than the total duration, meaning only one sample will be collected
 func warnFrequencyExceedsDuration(kpis config.KPIs, flags config.InputFlags) {
-	durationSeconds := int(flags.Duration.Seconds())
-
 	for _, kpi := range kpis.Queries {
 		effectiveFreq := kpi.GetEffectiveFrequency(flags.SamplingFreq)
 
-		if effectiveFreq > durationSeconds {
+		if effectiveFreq > flags.Duration {
 			fmt.Printf("WARNING: KPI '%s' has frequency %ds which exceeds duration %s. Only 1 sample will be collected.\n",
 				kpi.ID, effectiveFreq, flags.Duration)
 		}
 	}
 
 	// Also warn about the default frequency if no custom frequencies are set
-	if flags.SamplingFreq > durationSeconds {
+	if flags.SamplingFreq > flags.Duration {
 		fmt.Printf("WARNING: Default sampling frequency %ds exceeds duration %s. KPIs without custom frequency will only collect 1 sample.\n",
 			flags.SamplingFreq, flags.Duration)
 	}

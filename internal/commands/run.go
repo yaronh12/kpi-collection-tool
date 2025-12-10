@@ -28,13 +28,13 @@ in a database (SQLite or PostgreSQL). Supports two authentication modes:
 The tool will continuously collect metrics at the specified frequency 
 for the specified duration.`,
 	Example: `  # Using kubeconfig (auto-discovery)
-  kpi-collector collect --cluster-name prod --kubeconfig ~/.kube/config
+  kpi-collector collect --cluster-name prod --cluster-type ran --kubeconfig ~/.kube/config
 
   # Using manual credentials
-  kpi-collector collect --cluster-name prod --token TOKEN --thanos-url thanos.example.com
+  kpi-collector collect --cluster-name prod --cluster-type core --token TOKEN --thanos-url thanos.example.com
 
   # With PostgreSQL backend
-  kpi-collector collect --cluster-name prod --kubeconfig ~/.kube/config \
+  kpi-collector collect --cluster-name prod --cluster-type hub --kubeconfig ~/.kube/config \
     --db-type postgres --postgres-url "postgresql://user:pass@localhost/kpi`,
 	RunE: runCollect,
 }
@@ -89,6 +89,16 @@ func init() {
 
 func runCollect(cmd *cobra.Command, args []string) error {
 	fmt.Println("KPI Collector starting...")
+
+	validTypes := map[string]bool{"ran": true, "core": true, "hub": true}
+
+	if flags.ClusterType == "" {
+		return fmt.Errorf("--cluster-type is required. Supported values: ran, core, hub")
+	}
+
+	if !validTypes[flags.ClusterType] {
+		return fmt.Errorf("invalid --cluster-type '%s'. Supported values: ran, core, hub", flags.ClusterType)
+	}
 
 	// Reuse existing validation logic!
 	if err := config.ValidateFlags(flags); err != nil {

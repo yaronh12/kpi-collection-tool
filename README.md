@@ -54,6 +54,7 @@ Automatically discovers Thanos URL and creates a service account token.
 ```bash
 kpi-collector run \
   --cluster-name my-cluster \
+  --cluster-type ran \
   --kubeconfig ~/.kube/config \
   --kpis-file kpis.json
 ```
@@ -184,7 +185,7 @@ kpi-collector run \
 | Flag | Required | Default | Description |
 |------|----------|---------|-------------|
 | `--cluster-name` | Yes | - | Name of the cluster being monitored |
-| `--cluster-type` | No | - | Cluster type for categorization: `ran`, `core`, or `hub` |
+| `--cluster-type` | Yes | - | Cluster type for categorization: `ran`, `core`, or `hub` |
 | `--kubeconfig` | No* | - | Path to kubeconfig file for auto-discovery |
 | `--token` | No* | - | Bearer token for Thanos authentication |
 | `--thanos-url` | No* | - | Thanos querier URL (without https://) |

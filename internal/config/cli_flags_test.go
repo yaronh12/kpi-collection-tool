@@ -17,7 +17,7 @@ const (
 	validSamplingFreq = 60
 	validDuration     = 45 * time.Minute
 	validDatabaseType = "sqlite"
-	validKPIsFile     = "configs/kpis.json"
+	validKPIsFile     = "/path/to/kpis.json"
 
 	errClusterNameRequiredMsg = "cluster name is required: use --cluster-name flag"
 	errInvalidFlagComboMsg    = "invalid flag combination: either provide --token and --thanos-url, or provide --kubeconfig"

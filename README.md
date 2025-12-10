@@ -54,7 +54,8 @@ Automatically discovers Thanos URL and creates a service account token.
 ```bash
 kpi-collector run \
   --cluster-name my-cluster \
-  --kubeconfig ~/.kube/config
+  --kubeconfig ~/.kube/config \
+  --kpis-file kpis.json
 ```
 
 **With custom sampling parameters:**
@@ -63,6 +64,7 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
+  --kpis-file kpis.json \
   --frequency 30 \
   --duration 1h \
   --output my-metrics.json \
@@ -74,6 +76,7 @@ kpi-collector run \
 kpi-collector run \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
+  --kpis-file kpis.json \
   --db-type sqlite
 ```
 
@@ -82,6 +85,7 @@ kpi-collector run \
 kpi-collector run \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
+  --kpis-file kpis.json \
   --db-type postgres \
   --postgres-url "postgresql://myuser:mypass@localhost:5432/kpi_metrics?sslmode=disable"
 ```
@@ -95,7 +99,8 @@ Provide Thanos URL and bearer token directly.
 kpi-collector run \
   --cluster-name my-cluster \
   --token YOUR_BEARER_TOKEN \
-  --thanos-url thanos-querier.example.com
+  --thanos-url thanos-querier.example.com \
+  --kpis-file kpis.json
 ```
 
 **With custom sampling parameters:**
@@ -104,6 +109,7 @@ kpi-collector run \
   --cluster-name my-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.example.com \
+  --kpis-file kpis.json \
   --frequency 120 \
   --duration 30m \
   --output results.json
@@ -115,6 +121,7 @@ kpi-collector run \
   --cluster-name my-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.example.com \
+  --kpis-file kpis.json \
   --db-type postgres \
   --postgres-url "postgresql://myuser:mypass@localhost:5432/kpi_metrics?sslmode=disable"
 ```
@@ -123,9 +130,10 @@ kpi-collector run \
 Use this flag when running the tool against clusters or Prometheus/Thanos servers with self-signed or untrusted certificates.
 
 ```bash
-./kpi-collector \
+kpi-collector run \
   --cluster-name my-cluster \
   --kubeconfig ~/.kube/config \
+  --kpis-file kpis.json \
   --insecure-tls
 ```  
 ### What it does
@@ -148,6 +156,7 @@ Use this flag when running the tool against clusters or Prometheus/Thanos server
 kpi-collector run \
   --cluster-name dev-cluster \
   --kubeconfig ~/.kube/config \
+  --kpis-file kpis.json \
   --frequency 60 \
   --duration 1h \
   --insecure-tls
@@ -159,20 +168,13 @@ kpi-collector run \
   --cluster-name prod-cluster \
   --token YOUR_BEARER_TOKEN \
   --thanos-url thanos-querier.prod.example.com \
+  --kpis-file kpis.json \
   --db-type postgres \
   --postgres-url "postgresql://kpi_user:secure_password@postgres.example.com:5432/kpi_metrics?sslmode=require" \
   --frequency 30 \
   --duration 24h \
   --output prod-metrics.json \
   --log prod-kpi.log
-```
-
-**Using a custom KPIs configuration file:**
-```bash
-kpi-collector run \
-  --cluster-name my-cluster \
-  --kubeconfig ~/.kube/config \
-  --kpis-file /path/to/custom-kpis.json
 ```
 
 ## Command Line Flags
@@ -193,7 +195,7 @@ kpi-collector run \
 | `--log` | No | kpi.log | Log file name |
 | `--db-type` | No | sqlite | Database type: `sqlite` or `postgres` |
 | `--postgres-url` | No** | - | PostgreSQL connection string |
-| `--kpis-file` | No | configs/kpis.json | Path to KPIs configuration file |
+| `--kpis-file` | Yes | - | Path to KPIs configuration file (see `kpis.example.json` for format) |
 
 \* Either provide `--kubeconfig` OR both `--token` and `--thanos-url`
 

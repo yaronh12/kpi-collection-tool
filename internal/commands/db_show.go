@@ -4,14 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"kpi-collector/internal/database"
+	"kpi-collector/internal/output"
 
-	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +23,7 @@ var kpiQueryFlags struct {
 	limit        int
 	sort         string
 	noTruncate   bool
+	outputFormat string
 }
 
 // clusterQueryFlags holds the flag for the 'show clusters' command
@@ -43,7 +42,7 @@ var showKPIsCmd = &cobra.Command{
 	Short: "Show KPI metrics",
 	Long: `Query and display KPI metrics with optional filtering by name, cluster, labels, and time range.
 
-The results are displayed in a table format showing metric details.`,
+The results can be displayed in table, JSON, or CSV format.`,
 	Example: `  # Show all metrics for a KPI
   kpi-collector db show kpis --name="cpu-system"
   
@@ -54,11 +53,17 @@ The results are displayed in a table format showing metric details.`,
   kpi-collector db show kpis --name="cpu-system" \
     --labels-filter='id=/system.slice/systemd-logind.service'
   
-    # Time-based filtering
+  # Time-based filtering
   kpi-collector db show kpis --name="cpu-system" --since="2h" --until="1h"
   
   # Limit results and sort
-  kpi-collector db show kpis --name="cpu-pods" --limit=100 --sort="desc"`,
+  kpi-collector db show kpis --name="cpu-pods" --limit=100 --sort="desc"
+  
+  # Output as JSON
+  kpi-collector db show kpis --name="cpu-system" -o json
+  
+  # Export to CSV file
+  kpi-collector db show kpis --name="cpu-system" -o csv > metrics.csv`,
 	RunE: runShowKPIs,
 }
 
@@ -108,6 +113,8 @@ func init() {
 		"sort order by execution time: asc or desc")
 	showKPIsCmd.Flags().BoolVar(&kpiQueryFlags.noTruncate, "no-truncate", false,
 		"show full labels without truncation")
+	showKPIsCmd.Flags().StringVarP(&kpiQueryFlags.outputFormat, "output", "o", "table",
+		"output format: table, json, or csv")
 
 	// Flags for 'show clusters'
 	showClustersCmd.Flags().StringVar(&clusterQueryFlags.clusterName, "name", "",
@@ -115,6 +122,12 @@ func init() {
 }
 
 func runShowKPIs(cmd *cobra.Command, args []string) error {
+	// Parse output format first (fail fast if invalid)
+	format, err := output.ParseFormat(kpiQueryFlags.outputFormat)
+	if err != nil {
+		return err
+	}
+
 	db, dbImpl, err := connectToDB()
 	if err != nil {
 		return fmt.Errorf("failed to connect to DB: %w", err)
@@ -169,8 +182,12 @@ func runShowKPIs(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	displayKPIsTable(results)
-	return nil
+	// Convert to output records
+	records := convertToKPIRecords(results)
+
+	// Print using the output package
+	printer := output.NewPrinter(format).WithNoTruncate(kpiQueryFlags.noTruncate)
+	return printer.PrintKPIs(records)
 }
 
 func runShowClusters(cmd *cobra.Command, args []string) error {
@@ -190,7 +207,18 @@ func runShowClusters(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	displayClustersTable(clusters)
+	// Convert to output records
+	records := make([]output.ClusterRecord, len(clusters))
+	for i, c := range clusters {
+		records[i] = output.ClusterRecord{
+			ID:           c.ID,
+			Name:         c.Name,
+			CreatedAt:    c.CreatedAt,
+			TotalMetrics: c.TotalMetrics,
+		}
+	}
+
+	output.PrintClustersTable(records)
 	return nil
 }
 
@@ -211,7 +239,16 @@ func runShowErrors(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	displayErrorsTable(errors)
+	// Convert to output records
+	records := make([]output.ErrorRecord, len(errors))
+	for i, e := range errors {
+		records[i] = output.ErrorRecord{
+			KPIID:      e.KPIID,
+			ErrorCount: e.ErrorCount,
+		}
+	}
+
+	output.PrintErrorsTable(records)
 	return nil
 }
 
@@ -420,81 +457,26 @@ func listErrors(db *sql.DB) ([]ErrorInfo, error) {
 	return errors, rows.Err()
 }
 
-func displayKPIsTable(results []KPIResult) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+// convertToKPIRecords converts internal KPIResult to output.KPIRecord
+func convertToKPIRecords(results []KPIResult) []output.KPIRecord {
+	records := make([]output.KPIRecord, len(results))
+	for i, r := range results {
+		// Parse labels JSON into map
+		var labels map[string]string
+		_ = json.Unmarshal([]byte(r.MetricLabels), &labels)
 
-	if kpiQueryFlags.noTruncate {
-		// Display without labels column, print pretty JSON below each entry
-		_, _ = fmt.Fprintln(w, "ID\tKPI_NAME\tCLUSTER\tVALUE\tTIMESTAMP\tEXECUTION_TIME")
-		_, _ = fmt.Fprintln(w, "---\t---\t---\t---\t---\t---")
-
-		for _, r := range results {
-			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%.6f\t%.0f\t%s\n",
-				r.ID, r.KPIName, r.ClusterName, r.MetricValue,
-				r.TimestampValue, r.ExecutionTime.Format("2006-01-02 15:04:05"))
-			_ = w.Flush()
-
-			// Print pretty JSON labels below the entry
-			fmt.Println("  Labels:")
-			printPrettyLabels(r.MetricLabels)
-			fmt.Println()
+		records[i] = output.KPIRecord{
+			ID:            r.ID,
+			KPIName:       r.KPIName,
+			Cluster:       r.ClusterName,
+			Value:         r.MetricValue,
+			Timestamp:     r.TimestampValue,
+			ExecutionTime: r.ExecutionTime,
+			Labels:        labels,
+			LabelsRaw:     r.MetricLabels,
 		}
-	} else {
-		// Default: display with truncated labels in table
-		_, _ = fmt.Fprintln(w, "ID\tKPI_NAME\tCLUSTER\tVALUE\tTIMESTAMP\tEXECUTION_TIME\tLABELS")
-		_, _ = fmt.Fprintln(w, "---\t---\t---\t---\t---\t---\t---")
-
-		for _, r := range results {
-			labels := r.MetricLabels
-			if len(labels) > 50 {
-				labels = labels[:47] + "..."
-			}
-			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%.6f\t%.0f\t%s\t%s\n",
-				r.ID, r.KPIName, r.ClusterName, r.MetricValue,
-				r.TimestampValue, r.ExecutionTime.Format("2006-01-02 15:04:05"), labels)
-		}
-		_ = w.Flush()
 	}
-
-	fmt.Printf("\nTotal results: %d\n", len(results))
-}
-
-// printPrettyLabels prints the labels JSON in a readable indented format
-func printPrettyLabels(labelsJSON string) {
-	var labels map[string]string
-	if err := json.Unmarshal([]byte(labelsJSON), &labels); err != nil {
-		// If parsing fails, just print the raw string
-		fmt.Printf("    %s\n", labelsJSON)
-		return
-	}
-
-	for key, value := range labels {
-		fmt.Printf("    %s: %s\n", key, value)
-	}
-}
-
-func displayClustersTable(clusters []ClusterInfo) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "ID\tCLUSTER_NAME\tCREATED_AT\tTOTAL_METRICS")
-	_, _ = fmt.Fprintln(w, "---\t---\t---\t---")
-
-	for _, c := range clusters {
-		_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
-			c.ID, c.Name, c.CreatedAt.Format("2006-01-02 15:04:05"),
-			humanize.Comma(c.TotalMetrics))
-	}
-	_ = w.Flush()
-}
-
-func displayErrorsTable(errors []ErrorInfo) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "KPI_ID\tERROR_COUNT")
-	_, _ = fmt.Fprintln(w, "---\t---")
-
-	for _, e := range errors {
-		_, _ = fmt.Fprintf(w, "%s\t%d\n", e.KPIID, e.ErrorCount)
-	}
-	_ = w.Flush()
+	return records
 }
 
 func convertPostgresToSQLitePlaceholders(query string) string {

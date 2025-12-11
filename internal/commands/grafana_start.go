@@ -254,7 +254,9 @@ func runGrafanaContainer(grafanaDir string) error {
 			if err != nil {
 				return fmt.Errorf("failed to create database file: %w", err)
 			}
-			file.Close()
+			if err := file.Close(); err != nil {
+				return fmt.Errorf("failed to close database file: %w", err)
+			}
 			fmt.Println("📝 Created empty database file (no data collected yet)")
 		}
 

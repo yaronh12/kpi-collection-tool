@@ -244,6 +244,20 @@ func runGrafanaContainer(grafanaDir string) error {
 	// For SQLite, mount the database file
 	if grafanaStartFlags.datasource == "sqlite" {
 		dbPath := database.GetSQLiteDBPath()
+
+		// Ensure database file exists (podman requires source to exist before mounting)
+		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+			if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+				return fmt.Errorf("failed to create database directory: %w", err)
+			}
+			file, err := os.Create(dbPath)
+			if err != nil {
+				return fmt.Errorf("failed to create database file: %w", err)
+			}
+			file.Close()
+			fmt.Println("📝 Created empty database file (no data collected yet)")
+		}
+
 		args = append(args,
 			"-v", fmt.Sprintf("%s:/var/lib/grafana/kpi_metrics.db:ro", dbPath),
 			"-e", "GF_INSTALL_PLUGINS=frser-sqlite-datasource",

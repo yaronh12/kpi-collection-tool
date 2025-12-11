@@ -77,7 +77,7 @@ func runGrafanaStart(cmd *cobra.Command, args []string) error {
 	}
 
 	// Run Docker directly
-	if err := runGrafanaDocker(grafanaDir); err != nil {
+	if err := runGrafanaContainer(grafanaDir); err != nil {
 		return fmt.Errorf("failed to start Grafana: %w", err)
 	}
 
@@ -214,9 +214,15 @@ datasources:
 }
 
 // runGrafanaDocker runs Grafana via Docker with all necessary volume mounts
-func runGrafanaDocker(grafanaDir string) error {
+func runGrafanaContainer(grafanaDir string) error {
+	runtime, err := getContainerRuntime()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Container Runtime found: %s\n", runtime)
+
 	// Stop and remove existing container if it exists
-	stopCmd := exec.Command("docker", "rm", "-f", grafanaContainerName)
+	stopCmd := exec.Command(runtime, "rm", "-f", grafanaContainerName)
 	_ = stopCmd.Run() // Ignore error if container doesn't exist
 
 	// Build docker run command
@@ -225,10 +231,10 @@ func runGrafanaDocker(grafanaDir string) error {
 		"--name", grafanaContainerName,
 		"-p", fmt.Sprintf("%d:3000", grafanaStartFlags.port),
 		// Mount datasource config
-		"-v", fmt.Sprintf("%s:/etc/grafana/provisioning/datasources:ro",
+		"-v", fmt.Sprintf("%s:/etc/grafana/provisioning/datasources:ro,z",
 			filepath.Join(grafanaDir, "datasources")),
 		// Mount dashboard provisioning config
-		"-v", fmt.Sprintf("%s:/etc/grafana/provisioning/dashboards:ro",
+		"-v", fmt.Sprintf("%s:/etc/grafana/provisioning/dashboards:ro,z",
 			filepath.Join(grafanaDir, "provisioning", "dashboards")),
 		// Mount dashboard JSON
 		"-v", fmt.Sprintf("%s:/var/lib/grafana/dashboards:ro",
@@ -247,11 +253,31 @@ func runGrafanaDocker(grafanaDir string) error {
 	// Add the image name
 	args = append(args, "grafana/grafana:latest")
 
-	dockerCmd := exec.Command("docker", args...)
-	output, err := dockerCmd.CombinedOutput()
+	containerRuntimeCmd := exec.Command(runtime, args...)
+	output, err := containerRuntimeCmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("docker run failed: %w\nOutput: %s", err, string(output))
+		return fmt.Errorf("%s run failed: %w\nOutput: %s", runtime, err, string(output))
 	}
 
 	return nil
+}
+
+func getContainerRuntime() (string, error) {
+	// Check podman first
+	if _, err := exec.LookPath("podman"); err == nil {
+		// Verify it actually works
+		if err := exec.Command("podman", "info").Run(); err == nil {
+			return "podman", nil
+		}
+	}
+
+	// Check docker
+	if _, err := exec.LookPath("docker"); err == nil {
+		// Verify daemon is running
+		if err := exec.Command("docker", "info").Run(); err == nil {
+			return "docker", nil
+		}
+	}
+
+	return "", fmt.Errorf("no working container runtime found (tried podman, docker)")
 }

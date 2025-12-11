@@ -20,16 +20,21 @@ func init() {
 }
 
 func runGrafanaStop(cmd *cobra.Command, args []string) error {
-	fmt.Printf("Stopping Grafana container (%s)...\n", grafanaContainerName)
+	runtime, err := getContainerRuntime()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Stopping Grafana container (%s) using %s...\n", grafanaContainerName, runtime)
 
 	// Stop the container
-	stopCmd := exec.Command("docker", "stop", grafanaContainerName)
+	stopCmd := exec.Command(runtime, "stop", grafanaContainerName)
 	if output, err := stopCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to stop Grafana: %w\nOutput: %s", err, string(output))
 	}
 
 	// Remove the container
-	rmCmd := exec.Command("docker", "rm", grafanaContainerName)
+	rmCmd := exec.Command(runtime, "rm", grafanaContainerName)
 	if output, err := rmCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to remove Grafana container: %w\nOutput: %s", err, string(output))
 	}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"kpi-collector/internal/config"
+	"kpi-collector/internal/output"
 	"kpi-collector/internal/prometheus"
 )
 
@@ -22,26 +23,27 @@ func Run(kpis config.KPIs, flags config.InputFlags) {
 	interruptChan := make(chan os.Signal, 1)
 	signal.Notify(interruptChan, os.Interrupt)
 
-	log.Printf("Running for %s, deadline time: %s",
-		flags.Duration.String(),
-		time.Now().Add(flags.Duration).Format(time.RFC3339))
+	output.PrintStartup(flags.Duration.String(), time.Now().Add(flags.Duration).Format(time.RFC3339))
 
 	// Start all KPI goroutines grouped by frequency
 	cancel, wg := startKPIGoroutines(kpis, flags)
 	defer cancel()
 
 	// Main goroutine only handles duration timer and interrupts
+	var shutdownReason string
 	select {
 	case <-durationTimer.C:
 		log.Printf("Duration timer expired")
-		shutdown(cancel, wg)
-		return
+		shutdownReason = "Duration completed"
 
 	case <-interruptChan:
 		log.Printf("Program interrupted")
-		shutdown(cancel, wg)
-		return
+		shutdownReason = "Interrupted by user"
 	}
+
+	// Wait for all goroutines to finish, then print shutdown message
+	shutdown(cancel, wg)
+	output.PrintShutdown(shutdownReason)
 }
 
 // groupKPIsByFrequency groups KPIs by their effective sampling frequency
@@ -98,36 +100,43 @@ func runKPIGroupLoop(ctx context.Context, kpis config.KPIs, frequency time.Durat
 	defer ticker.Stop()
 
 	sampleCount := 0
-	log.Printf("Starting goroutine for %d KPIs with frequency %ds", len(kpis.Queries), frequency)
-
+	totalSamples := calculateTotalSamples(frequency, flags.Duration)
+	log.Printf("Starting goroutine for %d KPIs with frequency %s (total samples: %d)", len(kpis.Queries), frequency, totalSamples)
 	// Run immediately on start
 	sampleCount++
-	runKPIs(kpis, flags, sampleCount, frequency)
+	runKPIs(kpis, flags, sampleCount, totalSamples, frequency)
 
 	for {
 		select {
 		case <-ticker.C:
 			sampleCount++
-			runKPIs(kpis, flags, sampleCount, frequency)
+			runKPIs(kpis, flags, sampleCount, totalSamples, frequency)
 
 		case <-ctx.Done():
-			log.Printf("KPI group (frequency %ds) stopped after %d samples", frequency, sampleCount)
+			log.Printf("KPI group (frequency %s) stopped after %d samples", frequency, sampleCount)
 			return
 		}
 	}
 }
 
 // runKPIs executes a group of KPIs and logs the results
-func runKPIs(kpis config.KPIs, flags config.InputFlags, sampleCount int, frequency time.Duration) {
+func runKPIs(kpis config.KPIs, flags config.InputFlags, sampleNumber int, totalSamples int, frequency time.Duration) {
 	if len(kpis.Queries) == 0 {
 		return
 	}
 
-	log.Printf("Running sample %d for %d KPIs with frequency %ds", sampleCount, len(kpis.Queries), frequency)
+	log.Printf("Running sample %d/%d for %d KPIs with frequency %s", sampleNumber, totalSamples, len(kpis.Queries), frequency)
 
-	if err := prometheus.RunQueries(kpis, flags); err != nil {
-		log.Printf("RunQueries failed for frequency %ds KPIs: %v", frequency, err)
-	} else {
-		log.Printf("Sample %d for frequency %ds KPIs completed successfully", sampleCount, frequency)
+	if err := prometheus.RunQueries(kpis, flags, sampleNumber, totalSamples, frequency); err != nil {
+		log.Printf("RunQueries failed for frequency %s KPIs: %v", frequency, err)
 	}
+}
+
+// calculateTotalSamples calculates how many samples will run for a given frequency and duration
+func calculateTotalSamples(frequency time.Duration, duration time.Duration) int {
+	// First sample runs immediately at t=0, then every frequency seconds
+	// For duration D and frequency F: samples at 0, F, 2F, ... up to < D
+	frequencySecs := int(frequency.Seconds())
+	durationSecs := int(duration.Seconds())
+	return (durationSecs / frequencySecs) + 1
 }

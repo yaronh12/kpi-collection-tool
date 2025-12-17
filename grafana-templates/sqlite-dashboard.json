@@ -40,12 +40,12 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
+            "drawStyle": "bars", 
+            "fillOpacity": 50, 
             "gradientMode": "none",
             "hideFrom": { "tooltip": false, "viz": false, "legend": false },
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
+            "lineInterpolation": "linear", 
+            "lineWidth": 1,
             "pointSize": 5,
             "scaleDistribution": { "type": "linear" },
             "showPoints": "never",
@@ -56,31 +56,114 @@
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }]
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "blue", "value": null, "label": "Min" },
+              { "color": "orange", "value": null, "label": "Avg" },
+              { "color": "red", "value": null, "label": "Max" }
+            ],
+            "showThresholdLabels": true,
+            "showThresholdMarkers": {
+              "mode": "off"
+            }
           },
           "unit": "short"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": { "id": "byType", "options": "number" },
+            "properties": [
+              { "id": "min", "value": 0 },
+              { "id": "max", "value": 1.2 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "metric_value" },
+            "properties": [
+              { "id": "min", "value": 0 },
+              { "id": "max", "value": 1.2 },
+              { "id": "custom.lineWidth", "value": 1 },
+              { "id": "custom.lineStyle", "value": { "fill": "solid" } },
+              { "id": "custom.hideFrom", "value": { "tooltip": false, "viz": false, "legend": false } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Max Value" },
+            "properties": [
+              { "id": "custom.drawStyle", "value": "line" }, 
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [6, 6] } },
+              { "id": "custom.lineWidth", "value": 3 },
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } },
+              { "id": "custom.hideFrom", "value": { "tooltip": true, "viz": false, "legend": true } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Min Value" },
+            "properties": [
+              { "id": "custom.drawStyle", "value": "line" },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [6, 6] } },
+              { "id": "custom.lineWidth", "value": 3 },
+              { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } },
+              { "id": "custom.hideFrom", "value": { "tooltip": true, "viz": false, "legend": true } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Average Value" },
+            "properties": [
+              { "id": "custom.drawStyle", "value": "line" },
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 5] } },
+              { "id": "custom.lineWidth", "value": 3 },
+              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } },
+              { "id": "custom.hideFrom", "value": { "tooltip": true, "viz": false, "legend": true } }
+            ]
+          }
+        ]
       },
       "options": {
-        "legend": { "calcs": ["last", "mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "legend": {
+          "calcs": ["last", "mean", "min", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
         {
           "queryType": "table",
-          "rawQueryText": "SELECT timestamp_value AS time, metric_value, metric_labels FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE kpi_id = '${kpi}' AND NOT '${kpi}' = '$__all' AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') AND ('${node}' = '$__all' OR json_extract(metric_labels, '$.node') = '${node}') AND ('${job}' = '$__all' OR json_extract(metric_labels, '$.job') = '${job}') AND ('${pod}' = '$__all' OR json_extract(metric_labels, '$.pod') = '${pod}') AND ('${container}' = '$__all' OR json_extract(metric_labels, '$.container') = '${container}') AND timestamp_value >= $__from / 1000 AND timestamp_value < $__to / 1000 ORDER BY time ASC",
+          "rawQueryText": "SELECT timestamp_value AS time, metric_value, metric_labels FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${kpi}' = '$__all' OR kpi_id = '${kpi}') AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') AND ('${node}' = '$__all' OR json_extract(metric_labels, '$.node') = '${node}') AND ('${job}' = '$__all' OR json_extract(metric_labels, '$.job') = '${job}') AND ('${pod}' = '$__all' OR json_extract(metric_labels, '$.pod') = '${pod}') AND ('${container}' = '$__all' OR json_extract(metric_labels, '$.container') = '${container}') AND timestamp_value >= $__from / 1000 AND timestamp_value < $__to / 1000 ORDER BY time ASC",
           "refId": "A",
-          "timeColumns": ["time", "ts"]
+          "timeColumns": ["time", "ts"],
+          "legendFormat": "Node: {{node}} | Pod: {{pod}} | Job: {{job}} | Container: {{container}} | ID: {{id}}"
+        },
+        {
+          "queryType": "table",
+          "rawQueryText": "SELECT 'Max Value' AS metric_labels, MAX(metric_value) AS metric_value, $__from/1000 AS time FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${kpi}' = '$__all' OR kpi_id = '${kpi}') AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') AND ('${node}' = '$__all' OR json_extract(metric_labels, '$.node') = '${node}') AND ('${job}' = '$__all' OR json_extract(metric_labels, '$.job') = '${job}') AND ('${pod}' = '$__all' OR json_extract(metric_labels, '$.pod') = '${pod}') AND ('${container}' = '$__all' OR json_extract(metric_labels, '$.container') = '${container}')",
+          "refId": "B",
+          "legendFormat": "Max Value",
+          "hide": true
+        },
+        {
+          "queryType": "table",
+          "rawQueryText": "SELECT 'Min Value' AS metric_labels, MIN(metric_value) AS metric_value, $__from/1000 AS time FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${kpi}' = '$__all' OR kpi_id = '${kpi}') AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') AND ('${node}' = '$__all' OR json_extract(metric_labels, '$.node') = '${node}') AND ('${job}' = '$__all' OR json_extract(metric_labels, '$.job') = '${job}') AND ('${pod}' = '$__all' OR json_extract(metric_labels, '$.pod') = '${pod}') AND ('${container}' = '$__all' OR json_extract(metric_labels, '$.container') = '${container}')",
+          "refId": "C",
+          "legendFormat": "Min Value",
+          "hide": true
+        },
+        {
+          "queryType": "table",
+          "rawQueryText": "SELECT 'Average Value' AS metric_labels, AVG(metric_value) AS metric_value, $__from/1000 AS time FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${kpi}' = '$__all' OR kpi_id = '${kpi}') AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') AND ('${node}' = '$__all' OR json_extract(metric_labels, '$.node') = '${node}') AND ('${job}' = '$__all' OR json_extract(metric_labels, '$.job') = '${job}') AND ('${pod}' = '$__all' OR json_extract(metric_labels, '$.pod') = '${pod}') AND ('${container}' = '$__all' OR json_extract(metric_labels, '$.container') = '${container}')",
+          "refId": "D",
+          "legendFormat": "Average Value",
+          "hide": true
         }
       ],
       "transformations": [
         { "id": "extractFields", "options": { "source": "metric_labels", "format": "json", "replace": false, "keepTime": true } },
-        { "id": "organize", "options": { "excludeByName": { "metric_labels": true }, "indexByName": {}, "renameByName": {} } },
+        { "id": "organize", "options": { "excludeByName": { "metric_labels": true, "undefined": true, "cpu": true, "device": true, "endpoint": true, "instance": true }, "indexByName": {}, "renameByName": {} } },
         { "id": "prepareTimeSeries", "options": { "format": "multi" } }
       ]
     },
-
     {
       "id": 2,
       "type": "stat",
@@ -95,12 +178,11 @@
       "targets": [
         {
           "queryType": "table",
-          "rawQueryText": "SELECT COUNT(*) as 'Samples', ROUND(AVG(metric_value), 6) as 'Average', ROUND(MIN(metric_value), 6) as 'Minimum', ROUND(MAX(metric_value), 6) as 'Maximum' FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE kpi_id = '${kpi}' AND NOT '${kpi}' = '$__all' AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') AND ('${node}' = '$__all' OR json_extract(metric_labels, '$.node') = '${node}') AND ('${job}' = '$__all' OR json_extract(metric_labels, '$.job') = '${job}') AND ('${pod}' = '$__all' OR json_extract(metric_labels, '$.pod') = '${pod}') AND ('${container}' = '$__all' OR json_extract(metric_labels, '$.container') = '${container}')",
+          "rawQueryText": "SELECT COUNT(*) as 'Samples', ROUND(AVG(metric_value), 6) as 'Average', ROUND(MIN(metric_value), 6) as 'Minimum', ROUND(MAX(metric_value), 6) as 'Maximum' FROM query_results qr JOIN clusters c ON qr.cluster_id = c.id WHERE ('${kpi}' = '$__all' OR kpi_id = '${kpi}') AND ('${cluster}' = '$__all' OR c.cluster_name = '${cluster}') AND ('${cluster_type}' = '$__all' OR c.cluster_type = '${cluster_type}') AND ('${node}' = '$__all' OR json_extract(metric_labels, '$.node') = '${node}') AND ('${job}' = '$__all' OR json_extract(metric_labels, '$.job') = '${job}') AND ('${pod}' = '$__all' OR json_extract(metric_labels, '$.pod') = '${pod}') AND ('${container}' = '$__all' OR json_extract(metric_labels, '$.container') = '${container}')",
           "refId": "A"
         }
       ]
     },
-
     {
       "id": 3,
       "type": "table",
@@ -121,7 +203,6 @@
       ],
       "transformations": [{ "id": "extractFields", "options": { "source": "metric_labels", "format": "json", "replace": true } }]
     },
-
     {
       "id": 5,
       "type": "barchart",
@@ -141,7 +222,6 @@
         }
       ]
     },
-
     {
       "id": 6,
       "type": "table",
@@ -161,7 +241,6 @@
         }
       ]
     },
-
     {
       "id": 7,
       "type": "table",
@@ -264,7 +343,7 @@
       }
     ]
   },
-  "time": { "from": "now-6h", "to": "now" },
+  "time": { "from": "now-7d", "to": "now" },
   "timepicker": {},
   "timezone": "",
   "title": "KPI Collection Tool - Dynamic Dashboard",

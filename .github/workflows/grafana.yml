@@ -25,6 +25,14 @@ jobs:
 
       - name: Start Grafana via kpi-collector
         run: | 
+          # Detect container runtime (same logic as the tool)
+          if command -v podman &> /dev/null && podman info &> /dev/null; then
+            RUNTIME="podman"
+          else
+            RUNTIME="docker"
+          fi
+          echo "Using container runtime: $RUNTIME"
+
           # Start Grafana with SQLite datasource
           ./kpi-collector grafana start --datasource=sqlite
 
@@ -32,18 +40,18 @@ jobs:
           sleep 20
 
           # Verify container is running
-          docker ps | grep grafana-kpi
+          $RUNTIME ps | grep grafana-kpi
 
           # Verify provisioning files exist
-          docker exec grafana-kpi ls -l /etc/grafana/provisioning/dashboards/dashboards.yaml
-          docker exec grafana-kpi ls -l /var/lib/grafana/dashboards/dashboard.json
-          docker exec grafana-kpi ls -l /etc/grafana/provisioning/datasources/
+          $RUNTIME exec grafana-kpi ls -l /etc/grafana/provisioning/dashboards/dashboards.yaml
+          $RUNTIME exec grafana-kpi ls -l /var/lib/grafana/dashboards/dashboard.json
+          $RUNTIME exec grafana-kpi ls -l /etc/grafana/provisioning/datasources/
 
           # Verify datasource is loaded in Grafana via API
-          docker exec grafana-kpi curl -s -u admin:admin http://localhost:3000/api/datasources | grep -E "(frser-sqlite-datasource|KPI-SQLite)" || echo "Datasource not found"
+          $RUNTIME exec grafana-kpi curl -s -u admin:admin http://localhost:3000/api/datasources | grep -E "(frser-sqlite-datasource|KPI-SQLite)" || echo "Datasource not found"
 
           # Verify dashboard is loaded in Grafana via API
-          docker exec grafana-kpi curl -s -u admin:admin \
+          $RUNTIME exec grafana-kpi curl -s -u admin:admin \
           "http://localhost:3000/api/search?query=KPI" | grep -E "(Certsuite KPI per Cluster|KPI Collection Tool)" || echo "Dashboard not found"
       - name: Clean up Grafana container
         run: ./kpi-collector grafana stop || true

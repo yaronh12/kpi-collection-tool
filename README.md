@@ -202,6 +202,10 @@ kpi-collector run \
 
 \*\* Required when `--db-type=postgres`
 
+## Dynamic CPU Placeholders
+
+Queries can use `{{RESERVED_CPUS}}` and `{{ISOLATED_CPUS}}` placeholders, which are automatically replaced with CPU IDs fetched from `PerformanceProfile` CRs in the cluster (e.g., `"0-1"` becomes `"0|1"`). This feature requires `--kubeconfig` authentication. See `kpis.json.template` for examples.
+
 ### Understanding Frequency and Duration
 
 The `--frequency` and `--duration` flags work together to control how metrics are collected:

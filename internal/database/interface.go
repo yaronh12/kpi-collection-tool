@@ -1,3 +1,7 @@
+// Package database provides a unified interface for storing and retrieving
+// KPI metrics. It supports multiple backends including SQLite for local
+// storage and PostgreSQL for production deployments, with consistent
+// behavior across implementations.
 package database
 
 import (

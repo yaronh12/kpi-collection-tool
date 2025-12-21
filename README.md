@@ -4,24 +4,34 @@ Tool to automate metrics gathering and visualization for KPIs in disconnected en
 
 ## Installation
 
-### Using Make (recommended)
+### Using `go install` (recommended)
+
+Install directly from GitHub without cloning:
 
 ```bash
-# Build and install globally
-make install
-
-# This installs kpi-collector to ~/go/bin/
-# Make sure ~/go/bin is in your PATH
+go install github.com/redhat-best-practices-for-k8s/kpi-collection-tool/cmd/kpi-collector@latest
 ```
 
-To add `~/go/bin` to your PATH, add this to your `~/.zshrc` (macOS) or `~/.bashrc` (Linux):
+Verify installation:
+
+```bash
+kpi-collector version
+```
+
+If not found, add `~/go/bin` to your PATH:
+
 ```bash
 export PATH="$HOME/go/bin:$PATH"
 ```
 
-Then reload your shell:
+### From Source
+
+Clone the repo and install locally:
+
 ```bash
-source ~/.zshrc  # or source ~/.bashrc on Linux
+git clone https://github.com/redhat-best-practices-for-k8s/kpi-collection-tool.git
+cd kpi-collection-tool
+make install
 ```
 
 ### Uninstall

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"kpi-collector/internal/database"
-	"kpi-collector/internal/output"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/database"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/output"
 
 	"github.com/spf13/cobra"
 )

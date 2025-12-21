@@ -5,10 +5,10 @@ import (
 	"log"
 	"time"
 
-	"kpi-collector/internal/collector"
-	"kpi-collector/internal/config"
-	"kpi-collector/internal/kubernetes"
-	"kpi-collector/internal/logger"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/collector"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/kubernetes"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/logger"
 
 	"github.com/spf13/cobra"
 )

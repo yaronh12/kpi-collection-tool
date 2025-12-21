@@ -5,3 +5,4 @@ collected-data/
 kpi.log
 grafana/datasource/datasource.yaml
 kpis.json
+minimal-performanceprofile.yaml

@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"kpi-collector/internal/config"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
 )
 
 // Helper function to create a Duration pointer

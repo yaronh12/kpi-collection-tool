@@ -4,9 +4,9 @@ Tool to automate metrics gathering and visualization for KPIs in disconnected en
 
 ## Installation
 
-### Using `go install` (recommended)
+### Without Cloning (recommended)
 
-Install directly from GitHub without cloning:
+Install directly from GitHub using `go install`:
 
 ```bash
 go install github.com/redhat-best-practices-for-k8s/kpi-collection-tool/cmd/kpi-collector@latest
@@ -34,7 +34,7 @@ cd kpi-collection-tool
 make install
 ```
 
-### Uninstall
+## Uninstall
 
 ```bash
 make uninstall

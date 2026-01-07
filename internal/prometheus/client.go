@@ -1,3 +1,7 @@
+// Package prometheus provides client functionality for querying Prometheus/Thanos
+// metrics endpoints. It handles HTTP client configuration with bearer token
+// authentication, TLS settings, and executes PromQL queries with results
+// stored via the database package.
 package prometheus
 
 import (
@@ -18,7 +22,9 @@ import (
 )
 
 const (
-	FIVE_SECONDS = 5 * time.Second
+	// queryTimeoutPerKPI is the maximum time allowed for each individual KPI query.
+	// The total context timeout is calculated as: numberOfQueries * queryTimeoutPerKPI
+	queryTimeoutPerKPI = 5 * time.Second
 )
 
 // setupPromClient creates and configures a Prometheus API client
@@ -67,8 +73,9 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags, sampleNumber int
 		return fmt.Errorf("failed to create client: %v", err)
 	}
 
-	// Execute queries
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(len(kpisToRun.Queries))*FIVE_SECONDS)
+	// Execute queries with a timeout proportional to the number of queries
+	totalTimeout := time.Duration(len(kpisToRun.Queries)) * queryTimeoutPerKPI
+	ctx, cancel := context.WithTimeout(context.Background(), totalTimeout)
 	defer cancel()
 
 	for _, query := range kpisToRun.Queries {

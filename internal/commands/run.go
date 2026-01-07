@@ -90,20 +90,7 @@ func init() {
 func runCollect(cmd *cobra.Command, args []string) error {
 	fmt.Println("KPI Collector starting...")
 
-<<<<<<< HEAD
-	validTypes := map[string]bool{"ran": true, "core": true, "hub": true}
-
-	if flags.ClusterType == "" {
-		return fmt.Errorf("--cluster-type is required. Supported values: ran, core, hub")
-	}
-
-	if !validTypes[flags.ClusterType] {
-		return fmt.Errorf("invalid --cluster-type '%s'. Supported values: ran, core, hub", flags.ClusterType)
-	}
-
-=======
 	// Validate all flags (including cluster type)
->>>>>>> upstream/main
 	if err := config.ValidateFlags(flags); err != nil {
 		return fmt.Errorf("invalid flags: %w", err)
 	}

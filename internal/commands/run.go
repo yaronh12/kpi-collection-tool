@@ -90,17 +90,7 @@ func init() {
 func runCollect(cmd *cobra.Command, args []string) error {
 	fmt.Println("KPI Collector starting...")
 
-	validTypes := map[string]bool{"ran": true, "core": true, "hub": true}
-
-	if flags.ClusterType == "" {
-		return fmt.Errorf("--cluster-type is required. Supported values: ran, core, hub")
-	}
-
-	if !validTypes[flags.ClusterType] {
-		return fmt.Errorf("invalid --cluster-type '%s'. Supported values: ran, core, hub", flags.ClusterType)
-	}
-
-	// Reuse existing validation logic!
+	// Validate all flags (including cluster type)
 	if err := config.ValidateFlags(flags); err != nil {
 		return fmt.Errorf("invalid flags: %w", err)
 	}
@@ -154,14 +144,14 @@ func warnFrequencyExceedsDuration(kpis config.KPIs, flags config.InputFlags) {
 		effectiveFreq := kpi.GetEffectiveFrequency(flags.SamplingFreq)
 
 		if effectiveFreq > flags.Duration {
-			fmt.Printf("WARNING: KPI '%s' has frequency %ds which exceeds duration %s. Only 1 sample will be collected.\n",
+			fmt.Printf("WARNING: KPI '%s' has frequency %s which exceeds duration %s. Only 1 sample will be collected.\n",
 				kpi.ID, effectiveFreq, flags.Duration)
 		}
 	}
 
 	// Also warn about the default frequency if no custom frequencies are set
 	if flags.SamplingFreq > flags.Duration {
-		fmt.Printf("WARNING: Default sampling frequency %ds exceeds duration %s. KPIs without custom frequency will only collect 1 sample.\n",
+		fmt.Printf("WARNING: Default sampling frequency %s exceeds duration %s. KPIs without custom frequency will only collect 1 sample.\n",
 			flags.SamplingFreq, flags.Duration)
 	}
 }

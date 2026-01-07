@@ -1,3 +1,6 @@
+// Package config provides configuration types, validation, and loading
+// for the KPI collector. It defines input flags, KPI query structures,
+// and validation logic for command-line arguments.
 package config
 
 import (

@@ -1,3 +1,7 @@
+// Package collector orchestrates KPI metric collection from Prometheus/Thanos.
+// It manages concurrent collection of KPIs grouped by sampling frequency,
+// handles graceful shutdown, and coordinates with the prometheus package
+// for query execution and storage.
 package collector
 
 import (

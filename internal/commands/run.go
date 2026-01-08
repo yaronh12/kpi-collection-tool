@@ -116,6 +116,16 @@ func runCollect(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load KPI queries: %w", err)
 	}
 
+	// Validate KPI configurations (syntax, duplicates, etc.)
+	if validationErrors := config.ValidateKPIs(kpis); len(validationErrors) > 0 {
+		fmt.Println("KPI validation errors:")
+		for _, e := range validationErrors {
+			fmt.Printf("  ✗ %v\n", e)
+		}
+		return fmt.Errorf("found %d KPI validation error(s)", len(validationErrors))
+	}
+	fmt.Printf("✓ Validated %d KPI(s)\n", len(kpis.Queries))
+
 	// Warn if any KPI frequency exceeds the duration
 	warnFrequencyExceedsDuration(kpis, flags)
 

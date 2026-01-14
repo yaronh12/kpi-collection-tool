@@ -4,6 +4,12 @@
 //   - id:               Unique identifier (used in database and output)
 //   - promquery:        PromQL query to execute against Prometheus/Thanos
 //   - sample-frequency: (Optional) Override global --frequency for this KPI (in seconds)
+//
+// Dynamic CPU Placeholders:
+//   You can use {{RESERVED_CPUS}} and {{ISOLATED_CPUS}} placeholders in queries.
+//   These are automatically replaced with CPU IDs from PerformanceProfile CRs.
+//   Example: "0-1,32-33" becomes "0|1|32|33" in Prometheus regex format.
+//   NOTE: Using these placeholders requires --kubeconfig authentication.
 
 {
     "kpis": [
@@ -17,7 +23,13 @@
             "id": "node-memory-usage",
             "promquery": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
             "sample-frequency": 120
-        }
+        },
+        {
+            // CPU usage on reserved cores (dynamically fetched from PerformanceProfile)
+            // Requires --kubeconfig authentication
+            "id": "cpu-reserved-set",
+            "promquery": "rate(node_cpu_seconds_total{cpu=~\"{{RESERVED_CPUS}}\"}[30m])"
+        },
     ]
 }
 

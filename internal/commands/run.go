@@ -116,6 +116,11 @@ func runCollect(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load KPI queries: %w", err)
 	}
 
+	kpis, err = substituteCPUsIfNeeded(kpis, flags)
+	if err != nil {
+		return err
+	}
+
 	// Warn if any KPI frequency exceeds the duration
 	warnFrequencyExceedsDuration(kpis, flags)
 
@@ -135,6 +140,32 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	fmt.Println("All queries completed successfully!")
 
 	return nil
+}
+
+// substituteCPUsIfNeeded checks if queries contain CPU placeholders and if so,
+// fetches CPU IDs from PerformanceProfiles and substitutes them into queries
+func substituteCPUsIfNeeded(kpis config.KPIs, flags config.InputFlags) (config.KPIs, error) {
+	if !config.RequiresCPUSubstitution(kpis) {
+		return kpis, nil
+	}
+
+	if flags.Kubeconfig == "" {
+		return kpis, fmt.Errorf("queries contain CPU placeholders ({{RESERVED_CPUS}}/{{ISOLATED_CPUS}}) but no --kubeconfig provided")
+	}
+
+	reservedCPUs, isolatedCPUs, err := kubernetes.FetchCPUsFromPerformanceProfiles(flags.Kubeconfig)
+	if err != nil {
+		return kpis, fmt.Errorf("failed to fetch CPUs from PerformanceProfiles: %w", err)
+	}
+
+	fmt.Printf("Loaded CPU sets - Reserved: [%s], Isolated: [%s]\n", reservedCPUs, isolatedCPUs)
+
+	cpuPlaceholders := &config.CPUPlaceholders{
+		Reserved: reservedCPUs,
+		Isolated: isolatedCPUs,
+	}
+
+	return config.SubstituteCPUPlaceholders(kpis, cpuPlaceholders), nil
 }
 
 // warnFrequencyExceedsDuration prints a warning if any KPI's sampling frequency

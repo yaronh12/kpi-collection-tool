@@ -1,4 +1,4 @@
-module kpi-collector
+module github.com/redhat-best-practices-for-k8s/kpi-collection-tool
 
 go 1.25.5
 

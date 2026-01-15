@@ -192,4 +192,163 @@ var _ = Describe("KPIs Loader", func() {
 			})
 		})
 	})
+
+	Describe("ValidateKPIs", func() {
+		Context("when all KPIs are valid", func() {
+			It("should return no errors for valid PromQL queries", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{ID: "cpu-usage", PromQuery: "avg(rate(node_cpu_seconds_total[5m]))"},
+						{ID: "memory-usage", PromQuery: "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes"},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+
+				Expect(errors).To(BeEmpty())
+			})
+
+			It("should return no errors for empty KPIs list", func() {
+				kpis := KPIs{Queries: []Query{}}
+
+				errors := ValidateKPIs(kpis)
+
+				Expect(errors).To(BeEmpty())
+			})
+		})
+
+		Context("when KPIs have invalid PromQL syntax", func() {
+			It("should return an error for invalid PromQL", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{ID: "broken-query", PromQuery: "rate(metric[5m]"},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+
+				Expect(errors).To(HaveLen(1))
+				Expect(errors[0].Error()).To(ContainSubstring("broken-query"))
+				Expect(errors[0].Error()).To(ContainSubstring("invalid PromQL syntax"))
+			})
+
+			It("should return multiple errors for multiple invalid queries", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{ID: "broken-1", PromQuery: "rate(metric[5m]"},
+						{ID: "valid", PromQuery: "up"},
+						{ID: "broken-2", PromQuery: "sum("},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+
+				Expect(errors).To(HaveLen(2))
+			})
+		})
+
+		Context("when KPIs have duplicate IDs", func() {
+			It("should return an error for duplicate IDs", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{ID: "cpu-usage", PromQuery: "up"},
+						{ID: "cpu-usage", PromQuery: "down"},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+
+				Expect(errors).To(HaveLen(1))
+				Expect(errors[0].Error()).To(ContainSubstring("duplicate KPI ID"))
+				Expect(errors[0].Error()).To(ContainSubstring("cpu-usage"))
+			})
+
+			It("should detect multiple duplicates", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{ID: "kpi-a", PromQuery: "up"},
+						{ID: "kpi-b", PromQuery: "up"},
+						{ID: "kpi-a", PromQuery: "up"},
+						{ID: "kpi-b", PromQuery: "up"},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+
+				Expect(errors).To(HaveLen(2))
+			})
+		})
+
+		Context("when KPIs have empty fields", func() {
+			It("should return an error for empty KPI ID", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{ID: "", PromQuery: "up"},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+
+				Expect(errors).To(HaveLen(1))
+				Expect(errors[0].Error()).To(ContainSubstring("empty ID"))
+			})
+
+			It("should return an error for whitespace-only KPI ID", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{ID: "   ", PromQuery: "up"},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+
+				Expect(errors).To(HaveLen(1))
+				Expect(errors[0].Error()).To(ContainSubstring("empty ID"))
+			})
+
+			It("should return an error for empty PromQL query", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{ID: "empty-query", PromQuery: ""},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+
+				Expect(errors).To(HaveLen(1))
+				Expect(errors[0].Error()).To(ContainSubstring("empty-query"))
+				Expect(errors[0].Error()).To(ContainSubstring("empty PromQL query"))
+			})
+
+			It("should return an error for whitespace-only PromQL query", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{ID: "whitespace-query", PromQuery: "   "},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+
+				Expect(errors).To(HaveLen(1))
+				Expect(errors[0].Error()).To(ContainSubstring("empty PromQL query"))
+			})
+		})
+
+		Context("when KPIs have multiple validation issues", func() {
+			It("should return all errors", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{ID: "valid", PromQuery: "up"},
+						{ID: "broken", PromQuery: "rate(metric[5m]"},
+						{ID: "valid", PromQuery: "up"},
+						{ID: "empty-query", PromQuery: ""},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+
+				Expect(errors).To(HaveLen(3))
+			})
+		})
+	})
 })

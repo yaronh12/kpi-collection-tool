@@ -16,7 +16,7 @@ go install github.com/redhat-best-practices-for-k8s/kpi-collection-tool/cmd/kpi-
 Verify installation:
 
 ```bash
-kpi-collector version
+kpi-collector --help
 ```
 
 If not found, add `~/go/bin` to your PATH:
@@ -48,7 +48,6 @@ The tool uses subcommands for different operations. Get help anytime with:
 ```bash
 kpi-collector --help
 kpi-collector run --help
-kpi-collector version
 ```
 
 ## Collecting KPI Metrics
@@ -106,37 +105,34 @@ kpi-collector run \
 
 Provide Thanos URL and bearer token directly.
 
+##### Obtaining Thanos URL and Bearer Token from OpenShift
+
+To manually obtain the Thanos URL and bearer token from an OpenShift cluster, export them as environment variables:
+
+```bash
+# Get the Thanos querier URL from the route in your monitoring namespace
+export THANOS_URL=$(oc get route <thanos-route-name> -n <monitoring-namespace> -o jsonpath='{.spec.host}')
+
+# Create a bearer token using a service account with access to Thanos
+export TOKEN=$(oc create token <service-account-name> -n <monitoring-namespace> --duration=<duration>)
+```
+
+The specific route name, namespace, and service account depend on your cluster's monitoring configuration. Common values include:
+- Namespace: `openshift-monitoring`
+- Thanos route: `thanos-querier`
+- Service account: A service account with permissions to query metrics
+
+You can then use these values with the `--token` and `--thanos-url` flags.
+
 **Basic usage (uses SQLite by default):**
 ```bash
 kpi-collector run \
   --cluster-name my-cluster \
-  --token YOUR_BEARER_TOKEN \
-  --thanos-url thanos-querier.example.com \
+  --token $TOKEN \
+  --thanos-url $THANOS_URL \
   --kpis-file kpis.json
 ```
 
-**With custom sampling parameters:**
-```bash
-kpi-collector run \
-  --cluster-name my-cluster \
-  --token YOUR_BEARER_TOKEN \
-  --thanos-url thanos-querier.example.com \
-  --kpis-file kpis.json \
-  --frequency 120 \
-  --duration 30m \
-  --output results.json
-```
-
-**Using PostgreSQL:**
-```bash
-kpi-collector run \
-  --cluster-name my-cluster \
-  --token YOUR_BEARER_TOKEN \
-  --thanos-url thanos-querier.example.com \
-  --kpis-file kpis.json \
-  --db-type postgres \
-  --postgres-url "postgresql://myuser:mypass@localhost:5432/kpi_metrics?sslmode=disable"
-```
 ## --insecure-tls
 
 Use this flag when running the tool against clusters or Prometheus/Thanos servers with self-signed or untrusted certificates.
@@ -174,21 +170,6 @@ kpi-collector run \
   --insecure-tls
 ```
 
-**Production setup with PostgreSQL:**
-```bash
-kpi-collector run \
-  --cluster-name prod-cluster \
-  --token YOUR_BEARER_TOKEN \
-  --thanos-url thanos-querier.prod.example.com \
-  --kpis-file kpis.json \
-  --db-type postgres \
-  --postgres-url "postgresql://kpi_user:secure_password@postgres.example.com:5432/kpi_metrics?sslmode=require" \
-  --frequency 30 \
-  --duration 24h \
-  --output prod-metrics.json \
-  --log prod-kpi.log
-```
-
 ## Command Line Flags
 
 ### Collect Command Flags
@@ -217,7 +198,7 @@ kpi-collector run \
 
 Queries can use `{{RESERVED_CPUS}}` and `{{ISOLATED_CPUS}}` placeholders, which are automatically replaced with CPU IDs fetched from `PerformanceProfile` CRs in the cluster (e.g., `"0-1"` becomes `"0|1"`). This feature requires `--kubeconfig` authentication. See `kpis.json.template` for examples.
 
-### Understanding Frequency and Duration
+## Understanding Frequency and Duration
 
 The `--frequency` and `--duration` flags work together to control how metrics are collected:
 

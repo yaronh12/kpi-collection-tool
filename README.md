@@ -5,7 +5,6 @@ Tool to automate metrics gathering and visualization for KPIs in disconnected en
 ## Installation
 
 ### Without Cloning (recommended)
-> ⚠️ **This method is currently unavailable while the repository is private.**
 
 Install directly from GitHub using `go install`:
 

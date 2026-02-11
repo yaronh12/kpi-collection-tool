@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"kpi-collector/internal/database"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/database"
 
 	"github.com/spf13/cobra"
 )

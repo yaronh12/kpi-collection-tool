@@ -10,11 +10,13 @@ func ValidateFlags(flags InputFlags) error {
 		return fmt.Errorf("cluster name is required: use --cluster-name flag")
 	}
 
-	if flags.ClusterType != "" {
-		validTypes := map[string]bool{"ran": true, "core": true, "hub": true}
-		if !validTypes[flags.ClusterType] {
-			return fmt.Errorf("invalid cluster-type: must be 'ran', 'core', or 'hub'")
-		}
+	// Validate cluster type is provided and valid
+	validClusterTypes := map[string]bool{"ran": true, "core": true, "hub": true}
+	if flags.ClusterType == "" {
+		return fmt.Errorf("cluster-type is required: must be 'ran', 'core', or 'hub'")
+	}
+	if !validClusterTypes[flags.ClusterType] {
+		return fmt.Errorf("invalid cluster-type '%s': must be 'ran', 'core', or 'hub'", flags.ClusterType)
 	}
 
 	if flags.InsecureTLS {

@@ -9,6 +9,7 @@ import (
 
 const (
 	validClusterName  = "test-cluster"
+	validClusterType  = "ran"
 	validBearerToken  = "test-token"
 	validThanosURL    = "https://thanos.example.com"
 	validKubeconfig   = "/path/to/kubeconfig"
@@ -19,15 +20,17 @@ const (
 	validDatabaseType = "sqlite"
 	validKPIsFile     = "/path/to/kpis.json"
 
-	errClusterNameRequiredMsg = "cluster name is required: use --cluster-name flag"
-	errInvalidFlagComboMsg    = "invalid flag combination: either provide --token and --thanos-url, or provide --kubeconfig"
-	errSamplingFreqMsg        = "sampling frequency must be greater than 0"
-	errDurationMsg            = "duration must be greater than 0"
-	errOutputFileMsg          = "output file must be specified"
-	errLogFileMsg             = "log file must be specified"
-	errInvalidDBTypeMsg       = "invalid db-type: must be 'sqlite' or 'postgres'"
-	errPostgresURLRequiredMsg = "postgres-url is required when db-type=postgres"
-	errKPIsFileMsg            = "kpis-file must be specified"
+	errClusterNameRequiredMsg    = "cluster name is required: use --cluster-name flag"
+	errClusterTypeRequiredMsg    = "cluster-type is required: must be 'ran', 'core', or 'hub'"
+	errInvalidClusterTypeMsg     = "invalid cluster-type 'invalid': must be 'ran', 'core', or 'hub'"
+	errInvalidFlagComboMsg       = "invalid flag combination: either provide --token and --thanos-url, or provide --kubeconfig"
+	errSamplingFreqMsg           = "sampling frequency must be greater than 0"
+	errDurationMsg               = "duration must be greater than 0"
+	errOutputFileMsg             = "output file must be specified"
+	errLogFileMsg                = "log file must be specified"
+	errInvalidDBTypeMsg          = "invalid db-type: must be 'sqlite' or 'postgres'"
+	errPostgresURLRequiredMsg    = "postgres-url is required when db-type=postgres"
+	errKPIsFileMsg               = "kpis-file must be specified"
 )
 
 var _ = Describe("validateFlags test", func() {
@@ -48,6 +51,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("valid token and thanos-url",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				BearerToken:  validBearerToken,
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
@@ -62,6 +66,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("valid kubeconfig",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				Kubeconfig:   validKubeconfig,
 				SamplingFreq: validSamplingFreq,
 				Duration:     validDuration,
@@ -75,15 +80,47 @@ var _ = Describe("validateFlags test", func() {
 		// Error cases - missing cluster name
 		Entry("missing cluster name",
 			InputFlags{
+				ClusterType: validClusterType,
 				BearerToken: validBearerToken,
 				ThanosURL:   validThanosURL,
 			},
 			errClusterNameRequiredMsg,
 		),
+		// Error cases - missing or invalid cluster type
+		Entry("missing cluster type",
+			InputFlags{
+				ClusterName:  validClusterName,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SamplingFreq: validSamplingFreq,
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
+				DatabaseType: validDatabaseType,
+				KPIsFile:     validKPIsFile,
+			},
+			errClusterTypeRequiredMsg,
+		),
+		Entry("invalid cluster type",
+			InputFlags{
+				ClusterName:  validClusterName,
+				ClusterType:  "invalid",
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SamplingFreq: validSamplingFreq,
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
+				DatabaseType: validDatabaseType,
+				KPIsFile:     validKPIsFile,
+			},
+			errInvalidClusterTypeMsg,
+		),
 		// Error cases - invalid flag combinations
 		Entry("only token provided",
 			InputFlags{
 				ClusterName: validClusterName,
+				ClusterType: validClusterType,
 				BearerToken: validBearerToken,
 			},
 			errInvalidFlagComboMsg,
@@ -91,6 +128,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("only thanos-url provided",
 			InputFlags{
 				ClusterName: validClusterName,
+				ClusterType: validClusterType,
 				ThanosURL:   validThanosURL,
 			},
 			errInvalidFlagComboMsg,
@@ -98,6 +136,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("all three auth methods provided",
 			InputFlags{
 				ClusterName: validClusterName,
+				ClusterType: validClusterType,
 				BearerToken: validBearerToken,
 				ThanosURL:   validThanosURL,
 				Kubeconfig:  validKubeconfig,
@@ -107,12 +146,14 @@ var _ = Describe("validateFlags test", func() {
 		Entry("no authentication method",
 			InputFlags{
 				ClusterName: validClusterName,
+				ClusterType: validClusterType,
 			},
 			errInvalidFlagComboMsg,
 		),
 		Entry("token and kubeconfig without thanos-url",
 			InputFlags{
 				ClusterName: validClusterName,
+				ClusterType: validClusterType,
 				BearerToken: validBearerToken,
 				Kubeconfig:  validKubeconfig,
 			},
@@ -121,6 +162,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("thanos-url and kubeconfig without token",
 			InputFlags{
 				ClusterName: validClusterName,
+				ClusterType: validClusterType,
 				ThanosURL:   validThanosURL,
 				Kubeconfig:  validKubeconfig,
 			},
@@ -130,6 +172,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("zero sampling frequency",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				BearerToken:  validBearerToken,
 				ThanosURL:    validThanosURL,
 				SamplingFreq: 0,
@@ -144,6 +187,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("negative sampling frequency",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				BearerToken:  validBearerToken,
 				ThanosURL:    validThanosURL,
 				SamplingFreq: -10,
@@ -159,6 +203,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("zero duration",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				BearerToken:  validBearerToken,
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
@@ -173,6 +218,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("negative duration",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				BearerToken:  validBearerToken,
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
@@ -188,6 +234,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("empty output file",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				BearerToken:  validBearerToken,
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
@@ -203,6 +250,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("empty log file",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				BearerToken:  validBearerToken,
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
@@ -218,6 +266,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("invalid database type",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				BearerToken:  validBearerToken,
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
@@ -232,6 +281,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("empty database type",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				BearerToken:  validBearerToken,
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
@@ -247,6 +297,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("postgres database type without postgres-url",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				BearerToken:  validBearerToken,
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
@@ -263,6 +314,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("valid postgres with postgres-url",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				BearerToken:  validBearerToken,
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
@@ -279,6 +331,7 @@ var _ = Describe("validateFlags test", func() {
 		Entry("empty kpis-file",
 			InputFlags{
 				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
 				BearerToken:  validBearerToken,
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,

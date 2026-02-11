@@ -1,3 +1,7 @@
+// Package collector orchestrates KPI metric collection from Prometheus/Thanos.
+// It manages concurrent collection of KPIs grouped by sampling frequency,
+// handles graceful shutdown, and coordinates with the prometheus package
+// for query execution and storage.
 package collector
 
 import (
@@ -8,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"kpi-collector/internal/config"
-	"kpi-collector/internal/output"
-	"kpi-collector/internal/prometheus"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/output"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/prometheus"
 )
 
 const HUNDRED_MILLIS_DURATION_BUFFER = 100 * time.Millisecond

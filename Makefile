@@ -2,6 +2,8 @@
 UNAME_S := $(shell uname -s)
 # Binary name
 BINARY_NAME=kpi-collector
+# Module path for go install
+MODULE_PATH=github.com/redhat-best-practices-for-k8s/kpi-collection-tool
 
 build:
 	go build -o $(BINARY_NAME) ./cmd/kpi-collector
@@ -12,7 +14,7 @@ install-golangci-lint-mac:
 
 # Linux/CI installation via go install
 install-golangci-lint-linux:
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.7.2
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
 
 # Platform-agnostic golangci-lint installation
 install-golangci-lint:
@@ -39,3 +41,7 @@ install:
 uninstall:
 	rm -f $(HOME)/go/bin/$(BINARY_NAME)
 	echo "✓ Uninstalled"
+
+# Install kpi-collector from upstream (no local source needed)
+install-kpi-collector:
+	go install $(MODULE_PATH)/cmd/kpi-collector@latest

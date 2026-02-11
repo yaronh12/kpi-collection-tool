@@ -1,3 +1,7 @@
+// Package kubernetes provides integration with Kubernetes/OpenShift clusters.
+// It handles kubeconfig-based authentication, automatic discovery of Thanos
+// querier routes, and creation of service account tokens for Prometheus API
+// access in OpenShift monitoring namespaces.
 package kubernetes
 
 import (

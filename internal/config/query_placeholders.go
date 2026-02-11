@@ -1,0 +1,48 @@
+package config
+
+import (
+	"strings"
+)
+
+// CPUPlaceholders holds CPU IDs in Prometheus regex format for query substitution
+type CPUPlaceholders struct {
+	Reserved string // e.g., "0|1|32|33"
+	Isolated string // e.g., "2|3|34|35"
+}
+
+// RequiresCPUSubstitution checks if any KPI query contains CPU placeholders
+func RequiresCPUSubstitution(kpis KPIs) bool {
+	for _, kpi := range kpis.Queries {
+		if strings.Contains(kpi.PromQuery, "{{RESERVED_CPUS}}") ||
+			strings.Contains(kpi.PromQuery, "{{ISOLATED_CPUS}}") {
+			return true
+		}
+	}
+	return false
+}
+
+// SubstituteCPUPlaceholders replaces CPU placeholders in all KPI queries
+func SubstituteCPUPlaceholders(kpis KPIs, cpus *CPUPlaceholders) KPIs {
+	if cpus == nil {
+		return kpis
+	}
+
+	substituted := KPIs{
+		Queries: make([]Query, len(kpis.Queries)),
+	}
+
+	for i, kpi := range kpis.Queries {
+		query := kpi.PromQuery
+		query = strings.ReplaceAll(query, "{{RESERVED_CPUS}}", cpus.Reserved)
+		query = strings.ReplaceAll(query, "{{ISOLATED_CPUS}}", cpus.Isolated)
+
+		substituted.Queries[i] = Query{
+			ID:              kpi.ID,
+			PromQuery:       query,
+			SampleFrequency: kpi.SampleFrequency,
+		}
+	}
+
+	return substituted
+}
+

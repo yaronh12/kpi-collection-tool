@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	grafana_templates "kpi-collector/grafana-templates"
-	"kpi-collector/internal/database"
+	grafana_templates "github.com/redhat-best-practices-for-k8s/kpi-collection-tool/grafana-templates"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/database"
 
 	"github.com/spf13/cobra"
 )

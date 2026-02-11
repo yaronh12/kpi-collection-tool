@@ -11,8 +11,8 @@ import (
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 
-	"kpi-collector/internal/database"
-	"kpi-collector/internal/output"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/database"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/output"
 )
 
 // mockPromAPI is a simple mock that implements only the Query method we actually use.

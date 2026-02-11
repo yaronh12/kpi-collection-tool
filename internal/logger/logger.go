@@ -1,3 +1,6 @@
+// Package logger provides file-based logging initialization for the KPI collector.
+// It configures the standard log package to write to a specified file with
+// timestamps and source file information.
 package logger
 
 import (

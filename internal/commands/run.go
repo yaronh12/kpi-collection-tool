@@ -5,10 +5,10 @@ import (
 	"log"
 	"time"
 
-	"kpi-collector/internal/collector"
-	"kpi-collector/internal/config"
-	"kpi-collector/internal/kubernetes"
-	"kpi-collector/internal/logger"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/collector"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/kubernetes"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/logger"
 
 	"github.com/spf13/cobra"
 )
@@ -90,17 +90,7 @@ func init() {
 func runCollect(cmd *cobra.Command, args []string) error {
 	fmt.Println("KPI Collector starting...")
 
-	validTypes := map[string]bool{"ran": true, "core": true, "hub": true}
-
-	if flags.ClusterType == "" {
-		return fmt.Errorf("--cluster-type is required. Supported values: ran, core, hub")
-	}
-
-	if !validTypes[flags.ClusterType] {
-		return fmt.Errorf("invalid --cluster-type '%s'. Supported values: ran, core, hub", flags.ClusterType)
-	}
-
-	// Reuse existing validation logic!
+	// Validate all flags (including cluster type)
 	if err := config.ValidateFlags(flags); err != nil {
 		return fmt.Errorf("invalid flags: %w", err)
 	}
@@ -126,6 +116,21 @@ func runCollect(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load KPI queries: %w", err)
 	}
 
+	// Validate KPI configurations (syntax, duplicates, etc.)
+	if validationErrors := config.ValidateKPIs(kpis); len(validationErrors) > 0 {
+		fmt.Println("KPI validation errors:")
+		for _, e := range validationErrors {
+			fmt.Printf("  ✗ %v\n", e)
+		}
+		return fmt.Errorf("found %d KPI validation error(s)", len(validationErrors))
+	}
+	fmt.Printf("✓ Validated %d KPI(s)\n", len(kpis.Queries))
+
+	kpis, err = substituteCPUsIfNeeded(kpis, flags)
+	if err != nil {
+		return err
+	}
+
 	// Warn if any KPI frequency exceeds the duration
 	warnFrequencyExceedsDuration(kpis, flags)
 
@@ -147,6 +152,32 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// substituteCPUsIfNeeded checks if queries contain CPU placeholders and if so,
+// fetches CPU IDs from PerformanceProfiles and substitutes them into queries
+func substituteCPUsIfNeeded(kpis config.KPIs, flags config.InputFlags) (config.KPIs, error) {
+	if !config.RequiresCPUSubstitution(kpis) {
+		return kpis, nil
+	}
+
+	if flags.Kubeconfig == "" {
+		return kpis, fmt.Errorf("queries contain CPU placeholders ({{RESERVED_CPUS}}/{{ISOLATED_CPUS}}) but no --kubeconfig provided")
+	}
+
+	reservedCPUs, isolatedCPUs, err := kubernetes.FetchCPUsFromPerformanceProfiles(flags.Kubeconfig)
+	if err != nil {
+		return kpis, fmt.Errorf("failed to fetch CPUs from PerformanceProfiles: %w", err)
+	}
+
+	fmt.Printf("Loaded CPU sets - Reserved: [%s], Isolated: [%s]\n", reservedCPUs, isolatedCPUs)
+
+	cpuPlaceholders := &config.CPUPlaceholders{
+		Reserved: reservedCPUs,
+		Isolated: isolatedCPUs,
+	}
+
+	return config.SubstituteCPUPlaceholders(kpis, cpuPlaceholders), nil
+}
+
 // warnFrequencyExceedsDuration prints a warning if any KPI's sampling frequency
 // is longer than the total duration, meaning only one sample will be collected
 func warnFrequencyExceedsDuration(kpis config.KPIs, flags config.InputFlags) {
@@ -154,14 +185,14 @@ func warnFrequencyExceedsDuration(kpis config.KPIs, flags config.InputFlags) {
 		effectiveFreq := kpi.GetEffectiveFrequency(flags.SamplingFreq)
 
 		if effectiveFreq > flags.Duration {
-			fmt.Printf("WARNING: KPI '%s' has frequency %ds which exceeds duration %s. Only 1 sample will be collected.\n",
+			fmt.Printf("WARNING: KPI '%s' has frequency %s which exceeds duration %s. Only 1 sample will be collected.\n",
 				kpi.ID, effectiveFreq, flags.Duration)
 		}
 	}
 
 	// Also warn about the default frequency if no custom frequencies are set
 	if flags.SamplingFreq > flags.Duration {
-		fmt.Printf("WARNING: Default sampling frequency %ds exceeds duration %s. KPIs without custom frequency will only collect 1 sample.\n",
+		fmt.Printf("WARNING: Default sampling frequency %s exceeds duration %s. KPIs without custom frequency will only collect 1 sample.\n",
 			flags.SamplingFreq, flags.Duration)
 	}
 }

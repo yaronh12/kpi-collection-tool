@@ -3,7 +3,7 @@ on:
   schedule:
     - cron: '0 2 * * *' # Every day at 2am UTC
   workflow_dispatch:
-
+permissions: read-all
 jobs:
   update-golangci-lint-version:
     runs-on: ubuntu-slim

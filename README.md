@@ -181,7 +181,7 @@ kpi-collector run \
 | `--token` | No* | - | Bearer token for Thanos authentication |
 | `--thanos-url` | No* | - | Thanos querier URL (without https://) |
 | `--insecure-tls` | No | false | Skip TLS certificate verification (dev only) |
-| `--frequency` | No | 60 | Sampling frequency in seconds (how often to collect metrics) |
+| `--frequency` | No | 1m | Sampling frequency (how often to collect metrics, e.g. 10s, 1m, 2h, 24h) |
 | `--duration` | No | 45m | Total duration for sampling (e.g. 10s, 1m, 2h, 24h) |
 | `--output` | No | kpi-output.json | Output file name for results |
 | `--log` | No | kpi.log | Log file name |

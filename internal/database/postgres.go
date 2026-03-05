@@ -61,6 +61,10 @@ func (p *PostgresDB) InitDB() (*sql.DB, error) {
     CREATE INDEX IF NOT EXISTS idx_query_results_kpi_id ON query_results(kpi_id);
     CREATE INDEX IF NOT EXISTS idx_query_results_created_at ON query_results(created_at);
     CREATE INDEX IF NOT EXISTS idx_query_results_labels ON query_results USING GIN(metric_labels);
+
+    -- Prevent duplicate data points from overlapping range query windows
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_query_results_dedup
+    ON query_results(kpi_id, cluster_id, timestamp_value, metric_labels);
     `
 
 	_, err = db.Exec(schema)
@@ -113,7 +117,17 @@ func (p *PostgresDB) GetQueryErrorCount(db *sql.DB, kpiID string) (int, error) {
 
 // StoreQueryResults stores the results of a Prometheus query in the database
 func (p *PostgresDB) StoreQueryResults(db *sql.DB, clusterID int64, queryID string, result model.Value) error {
-	vector := result.(model.Vector)
+	switch values := result.(type) {
+	case model.Vector:
+		return p.storeVectorResults(db, clusterID, queryID, values)
+	case model.Matrix:
+		return p.storeMatrixResults(db, clusterID, queryID, values)
+	default:
+		return fmt.Errorf("unsupported Prometheus result type for KPI '%s': %T", queryID, result)
+	}
+}
+
+func (p *PostgresDB) storeVectorResults(db *sql.DB, clusterID int64, queryID string, vector model.Vector) error {
 	for _, sample := range vector {
 		metric := sample.Metric
 		value := float64(sample.Value)
@@ -127,12 +141,41 @@ func (p *PostgresDB) StoreQueryResults(db *sql.DB, clusterID int64, queryID stri
 		_, err = db.Exec(`
             INSERT INTO query_results 
             (kpi_id, metric_value, timestamp_value, cluster_id, metric_labels)
-            VALUES ($1, $2, $3, $4, $5)`,
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (kpi_id, cluster_id, timestamp_value, metric_labels) DO NOTHING`,
 			queryID, value, timestamp, clusterID, string(labelsJSON),
 		)
 		if err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func (p *PostgresDB) storeMatrixResults(db *sql.DB, clusterID int64, queryID string, matrix model.Matrix) error {
+	for _, stream := range matrix {
+		metric := stream.Metric
+		labelsJSON, err := json.Marshal(metric)
+		if err != nil {
+			return err
+		}
+
+		for _, samplePair := range stream.Values {
+			value := float64(samplePair.Value)
+			timestamp := float64(samplePair.Timestamp) / 1000
+
+			_, execErr := db.Exec(`
+                INSERT INTO query_results 
+                (kpi_id, metric_value, timestamp_value, cluster_id, metric_labels)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (kpi_id, cluster_id, timestamp_value, metric_labels) DO NOTHING`,
+				queryID, value, timestamp, clusterID, string(labelsJSON),
+			)
+			if execErr != nil {
+				return execErr
+			}
+		}
+	}
+
 	return nil
 }

@@ -134,6 +134,9 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	// Warn if any KPI frequency exceeds the duration
 	warnFrequencyExceedsDuration(kpis, flags)
 
+	// Warn about range query frequency/range mismatches
+	warnRangeFrequencyMismatch(kpis, flags)
+
 	// If kubeconfig is provided, discover Thanos URL and token
 	if flags.Kubeconfig != "" {
 		flags.ThanosURL, flags.BearerToken, err = kubernetes.SetupKubeconfigAuth(flags.Kubeconfig)
@@ -176,6 +179,28 @@ func substituteCPUsIfNeeded(kpis config.KPIs, flags config.InputFlags) (config.K
 	}
 
 	return config.SubstituteCPUPlaceholders(kpis, cpuPlaceholders), nil
+}
+
+// warnRangeFrequencyMismatch prints warnings for range queries where the
+// sampling frequency and range window create data gaps or heavy overlap.
+func warnRangeFrequencyMismatch(kpis config.KPIs, flags config.InputFlags) {
+	for _, kpi := range kpis.Queries {
+		if kpi.GetEffectiveQueryType() != "range" || kpi.Range == nil {
+			continue
+		}
+
+		freq := kpi.GetEffectiveFrequency(flags.SamplingFreq)
+		queryRange := kpi.Range.Duration
+
+		if freq > queryRange {
+			fmt.Printf("WARNING: KPI '%s' has frequency %s > range %s — this creates gaps where no data is collected.\n",
+				kpi.ID, freq, queryRange)
+		} else if freq < queryRange/2 {
+			overlapPercent := 100 - (100*freq)/queryRange
+			fmt.Printf("WARNING: KPI '%s' has frequency %s with range %s — ~%d%% of each query overlaps the previous one.\n",
+				kpi.ID, freq, queryRange, overlapPercent)
+		}
+	}
 }
 
 // warnFrequencyExceedsDuration prints a warning if any KPI's sampling frequency

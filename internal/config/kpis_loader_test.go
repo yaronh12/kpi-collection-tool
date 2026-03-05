@@ -350,5 +350,86 @@ var _ = Describe("KPIs Loader", func() {
 				Expect(errors).To(HaveLen(3))
 			})
 		})
+
+		Context("when validating range query configuration", func() {
+			It("should allow valid range query configuration", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{
+							ID:        "cpu-range",
+							PromQuery: "rate(node_cpu_seconds_total[5m])",
+							QueryType: "range",
+							Step:      &Duration{Duration: 30 * time.Second},
+							Range:     &Duration{Duration: time.Hour},
+						},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+				Expect(errors).To(BeEmpty())
+			})
+
+			It("should reject invalid query-type value", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{ID: "bad-type", PromQuery: "up", QueryType: "window"},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+				Expect(errors).To(HaveLen(1))
+				Expect(errors[0].Error()).To(ContainSubstring("invalid query-type"))
+			})
+
+			It("should require step and range for range query type", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{ID: "missing-range-fields", PromQuery: "up", QueryType: "range"},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+				Expect(errors).To(HaveLen(2))
+				Expect(errors[0].Error()).To(ContainSubstring("step is required"))
+				Expect(errors[1].Error()).To(ContainSubstring("range is required"))
+			})
+
+			It("should reject step greater than range", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{
+							ID:        "bad-step",
+							PromQuery: "up",
+							QueryType: "range",
+							Step:      &Duration{Duration: 10 * time.Minute},
+							Range:     &Duration{Duration: 5 * time.Minute},
+						},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+				Expect(errors).To(HaveLen(1))
+				Expect(errors[0].Error()).To(ContainSubstring("step must be less than or equal to range"))
+			})
+
+			It("should reject step or range when query-type is instant", func() {
+				kpis := KPIs{
+					Queries: []Query{
+						{
+							ID:        "instant-with-range-fields",
+							PromQuery: "up",
+							QueryType: "instant",
+							Step:      &Duration{Duration: 30 * time.Second},
+							Range:     &Duration{Duration: time.Hour},
+						},
+					},
+				}
+
+				errors := ValidateKPIs(kpis)
+				Expect(errors).To(HaveLen(2))
+				Expect(errors[0].Error()).To(ContainSubstring("step can only be set"))
+				Expect(errors[1].Error()).To(ContainSubstring("range can only be set"))
+			})
+		})
 	})
 })

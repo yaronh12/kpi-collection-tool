@@ -24,6 +24,7 @@ type Database interface {
 	// GetQueryErrorCount returns the error count for a given KPI ID
 	GetQueryErrorCount(db *sql.DB, kpiID string) (int, error)
 
-	// StoreQueryResults stores the results of a Prometheus query in the database
+	// StoreQueryResults stores the results of a Prometheus query in the database.
+	// Supports model.Vector (from instant queries) and model.Matrix (from range queries).
 	StoreQueryResults(db *sql.DB, clusterID int64, queryID string, result model.Value) error
 }

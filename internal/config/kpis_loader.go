@@ -59,6 +59,36 @@ func ValidateKPIs(kpis KPIs) []error {
 		if _, err := parser.ParseExpr(kpi.PromQuery); err != nil {
 			errors = append(errors, fmt.Errorf("KPI '%s': invalid PromQL syntax - %w", kpi.ID, err))
 		}
+
+		errors = append(errors, validateQueryType(kpi)...)
+	}
+
+	return errors
+}
+
+func validateQueryType(kpi Query) []error {
+	var errors []error
+
+	switch kpi.GetEffectiveQueryType() {
+	case "instant":
+		if kpi.Step != nil {
+			errors = append(errors, fmt.Errorf("KPI '%s': step can only be set when query-type is 'range'", kpi.ID))
+		}
+		if kpi.Range != nil {
+			errors = append(errors, fmt.Errorf("KPI '%s': range can only be set when query-type is 'range'", kpi.ID))
+		}
+	case "range":
+		if kpi.Step == nil || kpi.Step.Duration <= 0 {
+			errors = append(errors, fmt.Errorf("KPI '%s': step is required and must be > 0 when query-type is 'range'", kpi.ID))
+		}
+		if kpi.Range == nil || kpi.Range.Duration <= 0 {
+			errors = append(errors, fmt.Errorf("KPI '%s': range is required and must be > 0 when query-type is 'range'", kpi.ID))
+		}
+		if kpi.Step != nil && kpi.Range != nil && kpi.Step.Duration > kpi.Range.Duration {
+			errors = append(errors, fmt.Errorf("KPI '%s': step must be less than or equal to range", kpi.ID))
+		}
+	default:
+		errors = append(errors, fmt.Errorf("KPI '%s': invalid query-type '%s' (must be 'instant' or 'range')", kpi.ID, kpi.QueryType))
 	}
 
 	return errors

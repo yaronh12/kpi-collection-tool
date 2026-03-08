@@ -134,8 +134,10 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	// Warn if any KPI frequency exceeds the duration
 	warnFrequencyExceedsDuration(kpis, flags)
 
-	// Warn about range query frequency/range mismatches
-	warnRangeFrequencyMismatch(kpis, flags)
+	// Validate range query frequency/range mismatches
+	if err := validateRangeFrequency(kpis, flags); err != nil {
+		return err
+	}
 
 	// If kubeconfig is provided, discover Thanos URL and token
 	if flags.Kubeconfig != "" {
@@ -181,9 +183,9 @@ func substituteCPUsIfNeeded(kpis config.KPIs, flags config.InputFlags) (config.K
 	return config.SubstituteCPUPlaceholders(kpis, cpuPlaceholders), nil
 }
 
-// warnRangeFrequencyMismatch prints warnings for range queries where the
-// sampling frequency and range window create data gaps or heavy overlap.
-func warnRangeFrequencyMismatch(kpis config.KPIs, flags config.InputFlags) {
+// validateRangeFrequency checks range queries for frequency/range mismatches.
+// Returns an error if frequency exceeds range (data gaps), and prints a warning for heavy overlap.
+func validateRangeFrequency(kpis config.KPIs, flags config.InputFlags) error {
 	for _, kpi := range kpis.Queries {
 		if kpi.GetEffectiveQueryType() != "range" || kpi.Range == nil {
 			continue
@@ -193,14 +195,18 @@ func warnRangeFrequencyMismatch(kpis config.KPIs, flags config.InputFlags) {
 		queryRange := kpi.Range.Duration
 
 		if freq > queryRange {
-			fmt.Printf("WARNING: KPI '%s' has frequency %s > range %s — this creates gaps where no data is collected.\n",
+			return fmt.Errorf("KPI '%s' has frequency %s > range %s — this creates gaps where no data is collected",
 				kpi.ID, freq, queryRange)
-		} else if freq < queryRange/2 {
+		}
+
+		if freq < queryRange/2 {
 			overlapPercent := 100 - (100*freq)/queryRange
 			fmt.Printf("WARNING: KPI '%s' has frequency %s with range %s — ~%d%% of each query overlaps the previous one.\n",
 				kpi.ID, freq, queryRange, overlapPercent)
 		}
 	}
+
+	return nil
 }
 
 // warnFrequencyExceedsDuration prints a warning if any KPI's sampling frequency

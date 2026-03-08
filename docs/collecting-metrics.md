@@ -138,6 +138,7 @@ kpi-collector run \
 | `--log` | No | `kpi.log` | Log file name |
 | `--db-type` | No | sqlite | Database type: `sqlite` or `postgres` |
 | `--postgres-url` | No** | - | PostgreSQL connection string |
+| `--once` | No | false | Collect all KPIs once and exit (ignores `--frequency` and `--duration`) |
 | `--kpis-file` | Yes | - | Path to KPIs configuration file (see `kpis.json.template`) |
 
 \* Either provide `--kubeconfig` OR both `--token` and `--thanos-url`  
@@ -187,3 +188,65 @@ Choosing values:
   ```bash
   --frequency 10 --duration 5m
   ```
+
+## Single Run Mode
+
+Use `--once` to collect every KPI metric exactly once and exit immediately. When this flag is set, `--frequency` and `--duration` are ignored.
+
+This is useful for:
+- One-off snapshots of cluster metrics
+- CI/CD pipelines that need a single data point
+- Quick validation that queries and connectivity work
+- Range queries (e.g. `rate(...[5m])`, `avg_over_time(...[1h])`) that already aggregate over a time window and don't need repeated sampling
+
+```bash
+kpi-collector run \
+  --cluster-name my-cluster \
+  --cluster-type ran \
+  --kubeconfig ~/.kube/config \
+  --kpis-file kpis.json \
+  --once
+```
+
+With manual credentials:
+
+```bash
+kpi-collector run \
+  --cluster-name my-cluster \
+  --cluster-type core \
+  --token $TOKEN \
+  --thanos-url $THANOS_URL \
+  --kpis-file kpis.json \
+  --once
+```
+
+## Per-Query `run-once`
+
+Individual KPI queries can be marked with `"run-once": true` in the KPI configuration file. These queries execute once at the start of collection and are excluded from the repeated sampling loop, even when running with `--frequency` and `--duration`.
+
+This is useful for queries that only need a single data point, such as:
+- Range queries that already aggregate over a time window (e.g. `rate(...[30m])`)
+- Static cluster information (uptime, version, node count)
+- Baseline snapshots taken before continuous monitoring begins
+
+Example configuration:
+
+```json
+{
+    "kpis": [
+        {
+            "id": "cluster-uptime",
+            "promquery": "max(time() - process_start_time_seconds{job=\"kubelet\"})",
+            "run-once": true
+        },
+        {
+            "id": "node-cpu-usage",
+            "promquery": "avg by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))"
+        }
+    ]
+}
+```
+
+In this example, `cluster-uptime` runs once immediately, while `node-cpu-usage` is sampled repeatedly at the configured frequency for the full duration.
+
+If all queries in the configuration are marked `"run-once": true`, the collector executes them all once and exits without waiting for the duration timer.

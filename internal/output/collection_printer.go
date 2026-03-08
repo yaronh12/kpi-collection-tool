@@ -30,7 +30,13 @@ func PrintQueryResult(info QueryInfo, result QueryResult) {
 	defer printMutex.Unlock()
 
 	fmt.Println()
-	fmt.Printf("[%s] Sample %d/%d (freq: %s)\n", info.QueryID, info.SampleNumber, info.TotalSamples, info.Frequency)
+
+	if info.Frequency == 0 {
+		fmt.Printf("[%s] Sample %d/%d (single run)\n", info.QueryID, info.SampleNumber, info.TotalSamples)
+	} else {
+		fmt.Printf("[%s] Sample %d/%d (freq: %s)\n", info.QueryID, info.SampleNumber, info.TotalSamples, info.Frequency)
+	}
+
 	fmt.Printf("  Query: %s\n", info.PromQuery)
 
 	if len(result.Warnings) > 0 {
@@ -42,6 +48,16 @@ func PrintQueryResult(info QueryInfo, result QueryResult) {
 	} else {
 		fmt.Printf("  Status: FAILED - %v\n", result.Error)
 	}
+}
+
+// PrintSingleRunStartup prints startup info for single-run mode (thread-safe)
+func PrintSingleRunStartup() {
+	printMutex.Lock()
+	defer printMutex.Unlock()
+
+	fmt.Println()
+	fmt.Println("KPI Collection Started - Single run mode")
+	fmt.Println()
 }
 
 // PrintStartup prints collection startup info (thread-safe)

@@ -6,6 +6,7 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -19,8 +20,39 @@ import (
 
 const HUNDRED_MILLIS_DURATION_BUFFER = 100 * time.Millisecond
 
+// RunOnce executes every KPI query exactly once and returns.
+// It ignores frequency and duration settings entirely.
+func RunOnce(kpis config.KPIs, flags config.InputFlags) {
+	output.PrintSingleRunStartup()
+
+	log.Printf("Single run: executing %d KPIs", len(kpis.Queries))
+
+	if err := prometheus.RunQueries(kpis, flags, 1, 1, 0); err != nil {
+		log.Printf("RunQueries failed in single-run mode: %v", err)
+	}
+
+	output.PrintShutdown("Single run completed")
+}
+
 // Run executes the KPI collection loop
 func Run(kpis config.KPIs, flags config.InputFlags) {
+	runOnceKPIs, repeatingKPIs := splitRunOnceQueries(kpis)
+
+	// Execute run-once queries immediately before starting the loop
+	if len(runOnceKPIs.Queries) > 0 {
+		fmt.Printf("Executing %d run-once KPI(s) before starting collection loop\n", len(runOnceKPIs.Queries))
+		log.Printf("Executing %d run-once KPIs", len(runOnceKPIs.Queries))
+
+		if err := prometheus.RunQueries(runOnceKPIs, flags, 1, 1, 0); err != nil {
+			log.Printf("RunQueries failed for run-once KPIs: %v", err)
+		}
+	}
+
+	if len(repeatingKPIs.Queries) == 0 {
+		output.PrintShutdown("All queries are run-once, collection complete")
+		return
+	}
+
 	durationTimer := time.NewTimer(flags.Duration + HUNDRED_MILLIS_DURATION_BUFFER)
 	defer durationTimer.Stop()
 
@@ -29,8 +61,8 @@ func Run(kpis config.KPIs, flags config.InputFlags) {
 
 	output.PrintStartup(flags.Duration.String(), time.Now().Add(flags.Duration).Format(time.RFC3339))
 
-	// Start all KPI goroutines grouped by frequency
-	cancel, wg := startKPIGoroutines(kpis, flags)
+	// Start repeating KPI goroutines grouped by frequency
+	cancel, wg := startKPIGoroutines(repeatingKPIs, flags)
 	defer cancel()
 
 	// Main goroutine only handles duration timer and interrupts
@@ -48,6 +80,19 @@ func Run(kpis config.KPIs, flags config.InputFlags) {
 	// Wait for all goroutines to finish, then print shutdown message
 	shutdown(cancel, wg)
 	output.PrintShutdown(shutdownReason)
+}
+
+// splitRunOnceQueries separates KPIs into run-once and repeating groups
+func splitRunOnceQueries(kpis config.KPIs) (runOnce config.KPIs, repeating config.KPIs) {
+	for _, kpi := range kpis.Queries {
+		if kpi.IsRunOnce() {
+			runOnce.Queries = append(runOnce.Queries, kpi)
+		} else {
+			repeating.Queries = append(repeating.Queries, kpi)
+		}
+	}
+
+	return runOnce, repeating
 }
 
 // groupKPIsByFrequency groups KPIs by their effective sampling frequency

@@ -60,6 +60,7 @@ type InputFlags struct {
 	DatabaseType string // "sqlite" or "postgres"
 	PostgresURL  string // PostgreSQL connection string
 	KPIsFile     string
+	SingleRun    bool   // collect metrics once and exit
 }
 
 // Query represents a single KPI query configuration
@@ -67,6 +68,12 @@ type Query struct {
 	ID              string    `json:"id"`
 	PromQuery       string    `json:"promquery"`
 	SampleFrequency *Duration `json:"sample-frequency,omitempty"`
+	RunOnce         *bool     `json:"run-once,omitempty"`
+}
+
+// IsRunOnce returns true if this query is configured to run only once
+func (q *Query) IsRunOnce() bool {
+	return q.RunOnce != nil && *q.RunOnce
 }
 
 // KPIs represents the structure of the kpis.json file containing

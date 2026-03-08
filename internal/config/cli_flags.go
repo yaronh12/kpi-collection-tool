@@ -31,12 +31,14 @@ func ValidateFlags(flags InputFlags) error {
 		return fmt.Errorf("invalid flag combination: either provide --token and --thanos-url, or provide --kubeconfig")
 	}
 
-	if flags.SamplingFreq <= 0 {
-		return fmt.Errorf("sampling frequency must be greater than 0")
-	}
+	if !flags.SingleRun {
+		if flags.SamplingFreq <= 0 {
+			return fmt.Errorf("sampling frequency must be greater than 0")
+		}
 
-	if flags.Duration <= 0 {
-		return fmt.Errorf("duration must be greater than 0")
+		if flags.Duration <= 0 {
+			return fmt.Errorf("duration must be greater than 0")
+		}
 	}
 
 	if flags.OutputFile == "" {

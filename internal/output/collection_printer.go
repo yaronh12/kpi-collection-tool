@@ -15,6 +15,9 @@ type QueryInfo struct {
 	Frequency    time.Duration
 	SampleNumber int
 	TotalSamples int
+	QueryType    string
+	Step         time.Duration
+	Range        time.Duration
 }
 
 // QueryResult holds the result of a query execution
@@ -38,6 +41,11 @@ func PrintQueryResult(info QueryInfo, result QueryResult) {
 	}
 
 	fmt.Printf("  Query: %s\n", info.PromQuery)
+	if info.QueryType == "range" {
+		fmt.Printf("  Query Type: range (step: %s, range: %s)\n", info.Step, info.Range)
+	} else {
+		fmt.Printf("  Query Type: instant\n")
+	}
 
 	if len(result.Warnings) > 0 {
 		fmt.Printf("  Warnings: %v\n", result.Warnings)

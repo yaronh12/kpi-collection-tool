@@ -4,6 +4,15 @@
 //   - id:               Unique identifier (used in database and output)
 //   - promquery:        PromQL query to execute against Prometheus/Thanos
 //   - sample-frequency: (Optional) Override global --frequency for this KPI (in seconds)
+//   - query-type:       (Optional) "instant" (default) or "range" for prometheus range query
+//   - step:             (Required for range) Resolution between points in query_range
+//   - range:            (Required for range) Lookback window for query_range
+//
+// Time controls for range queries:
+//   - sample-frequency controls how often the collector executes the query
+//   - range controls how far back each execution looks
+//   - step controls spacing between points inside the returned range data
+//   - [5m] inside rate(...[5m]) is the PromQL lookback window used per point
 //   - run-once:         (Optional) If true, collect this query only once at the start,
 //                       skipping the repeated sampling loop. Useful for range queries
 //                       or static metrics that don't need periodic collection.
@@ -33,6 +42,15 @@
             "id": "cpu-reserved-set",
             "promquery": "rate(node_cpu_seconds_total{cpu=~\"{{RESERVED_CPUS}}\"}[30m])"
         },
+        {
+            // Range query example: query last hour with one point every 30s
+            // sample-frequency controls how often this full range query is executed
+            "id": "node-cpu-usage-range",
+            "promquery": "avg by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))",
+            "query-type": "range",
+            "step": "30s",
+            "range": "1h"
+        }
         {
             // only needs a single snapshot, not repeated sampling
             "id": "cluster-uptime",

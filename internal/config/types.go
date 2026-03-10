@@ -6,6 +6,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -60,7 +61,7 @@ type InputFlags struct {
 	DatabaseType string // "sqlite" or "postgres"
 	PostgresURL  string // PostgreSQL connection string
 	KPIsFile     string
-	SingleRun    bool   // collect metrics once and exit
+	SingleRun    bool // collect metrics once and exit
 }
 
 // Query represents a single KPI query configuration
@@ -68,6 +69,9 @@ type Query struct {
 	ID              string    `json:"id"`
 	PromQuery       string    `json:"promquery"`
 	SampleFrequency *Duration `json:"sample-frequency,omitempty"`
+	QueryType       string    `json:"query-type,omitempty"`
+	Step            *Duration `json:"step,omitempty"`
+	Range           *Duration `json:"range,omitempty"`
 	RunOnce         *bool     `json:"run-once,omitempty"`
 }
 
@@ -89,4 +93,13 @@ func (q *Query) GetEffectiveFrequency(defaultFreq time.Duration) time.Duration {
 		return q.SampleFrequency.Duration
 	}
 	return defaultFreq
+}
+
+// GetEffectiveQueryType returns the query type for this query,
+// defaulting to "instant" if not specified
+func (q *Query) GetEffectiveQueryType() string {
+	if qt := strings.TrimSpace(q.QueryType); qt != "" {
+		return qt
+	}
+	return "instant"
 }

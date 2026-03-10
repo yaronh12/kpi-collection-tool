@@ -18,7 +18,8 @@ import (
 // mockPromAPI is a simple mock that implements only the Query method we actually use.
 // All other methods return empty/nil values to satisfy the v1.API interface.
 type mockPromAPI struct {
-	queryFunc func(ctx context.Context, query string, ts time.Time) (model.Value, v1.Warnings, error)
+	queryFunc      func(ctx context.Context, query string, ts time.Time) (model.Value, v1.Warnings, error)
+	queryRangeFunc func(ctx context.Context, query string, r v1.Range) (model.Value, v1.Warnings, error)
 }
 
 func (m *mockPromAPI) Query(ctx context.Context, query string, ts time.Time, opts ...v1.Option) (model.Value, v1.Warnings, error) {
@@ -30,6 +31,9 @@ func (m *mockPromAPI) Query(ctx context.Context, query string, ts time.Time, opt
 
 // All methods below are unused but required to implement v1.API interface
 func (m *mockPromAPI) QueryRange(ctx context.Context, query string, r v1.Range, opts ...v1.Option) (model.Value, v1.Warnings, error) {
+	if m.queryRangeFunc != nil {
+		return m.queryRangeFunc(ctx, query, r)
+	}
 	return nil, nil, nil
 }
 func (m *mockPromAPI) LabelNames(ctx context.Context, matches []string, startTime, endTime time.Time, opts ...v1.Option) ([]string, v1.Warnings, error) {
@@ -206,7 +210,7 @@ var _ = Describe("Client", func() {
 
 			// We execute a query with the mock client
 			ctx := context.Background()
-			info := output.QueryInfo{QueryID: "test-query-1", PromQuery: "up", Frequency: 5, SampleNumber: 1, TotalSamples: 4}
+			info := output.QueryInfo{QueryID: "test-query-1", PromQuery: "up", Frequency: 5 * time.Second, SampleNumber: 1, TotalSamples: 4}
 			executeQuery(ctx, mock, testDB, sqliteDB, clusterID, info)
 
 			// Results should be stored in the database
@@ -230,7 +234,7 @@ var _ = Describe("Client", func() {
 			}
 
 			ctx := context.Background()
-			info := output.QueryInfo{QueryID: "test-query-2", PromQuery: "cpu_usage", Frequency: 5, SampleNumber: 1, TotalSamples: 4}
+			info := output.QueryInfo{QueryID: "test-query-2", PromQuery: "cpu_usage", Frequency: 5 * time.Second, SampleNumber: 1, TotalSamples: 4}
 			executeQuery(ctx, mock, testDB, sqliteDB, clusterID, info)
 
 			// Multiple results should be stored
@@ -251,7 +255,7 @@ var _ = Describe("Client", func() {
 
 			ctx := context.Background()
 			queryID := "test-query-error"
-			info := output.QueryInfo{QueryID: queryID, PromQuery: "invalid{query", Frequency: 5, SampleNumber: 1, TotalSamples: 4}
+			info := output.QueryInfo{QueryID: queryID, PromQuery: "invalid{query", Frequency: 5 * time.Second, SampleNumber: 1, TotalSamples: 4}
 			executeQuery(ctx, mock, testDB, sqliteDB, clusterID, info)
 
 			// Error count should be incremented in database
@@ -273,7 +277,7 @@ var _ = Describe("Client", func() {
 			}
 
 			ctx := context.Background()
-			info := output.QueryInfo{QueryID: "test-query-warnings", PromQuery: "test", Frequency: 5, SampleNumber: 1, TotalSamples: 4}
+			info := output.QueryInfo{QueryID: "test-query-warnings", PromQuery: "test", Frequency: 5 * time.Second, SampleNumber: 1, TotalSamples: 4}
 			executeQuery(ctx, mock, testDB, sqliteDB, clusterID, info)
 		})
 
@@ -287,7 +291,7 @@ var _ = Describe("Client", func() {
 			}
 
 			ctx := context.Background()
-			info := output.QueryInfo{QueryID: "test-query-empty", PromQuery: "nonexistent_metric", Frequency: 5, SampleNumber: 1, TotalSamples: 4}
+			info := output.QueryInfo{QueryID: "test-query-empty", PromQuery: "nonexistent_metric", Frequency: 5 * time.Second, SampleNumber: 1, TotalSamples: 4}
 			executeQuery(ctx, mock, testDB, sqliteDB, clusterID, info)
 
 			// No results should be stored
@@ -313,8 +317,150 @@ var _ = Describe("Client", func() {
 
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
-			info := output.QueryInfo{QueryID: "test-query-timeout", PromQuery: "slow_query", Frequency: 5, SampleNumber: 1, TotalSamples: 4}
+			info := output.QueryInfo{QueryID: "test-query-timeout", PromQuery: "slow_query", Frequency: 5 * time.Second, SampleNumber: 1, TotalSamples: 4}
 			executeQuery(ctx, mock, testDB, sqliteDB, clusterID, info)
+		})
+
+		It("should execute range queries and flatten matrix results", func() {
+			now := time.Now()
+			mock := &mockPromAPI{
+				queryRangeFunc: func(ctx context.Context, query string, r v1.Range) (model.Value, v1.Warnings, error) {
+					Expect(query).To(Equal("rate(node_cpu_seconds_total[5m])"))
+					Expect(r.Step).To(Equal(30 * time.Second))
+					Expect(r.End.Sub(r.Start)).To(Equal(time.Hour))
+					Expect(r.End).To(BeTemporally("~", now, 2*time.Second))
+
+					return model.Matrix{
+						&model.SampleStream{
+							Metric: model.Metric{"__name__": "node_cpu_seconds_total", "cpu": "0"},
+							Values: []model.SamplePair{
+								{Timestamp: model.TimeFromUnix(1700000000), Value: model.SampleValue(0.15)},
+								{Timestamp: model.TimeFromUnix(1700000030), Value: model.SampleValue(0.21)},
+							},
+						},
+						&model.SampleStream{
+							Metric: model.Metric{"__name__": "node_cpu_seconds_total", "cpu": "1"},
+							Values: []model.SamplePair{
+								{Timestamp: model.TimeFromUnix(1700000000), Value: model.SampleValue(0.12)},
+							},
+						},
+					}, nil, nil
+				},
+			}
+
+			info := output.QueryInfo{
+				QueryID:      "test-query-range",
+				PromQuery:    "rate(node_cpu_seconds_total[5m])",
+				Frequency:    5 * time.Second,
+				SampleNumber: 1,
+				TotalSamples: 4,
+				QueryType:    "range",
+				Step:         30 * time.Second,
+				Range:        time.Hour,
+			}
+			executeQuery(context.Background(), mock, testDB, sqliteDB, clusterID, info)
+
+			var count int
+			err := testDB.QueryRow("SELECT COUNT(*) FROM query_results WHERE kpi_id = ?", "test-query-range").Scan(&count)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(count).To(Equal(3))
+		})
+
+		It("should deduplicate overlapping range query results", func() {
+			matrixData := model.Matrix{
+				&model.SampleStream{
+					Metric: model.Metric{"__name__": "cpu", "instance": "node1"},
+					Values: []model.SamplePair{
+						{Timestamp: model.TimeFromUnix(1700000000), Value: model.SampleValue(0.15)},
+						{Timestamp: model.TimeFromUnix(1700000030), Value: model.SampleValue(0.21)},
+					},
+				},
+			}
+
+			mock := &mockPromAPI{
+				queryRangeFunc: func(ctx context.Context, query string, r v1.Range) (model.Value, v1.Warnings, error) {
+					return matrixData, nil, nil
+				},
+			}
+
+			info := output.QueryInfo{
+				QueryID:      "test-query-dedup",
+				PromQuery:    "rate(cpu[5m])",
+				Frequency:    5 * time.Second,
+				SampleNumber: 1,
+				TotalSamples: 4,
+				QueryType:    "range",
+				Step:         30 * time.Second,
+				Range:        time.Hour,
+			}
+
+			executeQuery(context.Background(), mock, testDB, sqliteDB, clusterID, info)
+			executeQuery(context.Background(), mock, testDB, sqliteDB, clusterID, info)
+
+			var count int
+			err := testDB.QueryRow("SELECT COUNT(*) FROM query_results WHERE kpi_id = ?", "test-query-dedup").Scan(&count)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(count).To(Equal(2), "duplicate data points should be silently skipped")
+		})
+
+		It("should increment errors when range query fails", func() {
+			mock := &mockPromAPI{
+				queryRangeFunc: func(ctx context.Context, query string, r v1.Range) (model.Value, v1.Warnings, error) {
+					return nil, nil, &v1.Error{Type: v1.ErrBadData, Msg: "range query error"}
+				},
+			}
+
+			queryID := "test-query-range-error"
+			info := output.QueryInfo{
+				QueryID:      queryID,
+				PromQuery:    "rate(node_cpu_seconds_total[5m])",
+				Frequency:    5 * time.Second,
+				SampleNumber: 1,
+				TotalSamples: 4,
+				QueryType:    "range",
+				Step:         30 * time.Second,
+				Range:        time.Hour,
+			}
+			executeQuery(context.Background(), mock, testDB, sqliteDB, clusterID, info)
+
+			var errorCount int
+			err := testDB.QueryRow("SELECT errors FROM query_errors WHERE kpi_id = ?", queryID).Scan(&errorCount)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(errorCount).To(Equal(1))
+		})
+
+		It("should default to instant query when query type is not provided", func() {
+			queryCalled := false
+			queryRangeCalled := false
+
+			mock := &mockPromAPI{
+				queryFunc: func(ctx context.Context, query string, ts time.Time) (model.Value, v1.Warnings, error) {
+					queryCalled = true
+					return model.Vector{
+						&model.Sample{
+							Metric:    model.Metric{"__name__": "up", "job": "prometheus"},
+							Value:     1,
+							Timestamp: model.Now(),
+						},
+					}, nil, nil
+				},
+				queryRangeFunc: func(ctx context.Context, query string, r v1.Range) (model.Value, v1.Warnings, error) {
+					queryRangeCalled = true
+					return model.Matrix{}, nil, nil
+				},
+			}
+
+			info := output.QueryInfo{
+				QueryID:      "test-query-default-instant",
+				PromQuery:    "up",
+				Frequency:    5 * time.Second,
+				SampleNumber: 1,
+				TotalSamples: 4,
+			}
+			executeQuery(context.Background(), mock, testDB, sqliteDB, clusterID, info)
+
+			Expect(queryCalled).To(BeTrue())
+			Expect(queryRangeCalled).To(BeFalse())
 		})
 	})
 

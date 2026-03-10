@@ -150,11 +150,20 @@ KPIs are defined in JSON format (see `kpis.json.template`):
         {
             "id": "unique-kpi-id",
             "promquery": "your_promql_query",
-            "sample-frequency": 120  // Optional: override global frequency (seconds)
+            "sample-frequency": "2m", // Optional: override global frequency (duration string or seconds)
+            "query-type": "range",    // Optional: "instant" (default) or "range"
+            "step": "30s",            // Required when query-type is "range"
+            "range": "1h"             // Required when query-type is "range"
         }
     ]
 }
 ```
+
+Range query notes:
+- `sample-frequency` controls how often the collector executes this KPI.
+- `range` controls how far back each execution queries.
+- `step` controls point spacing within each query result.
+- PromQL windows such as `rate(...[5m])` still control the lookback window used per computed point.
 
 ### Error Handling
 - Query errors are tracked in the database with error counts

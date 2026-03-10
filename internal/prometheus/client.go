@@ -19,6 +19,7 @@ import (
 
 	"github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 )
 
 const (
@@ -79,12 +80,25 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags, sampleNumber int
 	defer cancel()
 
 	for _, query := range kpisToRun.Queries {
+		var step time.Duration
+		if query.Step != nil {
+			step = query.Step.Duration
+		}
+
+		var queryRangeDuration time.Duration
+		if query.Range != nil {
+			queryRangeDuration = query.Range.Duration
+		}
+
 		queryInfo := output.QueryInfo{
 			QueryID:      query.ID,
 			PromQuery:    query.PromQuery,
 			Frequency:    frequency,
 			SampleNumber: sampleNumber,
 			TotalSamples: totalSamples,
+			QueryType:    query.GetEffectiveQueryType(),
+			Step:         step,
+			Range:        queryRangeDuration,
 		}
 		executeQuery(ctx, v1api, db, dbImpl, clusterID, queryInfo)
 
@@ -95,9 +109,25 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags, sampleNumber int
 
 // executeQuery executes a single Prometheus query and handles the result
 func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl database.Database, clusterID int64, info output.QueryInfo) {
+	now := time.Now()
 
-	// Execute query using the Prometheus client library
-	result, warnings, err := v1api.Query(ctx, info.PromQuery, time.Now())
+	// Execute query using the Prometheus client library.
+	var (
+		result   model.Value
+		warnings promv1.Warnings
+		err      error
+	)
+
+	if info.QueryType == "range" {
+		queryRange := promv1.Range{
+			Start: now.Add(-info.Range),
+			End:   now,
+			Step:  info.Step,
+		}
+		result, warnings, err = v1api.QueryRange(ctx, info.PromQuery, queryRange)
+	} else {
+		result, warnings, err = v1api.Query(ctx, info.PromQuery, now)
+	}
 
 	queryResult := output.QueryResult{
 		Warnings: warnings,

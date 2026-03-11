@@ -89,6 +89,10 @@ func init() {
 		panic(fmt.Sprintf("failed to mark kpis-file as required: %v", err))
 	}
 
+	// --once is mutually exclusive with --frequency and --duration
+	runCmd.MarkFlagsMutuallyExclusive("once", "frequency")
+	runCmd.MarkFlagsMutuallyExclusive("once", "duration")
+
 }
 
 func runCollect(cmd *cobra.Command, args []string) error {

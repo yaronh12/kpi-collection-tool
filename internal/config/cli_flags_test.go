@@ -327,6 +327,23 @@ var _ = Describe("validateFlags test", func() {
 			},
 			"",
 		),
+		// Valid case - single-run mode
+		Entry("valid single-run mode",
+			InputFlags{
+				ClusterName:  validClusterName,
+				ClusterType:  validClusterType,
+				BearerToken:  validBearerToken,
+				ThanosURL:    validThanosURL,
+				SingleRun:    true,
+				SamplingFreq: validSamplingFreq,
+				Duration:     validDuration,
+				OutputFile:   validOutputFile,
+				LogFile:      validLogFile,
+				DatabaseType: validDatabaseType,
+				KPIsFile:     validKPIsFile,
+			},
+			"",
+		),
 		// Error cases - missing KPIs file
 		Entry("empty kpis-file",
 			InputFlags{

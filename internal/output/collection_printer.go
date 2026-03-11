@@ -58,16 +58,6 @@ func PrintQueryResult(info QueryInfo, result QueryResult) {
 	}
 }
 
-// PrintSingleRunStartup prints startup info for single-run mode (thread-safe)
-func PrintSingleRunStartup() {
-	printMutex.Lock()
-	defer printMutex.Unlock()
-
-	fmt.Println()
-	fmt.Println("KPI Collection Started - Single run mode")
-	fmt.Println()
-}
-
 // PrintStartup prints collection startup info (thread-safe)
 func PrintStartup(duration string, deadline string) {
 	printMutex.Lock()

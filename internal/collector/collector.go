@@ -23,7 +23,7 @@ const HUNDRED_MILLIS_DURATION_BUFFER = 100 * time.Millisecond
 // RunOnce executes every KPI query exactly once and returns.
 // It ignores frequency and duration settings entirely.
 func RunOnce(kpis config.KPIs, flags config.InputFlags) {
-	fmt.Println("\nKPI Collection Started - Single run mode\n")
+	fmt.Printf("\nKPI Collection Started - Single run mode\n\n")
 
 	log.Printf("Single run: executing %d KPIs", len(kpis.Queries))
 

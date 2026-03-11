@@ -120,7 +120,7 @@ Tests use Ginkgo/Gomega BDD framework. Test files follow the pattern `*_test.go`
 
 ### CLI Structure
 Commands are organized using Cobra:
-- `kpi-collector run`: Collect KPI metrics
+- `kpi-collector run`: Collect KPI metrics (use `--once` to collect once and exit)
 - `kpi-collector db show clusters|kpis|errors`: Query stored data
 - `kpi-collector db remove clusters|kpis|errors`: Delete data
 - `kpi-collector grafana start|stop`: Manage Grafana dashboard
@@ -151,6 +151,7 @@ KPIs are defined in JSON format (see `kpis.json.template`):
             "id": "unique-kpi-id",
             "promquery": "your_promql_query",
             "sample-frequency": "2m", // Optional: override global frequency (duration string or seconds)
+            "run-once": true          // Optional: collect this query only once
             "query-type": "range",    // Optional: "instant" (default) or "range"
             "step": "30s",            // Required when query-type is "range"
             "range": "1h"             // Required when query-type is "range"
@@ -196,6 +197,14 @@ kpi-collector run \
   --token $TOKEN \
   --thanos-url $THANOS_URL \
   --kpis-file kpis.json
+
+# Single run: collect all KPIs once and exit
+kpi-collector run \
+  --cluster-name my-cluster \
+  --cluster-type ran \
+  --kubeconfig ~/.kube/config \
+  --kpis-file kpis.json \
+  --once
 ```
 
 ### Querying Stored Data

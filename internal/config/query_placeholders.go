@@ -40,6 +40,7 @@ func SubstituteCPUPlaceholders(kpis KPIs, cpus *CPUPlaceholders) KPIs {
 			ID:              kpi.ID,
 			PromQuery:       query,
 			SampleFrequency: kpi.SampleFrequency,
+			RunOnce:         kpi.RunOnce,
 		}
 	}
 

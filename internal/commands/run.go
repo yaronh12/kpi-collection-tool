@@ -77,6 +77,10 @@ func init() {
 	runCmd.Flags().StringVar(&flags.KPIsFile, "kpis-file", "",
 		"path to KPIs configuration file (required)")
 
+	// Single-run mode
+	runCmd.Flags().BoolVar(&flags.SingleRun, "once", false,
+		"collect all KPI metrics once and exit (ignores --frequency and --duration)")
+
 	// Mark required flags
 	if err := runCmd.MarkFlagRequired("cluster-name"); err != nil {
 		panic(fmt.Sprintf("failed to mark cluster-name as required: %v", err))
@@ -84,6 +88,10 @@ func init() {
 	if err := runCmd.MarkFlagRequired("kpis-file"); err != nil {
 		panic(fmt.Sprintf("failed to mark kpis-file as required: %v", err))
 	}
+
+	// --once is mutually exclusive with --frequency and --duration
+	runCmd.MarkFlagsMutuallyExclusive("once", "frequency")
+	runCmd.MarkFlagsMutuallyExclusive("once", "duration")
 
 }
 
@@ -131,8 +139,9 @@ func runCollect(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Warn if any KPI frequency exceeds the duration
-	warnFrequencyExceedsDuration(kpis, flags)
+	if !flags.SingleRun {
+		warnFrequencyExceedsDuration(kpis, flags)
+	}
 
 	// Validate range query frequency/range mismatches
 	if err := validateRangeFrequency(kpis, flags); err != nil {
@@ -150,7 +159,11 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	}
 
 	// Run collection
-	collector.Run(kpis, flags)
+	if flags.SingleRun {
+		collector.RunOnce(kpis, flags)
+	} else {
+		collector.Run(kpis, flags)
+	}
 
 	fmt.Println("All queries completed successfully!")
 
@@ -213,6 +226,10 @@ func validateRangeFrequency(kpis config.KPIs, flags config.InputFlags) error {
 // is longer than the total duration, meaning only one sample will be collected
 func warnFrequencyExceedsDuration(kpis config.KPIs, flags config.InputFlags) {
 	for _, kpi := range kpis.Queries {
+		if kpi.IsRunOnce() {
+			continue
+		}
+
 		effectiveFreq := kpi.GetEffectiveFrequency(flags.SamplingFreq)
 
 		if effectiveFreq > flags.Duration {

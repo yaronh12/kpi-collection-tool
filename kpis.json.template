@@ -13,6 +13,9 @@
 //   - range controls how far back each execution looks
 //   - step controls spacing between points inside the returned range data
 //   - [5m] inside rate(...[5m]) is the PromQL lookback window used per point
+//   - run-once:         (Optional) If true, collect this query only once at the start,
+//                       skipping the repeated sampling loop. Useful for range queries
+//                       or static metrics that don't need periodic collection.
 //
 // Dynamic CPU Placeholders:
 //   You can use {{RESERVED_CPUS}} and {{ISOLATED_CPUS}} placeholders in queries.
@@ -48,6 +51,12 @@
             "step": "30s",
             "range": "1h"
         }
+        {
+            // only needs a single snapshot, not repeated sampling
+            "id": "cluster-uptime",
+            "promquery": "max(time() - process_start_time_seconds{job=\"kubelet\"})",
+            "run-once": true
+        },
     ]
 }
 

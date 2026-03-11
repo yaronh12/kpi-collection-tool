@@ -33,7 +33,13 @@ func PrintQueryResult(info QueryInfo, result QueryResult) {
 	defer printMutex.Unlock()
 
 	fmt.Println()
-	fmt.Printf("[%s] Sample %d/%d (freq: %s)\n", info.QueryID, info.SampleNumber, info.TotalSamples, info.Frequency)
+
+	if info.Frequency == 0 {
+		fmt.Printf("[%s] Sample %d/%d (single run)\n", info.QueryID, info.SampleNumber, info.TotalSamples)
+	} else {
+		fmt.Printf("[%s] Sample %d/%d (freq: %s)\n", info.QueryID, info.SampleNumber, info.TotalSamples, info.Frequency)
+	}
+
 	fmt.Printf("  Query: %s\n", info.PromQuery)
 	if info.QueryType == "range" {
 		fmt.Printf("  Query Type: range (step: %s, range: %s)\n", info.Step, info.Range)

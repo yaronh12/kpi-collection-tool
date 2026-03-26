@@ -3,10 +3,13 @@ package commands
 import (
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/collector"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/database"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/kubernetes"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/logger"
 
@@ -26,7 +29,10 @@ in a database (SQLite or PostgreSQL). Supports two authentication modes:
   2. Manual bearer token and Thanos URL
 
 The tool will continuously collect metrics at the specified frequency 
-for the specified duration.`,
+for the specified duration.
+
+All artifacts (database, logs, output) are stored in a ./kpi-collector-artifacts/ directory
+in the current working directory.`,
 	Example: `  # Using kubeconfig (auto-discovery)
   kpi-collector collect --cluster-name prod --cluster-type ran --kubeconfig ~/.kube/config
 
@@ -63,14 +69,14 @@ func init() {
 		"total duration for sampling (e.g. 10s, 1m, 2h)")
 
 	// Output flags
-	runCmd.Flags().StringVar(&flags.OutputFile, "output", "kpi-output.json",
-		"output file name for results")
-	runCmd.Flags().StringVar(&flags.LogFile, "log", "kpi.log",
-		"log file name")
+	runCmd.Flags().StringVar(&flags.OutputFile, "output", "",
+		"output file path (default: ./kpi-collector-artifacts/kpi-output-<timestamp>.json)")
+	runCmd.Flags().StringVar(&flags.LogFile, "log", "",
+		"log file path (default: ./kpi-collector-artifacts/kpi-<timestamp>.log)")
 
 	// Database flags
 	runCmd.Flags().StringVar(&flags.DatabaseType, "db-type", "sqlite",
-		"database type: sqlite or postgres")
+		"database type: sqlite (default) or postgres")
 	runCmd.Flags().StringVar(&flags.PostgresURL, "postgres-url", "",
 		"PostgreSQL connection string (required if db-type=postgres)")
 
@@ -98,12 +104,25 @@ func init() {
 func runCollect(cmd *cobra.Command, args []string) error {
 	fmt.Println("KPI Collector starting...")
 
+	// Generate timestamped file paths inside kpi-collector/ if not explicitly set
+	timestamp := time.Now().Format("2006-01-02-150405")
+	if flags.LogFile == "" {
+		flags.LogFile = filepath.Join(database.DefaultDataDir, fmt.Sprintf("kpi-%s.log", timestamp))
+	}
+	if flags.OutputFile == "" {
+		flags.OutputFile = filepath.Join(database.DefaultDataDir, fmt.Sprintf("kpi-output-%s.json", timestamp))
+	}
+
 	// Validate all flags (including cluster type)
 	if err := config.ValidateFlags(flags); err != nil {
 		return fmt.Errorf("invalid flags: %w", err)
 	}
 
 	fmt.Printf("Cluster: %s\n", flags.ClusterName)
+
+	if err := os.MkdirAll(database.DefaultDataDir, 0755); err != nil {
+		return fmt.Errorf("failed to create artifact directory: %w", err)
+	}
 
 	// Initialize logger
 	logF, err := logger.InitLogger(flags.LogFile)

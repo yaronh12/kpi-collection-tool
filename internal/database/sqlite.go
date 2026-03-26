@@ -12,24 +12,13 @@ import (
 )
 
 const (
-	// DefaultDataDir is the directory name under user's data folder
-	DefaultDataDir = "kpi-collector"
+	// DefaultDataDir is the artifact directory created in the user's working directory
+	DefaultDataDir = "kpi-collector-artifacts"
 	// DefaultDBFileName is the SQLite database file name
 	DefaultDBFileName = "kpi_metrics.db"
 )
 
 type SQLiteDB struct{}
-
-// GetSQLiteDBPath returns the path to the SQLite database file.
-// The database is stored in ~/.kpi-collector/kpi_metrics.db
-func GetSQLiteDBPath() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		// Fallback to current directory if home can't be determined
-		return DefaultDBFileName
-	}
-	return filepath.Join(homeDir, ".kpi-collector", DefaultDBFileName)
-}
 
 // NewSQLiteDB creates a new SQLite database instance
 func NewSQLiteDB() *SQLiteDB {
@@ -37,13 +26,11 @@ func NewSQLiteDB() *SQLiteDB {
 }
 
 // InitDB initializes the SQLite database and creates required tables.
-// The database is stored in ~/.kpi-collector/kpi_metrics.db
+// The database is stored in ./kpi-collector-artifacts/kpi_metrics.db (relative to CWD).
 func (sqlite_db *SQLiteDB) InitDB() (*sql.DB, error) {
-	dbPath := GetSQLiteDBPath()
+	dbPath := filepath.Join(DefaultDataDir, DefaultDBFileName)
 
-	// Create data directory if it doesn't exist
-	dataDir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(DefaultDataDir, 0755); err != nil {
 		return nil, err
 	}
 

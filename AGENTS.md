@@ -144,9 +144,13 @@ type Database interface {
 ```
 
 ### Configuration
-- Default SQLite database: `~/.kpi-collector/kpi_metrics.db`
-- Grafana config directory: `~/.kpi-collector/grafana/`
+- Default artifact directory: `./kpi-collector-artifacts/` (created in the user's current working directory)
+- SQLite database: `./kpi-collector-artifacts/kpi_metrics.db`
+- Log files: `./kpi-collector-artifacts/kpi-<timestamp>.log`
+- Output files: `./kpi-collector-artifacts/kpi-output-<timestamp>.json`
+- Grafana config directory: `./kpi-collector-artifacts/grafana/`
 - Environment variables: `KPI_COLLECTOR_DB_TYPE`, `KPI_COLLECTOR_DB_URL`
+- All commands (`run`, `db`, `grafana`) must be executed from the same working directory when using SQLite
 
 ### KPI Configuration File Format
 KPIs are defined in JSON format (see `kpis.json.template`):

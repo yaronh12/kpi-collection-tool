@@ -65,17 +65,12 @@ Provide Thanos URL and bearer token directly.
 #### Obtaining Thanos URL and Bearer Token from OpenShift
 
 ```bash
-# Get the Thanos querier URL from the route in your monitoring namespace
-export THANOS_URL=$(oc get route <thanos-route-name> -n <monitoring-namespace> -o jsonpath='{.spec.host}')
+# Get the Thanos querier URL from the route
+export THANOS_URL=$(oc get route thanos-querier -n openshift-monitoring -o jsonpath='{.spec.host}')
 
-# Create a bearer token using a service account with access to Thanos
-export TOKEN=$(oc create token <service-account-name> -n <monitoring-namespace> --duration=<duration>)
+# Create a bearer token using the prometheus-k8s service account
+export TOKEN=$(oc create token prometheus-k8s -n openshift-monitoring --duration=10h)
 ```
-
-Common values include:
-- Namespace: `openshift-monitoring`
-- Thanos route: `thanos-querier`
-- Service account: a service account with permissions to query metrics
 
 Then pass these values with `--token` and `--thanos-url`:
 

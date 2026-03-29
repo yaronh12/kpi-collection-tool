@@ -15,7 +15,9 @@ import (
 )
 
 const (
-	THANOS_ROUTE_API_PATH = "/apis/route.openshift.io/v1/namespaces/openshift-monitoring/routes/thanos-querier"
+	THANOS_ROUTE_API_PATH    = "/apis/route.openshift.io/v1/namespaces/openshift-monitoring/routes/thanos-querier"
+	MonitoringNamespace      = "openshift-monitoring"
+	TokenServiceAccountName  = "prometheus-k8s"
 )
 
 // setupKubeconfigAuth sets up authentication using kubeconfig file
@@ -78,7 +80,7 @@ func getThanosURL(client K8sClient) (string, error) {
 }
 
 // createServiceAccountToken creates a service account token for authentication
-// Equivalent to: oc create token telemeter-client -n openshift-monitoring --duration=10h
+// Equivalent to: oc create token prometheus-k8s -n openshift-monitoring --duration=10h
 func createServiceAccountToken(client K8sClient) (string, error) {
 	tokenRequest := &authv1.TokenRequest{
 		Spec: authv1.TokenRequestSpec{
@@ -88,8 +90,8 @@ func createServiceAccountToken(client K8sClient) (string, error) {
 
 	result, err := client.CreateServiceAccountToken(
 		context.TODO(),
-		"openshift-monitoring",
-		"telemeter-client",
+		MonitoringNamespace,
+		TokenServiceAccountName,
 		tokenRequest,
 	)
 	if err != nil {

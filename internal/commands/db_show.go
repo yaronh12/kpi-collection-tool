@@ -83,8 +83,8 @@ var showErrorsCmd = &cobra.Command{
 	Use:   "errors",
 	Short: "Show query error counts",
 	Long: `Display KPI queries that have encountered errors during collection.
-
-This helps identify which KPI queries are failing and need attention.`,
+Shows the error count per KPI — not the error details. To see the actual
+error messages, check the log file (--log flag on the run command).`,
 	Example: `  # List all query errors
   kpi-collector db show errors`,
 	RunE: runShowErrors,

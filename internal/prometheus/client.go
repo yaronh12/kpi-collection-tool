@@ -101,7 +101,6 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags, sampleNumber int
 			Range:        queryRangeDuration,
 		}
 		executeQuery(ctx, v1api, db, dbImpl, clusterID, queryInfo)
-
 	}
 
 	return nil
@@ -111,13 +110,13 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags, sampleNumber int
 func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl database.Database, clusterID int64, info output.QueryInfo) {
 	now := time.Now()
 
-	// Execute query using the Prometheus client library.
 	var (
 		result   model.Value
 		warnings promv1.Warnings
 		err      error
 	)
 
+	// Execute query using the Prometheus client library
 	if info.QueryType == "range" {
 		queryRange := promv1.Range{
 			Start: now.Add(-info.Range),
@@ -134,7 +133,6 @@ func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl data
 	}
 
 	if err != nil {
-		queryResult.Success = false
 		queryResult.Error = err
 		output.PrintQueryResult(info, queryResult)
 		if storeErr := dbImpl.IncrementQueryError(db, info.QueryID); storeErr != nil {
@@ -146,7 +144,6 @@ func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl data
 	// Store results
 	err = dbImpl.StoreQueryResults(db, clusterID, info.QueryID, result)
 	if err != nil {
-		queryResult.Success = false
 		queryResult.Error = fmt.Errorf("failed to store: %v", err)
 		output.PrintQueryResult(info, queryResult)
 		return

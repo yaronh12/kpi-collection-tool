@@ -39,14 +39,6 @@ func ValidateFlags(flags InputFlags) error {
 		return fmt.Errorf("duration must be greater than 0")
 	}
 
-	if flags.OutputFile == "" {
-		return fmt.Errorf("output file must be specified")
-	}
-
-	if flags.LogFile == "" {
-		return fmt.Errorf("log file must be specified")
-	}
-
 	if flags.DatabaseType != "sqlite" && flags.DatabaseType != "postgres" {
 		return fmt.Errorf("invalid db-type: must be 'sqlite' or 'postgres'")
 	}

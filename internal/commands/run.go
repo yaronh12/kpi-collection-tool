@@ -3,15 +3,19 @@ package commands
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/collector"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/database"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/kubernetes"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/logger"
 
 	"github.com/spf13/cobra"
 )
+
+const defaultLogFile = "kpi.log"
 
 // Use the existing InputFlags struct directly!
 var flags config.InputFlags
@@ -26,16 +30,30 @@ in a database (SQLite or PostgreSQL). Supports two authentication modes:
   2. Manual bearer token and Thanos URL
 
 The tool will continuously collect metrics at the specified frequency 
-for the specified duration.`,
-	Example: `  # Using kubeconfig (auto-discovery)
-  kpi-collector collect --cluster-name prod --cluster-type ran --kubeconfig ~/.kube/config
+for the specified duration.
+
+For more usage options, see the docs/ directory.`,
+	Example: `  # Using kubeconfig (auto-discovery of Thanos URL and token)
+  kpi-collector run --cluster-name prod --cluster-type ran \
+    --kubeconfig ~/.kube/config --kpis-file kpis.json
 
   # Using manual credentials
-  kpi-collector collect --cluster-name prod --cluster-type core --token TOKEN --thanos-url thanos.example.com
+  kpi-collector run --cluster-name prod --cluster-type core \
+    --token $TOKEN --thanos-url thanos.example.com --kpis-file kpis.json
+
+  # Collect all KPIs once and exit
+  kpi-collector run --cluster-name prod --cluster-type ran \
+    --kubeconfig ~/.kube/config --kpis-file kpis.json --once
+
+  # Custom sampling: every 30s for 2 hours
+  kpi-collector run --cluster-name prod --cluster-type ran \
+    --kubeconfig ~/.kube/config --kpis-file kpis.json \
+    --frequency 30s --duration 2h
 
   # With PostgreSQL backend
-  kpi-collector collect --cluster-name prod --cluster-type hub --kubeconfig ~/.kube/config \
-    --db-type postgres --postgres-url "postgresql://user:pass@localhost/kpi`,
+  kpi-collector run --cluster-name prod --cluster-type hub \
+    --kubeconfig ~/.kube/config --kpis-file kpis.json \
+    --db-type postgres --postgres-url "postgresql://user:pass@localhost:5432/kpi"`,
 	RunE: runCollect,
 }
 
@@ -61,12 +79,6 @@ func init() {
 		"sampling frequency (e.g. 30s, 1m, 2h)")
 	runCmd.Flags().DurationVar(&flags.Duration, "duration", 45*time.Minute,
 		"total duration for sampling (e.g. 10s, 1m, 2h)")
-
-	// Output flags
-	runCmd.Flags().StringVar(&flags.OutputFile, "output", "kpi-output.json",
-		"output file name for results")
-	runCmd.Flags().StringVar(&flags.LogFile, "log", "kpi.log",
-		"log file name")
 
 	// Database flags
 	runCmd.Flags().StringVar(&flags.DatabaseType, "db-type", "sqlite",
@@ -103,26 +115,29 @@ func runCollect(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid flags: %w", err)
 	}
 
-	fmt.Printf("Cluster: %s\n", flags.ClusterName)
+	fmt.Printf("Cluster: %s (%s)\n", flags.ClusterName, flags.ClusterType)
 
 	// Initialize logger
-	logF, err := logger.InitLogger(flags.LogFile)
+	logF, err := logger.InitLogger(defaultLogFile)
 	if err != nil {
 		return fmt.Errorf("failed to initialize logger: %w", err)
 	}
 	defer func() {
 		if err := logF.Close(); err != nil {
-			fmt.Printf("Failed to close log file: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Warning: failed to close log file: %v\n", err)
 		}
 	}()
+	fmt.Printf("Log file: %s\n", defaultLogFile)
+	fmt.Printf("Database: %s\n", databaseLocation(flags))
 
-	log.Println("KPI Collector initialized.")
+	log.Println("KPI Collector initialized")
 
 	// Load KPI queries
 	kpis, err := config.LoadKPIs(flags.KPIsFile)
 	if err != nil {
 		return fmt.Errorf("failed to load KPI queries: %w", err)
 	}
+	log.Printf("Loaded KPIs from %s", flags.KPIsFile)
 
 	// Validate KPI configurations (syntax, duplicates, etc.)
 	if validationErrors := config.ValidateKPIs(kpis); len(validationErrors) > 0 {
@@ -150,12 +165,15 @@ func runCollect(cmd *cobra.Command, args []string) error {
 
 	// If kubeconfig is provided, discover Thanos URL and token
 	if flags.Kubeconfig != "" {
+		log.Printf("Using kubeconfig authentication: %s", flags.Kubeconfig)
 		flags.ThanosURL, flags.BearerToken, err = kubernetes.SetupKubeconfigAuth(flags.Kubeconfig)
 		if err != nil {
 			return fmt.Errorf("failed to setup kubeconfig auth: %w", err)
 		}
 		fmt.Printf("Discovered Thanos URL: %s\n", flags.ThanosURL)
-		fmt.Printf("Created service account token!\n")
+		fmt.Println("Created service account token")
+	} else {
+		log.Printf("Using manual token authentication for %s", flags.ThanosURL)
 	}
 
 	// Run collection
@@ -165,9 +183,14 @@ func runCollect(cmd *cobra.Command, args []string) error {
 		collector.Run(kpis, flags)
 	}
 
-	fmt.Println("All queries completed successfully!")
-
 	return nil
+}
+
+func databaseLocation(flags config.InputFlags) string {
+	if flags.DatabaseType == "postgres" {
+		return "postgres (external)"
+	}
+	return fmt.Sprintf("sqlite (%s)", database.GetSQLiteDBPath())
 }
 
 // substituteCPUsIfNeeded checks if queries contain CPU placeholders and if so,

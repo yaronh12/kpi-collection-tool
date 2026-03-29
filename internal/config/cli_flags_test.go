@@ -13,24 +13,20 @@ const (
 	validBearerToken  = "test-token"
 	validThanosURL    = "https://thanos.example.com"
 	validKubeconfig   = "/path/to/kubeconfig"
-	validOutputFile   = "output.json"
-	validLogFile      = "app.log"
 	validSamplingFreq = 60 * time.Second
 	validDuration     = 45 * time.Minute
 	validDatabaseType = "sqlite"
 	validKPIsFile     = "/path/to/kpis.json"
 
-	errClusterNameRequiredMsg    = "cluster name is required: use --cluster-name flag"
-	errClusterTypeRequiredMsg    = "cluster-type is required: must be 'ran', 'core', or 'hub'"
-	errInvalidClusterTypeMsg     = "invalid cluster-type 'invalid': must be 'ran', 'core', or 'hub'"
-	errInvalidFlagComboMsg       = "invalid flag combination: either provide --token and --thanos-url, or provide --kubeconfig"
-	errSamplingFreqMsg           = "sampling frequency must be greater than 0"
-	errDurationMsg               = "duration must be greater than 0"
-	errOutputFileMsg             = "output file must be specified"
-	errLogFileMsg                = "log file must be specified"
-	errInvalidDBTypeMsg          = "invalid db-type: must be 'sqlite' or 'postgres'"
-	errPostgresURLRequiredMsg    = "postgres-url is required when db-type=postgres"
-	errKPIsFileMsg               = "kpis-file must be specified"
+	errClusterNameRequiredMsg = "cluster name is required: use --cluster-name flag"
+	errClusterTypeRequiredMsg = "cluster-type is required: must be 'ran', 'core', or 'hub'"
+	errInvalidClusterTypeMsg  = "invalid cluster-type 'invalid': must be 'ran', 'core', or 'hub'"
+	errInvalidFlagComboMsg    = "invalid flag combination: either provide --token and --thanos-url, or provide --kubeconfig"
+	errSamplingFreqMsg        = "sampling frequency must be greater than 0"
+	errDurationMsg            = "duration must be greater than 0"
+	errInvalidDBTypeMsg       = "invalid db-type: must be 'sqlite' or 'postgres'"
+	errPostgresURLRequiredMsg = "postgres-url is required when db-type=postgres"
+	errKPIsFileMsg            = "kpis-file must be specified"
 )
 
 var _ = Describe("validateFlags test", func() {
@@ -56,8 +52,6 @@ var _ = Describe("validateFlags test", func() {
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
 				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
 				KPIsFile:     validKPIsFile,
 			},
@@ -70,8 +64,6 @@ var _ = Describe("validateFlags test", func() {
 				Kubeconfig:   validKubeconfig,
 				SamplingFreq: validSamplingFreq,
 				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
 				KPIsFile:     validKPIsFile,
 			},
@@ -94,8 +86,6 @@ var _ = Describe("validateFlags test", func() {
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
 				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
 				KPIsFile:     validKPIsFile,
 			},
@@ -109,8 +99,6 @@ var _ = Describe("validateFlags test", func() {
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
 				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
 				KPIsFile:     validKPIsFile,
 			},
@@ -177,8 +165,6 @@ var _ = Describe("validateFlags test", func() {
 				ThanosURL:    validThanosURL,
 				SamplingFreq: 0,
 				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
 				KPIsFile:     validKPIsFile,
 			},
@@ -192,8 +178,6 @@ var _ = Describe("validateFlags test", func() {
 				ThanosURL:    validThanosURL,
 				SamplingFreq: -10,
 				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
 				KPIsFile:     validKPIsFile,
 			},
@@ -208,8 +192,6 @@ var _ = Describe("validateFlags test", func() {
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
 				Duration:     0,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
 				KPIsFile:     validKPIsFile,
 			},
@@ -223,44 +205,10 @@ var _ = Describe("validateFlags test", func() {
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
 				Duration:     -10 * time.Minute,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
 				KPIsFile:     validKPIsFile,
 			},
 			errDurationMsg,
-		),
-		// Error cases - missing output file
-		Entry("empty output file",
-			InputFlags{
-				ClusterName:  validClusterName,
-				ClusterType:  validClusterType,
-				BearerToken:  validBearerToken,
-				ThanosURL:    validThanosURL,
-				SamplingFreq: validSamplingFreq,
-				Duration:     validDuration,
-				OutputFile:   "",
-				LogFile:      validLogFile,
-				DatabaseType: validDatabaseType,
-				KPIsFile:     validKPIsFile,
-			},
-			errOutputFileMsg,
-		),
-		// Error cases - missing log file
-		Entry("empty log file",
-			InputFlags{
-				ClusterName:  validClusterName,
-				ClusterType:  validClusterType,
-				BearerToken:  validBearerToken,
-				ThanosURL:    validThanosURL,
-				SamplingFreq: validSamplingFreq,
-				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      "",
-				DatabaseType: validDatabaseType,
-				KPIsFile:     validKPIsFile,
-			},
-			errLogFileMsg,
 		),
 		// Error cases - invalid database type
 		Entry("invalid database type",
@@ -271,8 +219,6 @@ var _ = Describe("validateFlags test", func() {
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
 				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: "mysql",
 				KPIsFile:     validKPIsFile,
 			},
@@ -286,8 +232,6 @@ var _ = Describe("validateFlags test", func() {
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
 				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: "",
 				KPIsFile:     validKPIsFile,
 			},
@@ -302,8 +246,6 @@ var _ = Describe("validateFlags test", func() {
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
 				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: "postgres",
 				PostgresURL:  "",
 				KPIsFile:     validKPIsFile,
@@ -319,8 +261,6 @@ var _ = Describe("validateFlags test", func() {
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
 				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: "postgres",
 				PostgresURL:  "postgresql://user:pass@localhost:5432/dbname",
 				KPIsFile:     validKPIsFile,
@@ -337,8 +277,6 @@ var _ = Describe("validateFlags test", func() {
 				SingleRun:    true,
 				SamplingFreq: validSamplingFreq,
 				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
 				KPIsFile:     validKPIsFile,
 			},
@@ -353,8 +291,6 @@ var _ = Describe("validateFlags test", func() {
 				ThanosURL:    validThanosURL,
 				SamplingFreq: validSamplingFreq,
 				Duration:     validDuration,
-				OutputFile:   validOutputFile,
-				LogFile:      validLogFile,
 				DatabaseType: validDatabaseType,
 				KPIsFile:     "",
 			},

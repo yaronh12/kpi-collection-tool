@@ -31,10 +31,8 @@ kpi-collector run \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
   --kpis-file kpis.json \
-  --frequency 30 \
-  --duration 1h \
-  --output my-metrics.json \
-  --log my-app.log
+  --frequency 30s \
+  --duration 1h
 ```
 
 Explicitly using SQLite:
@@ -134,8 +132,6 @@ kpi-collector run \
 | `--insecure-tls` | No | false | Skip TLS certificate verification (dev only) |
 | `--frequency` | No | 1m | Sampling frequency (for example: `10s`, `1m`, `2h`, `24h`) |
 | `--duration` | No | 45m | Total sampling duration (for example: `10s`, `1m`, `2h`, `24h`) |
-| `--output` | No | `kpi-output.json` | Output file name for results |
-| `--log` | No | `kpi.log` | Log file name |
 | `--db-type` | No | sqlite | Database type: `sqlite` or `postgres` |
 | `--postgres-url` | No** | - | PostgreSQL connection string |
 | `--once` | No | false | Collect all KPIs once and exit (ignores `--frequency` and `--duration`) |

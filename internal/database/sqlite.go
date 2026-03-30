@@ -12,11 +12,15 @@ import (
 )
 
 const (
-	// DefaultDataDir is the artifact directory created in the user's working directory
-	DefaultDataDir = "kpi-collector-artifacts"
+	// DefaultOutputDir is the default artifact directory name, relative to CWD
+	DefaultOutputDir = "kpi-collector-artifacts"
 	// DefaultDBFileName is the SQLite database file name
 	DefaultDBFileName = "kpi_metrics.db"
 )
+
+// OutputDir is the resolved artifact directory. It defaults to DefaultOutputDir
+// and can be overridden via the --artifact-dir flag.
+var OutputDir = DefaultOutputDir
 
 type SQLiteDB struct{}
 
@@ -26,11 +30,11 @@ func NewSQLiteDB() *SQLiteDB {
 }
 
 // InitDB initializes the SQLite database and creates required tables.
-// The database is stored in ./kpi-collector-artifacts/kpi_metrics.db (relative to CWD).
+// The database is stored in <OutputDir>/kpi_metrics.db.
 func (sqlite_db *SQLiteDB) InitDB() (*sql.DB, error) {
-	dbPath := filepath.Join(DefaultDataDir, DefaultDBFileName)
+	dbPath := filepath.Join(OutputDir, DefaultDBFileName)
 
-	if err := os.MkdirAll(DefaultDataDir, 0755); err != nil {
+	if err := os.MkdirAll(OutputDir, 0755); err != nil {
 		return nil, err
 	}
 

@@ -5,7 +5,7 @@
 1. Ensure data was collected first with `kpi-collector run`
 2. Check Grafana time range (top-right), for example "Last 24 hours" or "Last 7 days"
 3. Verify the KPI dropdown has a selected value
-4. For SQLite, ensure `./kpi-collector-artifacts/kpi_metrics.db` exists in the directory where you ran `kpi-collector run`
+4. For SQLite, ensure `./kpi-collector-artifacts/kpi_metrics.db` exists in the directory where you ran `kpi-collector run` (or use `--artifact-dir` to point to the artifact directory)
 5. For PostgreSQL, test datasource connectivity in Grafana (**Settings** -> **Data Sources**)
 
 ## PostgreSQL connection errors

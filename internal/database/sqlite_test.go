@@ -19,12 +19,13 @@ var _ = Describe("Sqlite", func() {
 
 	BeforeEach(func() {
 		sqliteDB = NewSQLiteDB()
+		OutputDir = DefaultOutputDir
 
 		var err error
 		tmpDir, err = os.MkdirTemp("", "sqlite-test-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		// Change to temp directory so InitDB creates kpi-collector/ there
+		// Change to temp directory so InitDB creates the artifact dir there
 		originCwd, err = os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
 		err = os.Chdir(tmpDir)
@@ -40,6 +41,7 @@ var _ = Describe("Sqlite", func() {
 			err := db.Close()
 			Expect(err).NotTo(HaveOccurred())
 		}
+		OutputDir = DefaultOutputDir
 		if originCwd != "" {
 			err := os.Chdir(originCwd)
 			Expect(err).NotTo(HaveOccurred())
@@ -67,13 +69,13 @@ var _ = Describe("Sqlite", func() {
 		})
 
 		It("should create the data directory", func() {
-			dataDir := filepath.Join(tmpDir, DefaultDataDir)
+			dataDir := filepath.Join(tmpDir, DefaultOutputDir)
 			_, err := os.Stat(dataDir)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should create the database file", func() {
-			dbFile := filepath.Join(tmpDir, DefaultDataDir, DefaultDBFileName)
+			dbFile := filepath.Join(tmpDir, DefaultOutputDir, DefaultDBFileName)
 			_, err := os.Stat(dbFile)
 			Expect(err).NotTo(HaveOccurred())
 		})

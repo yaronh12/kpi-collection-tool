@@ -32,7 +32,7 @@ The tool will continuously collect metrics at the specified frequency
 for the specified duration.
 
 All artifacts (database, logs, output) are stored in a ./kpi-collector-artifacts/ directory
-in the current working directory.`,
+in the current working directory. Use --artifact-dir to override.`,
 	Example: `  # Using kubeconfig (auto-discovery)
   kpi-collector collect --cluster-name prod --cluster-type ran --kubeconfig ~/.kube/config
 
@@ -104,13 +104,13 @@ func init() {
 func runCollect(cmd *cobra.Command, args []string) error {
 	fmt.Println("KPI Collector starting...")
 
-	// Generate timestamped file paths inside kpi-collector/ if not explicitly set
+	// Generate timestamped file paths inside the artifact directory if not explicitly set
 	timestamp := time.Now().Format("2006-01-02-150405")
 	if flags.LogFile == "" {
-		flags.LogFile = filepath.Join(database.DefaultDataDir, fmt.Sprintf("kpi-%s.log", timestamp))
+		flags.LogFile = filepath.Join(database.OutputDir, fmt.Sprintf("kpi-%s.log", timestamp))
 	}
 	if flags.OutputFile == "" {
-		flags.OutputFile = filepath.Join(database.DefaultDataDir, fmt.Sprintf("kpi-output-%s.json", timestamp))
+		flags.OutputFile = filepath.Join(database.OutputDir, fmt.Sprintf("kpi-output-%s.json", timestamp))
 	}
 
 	// Validate all flags (including cluster type)
@@ -120,7 +120,7 @@ func runCollect(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Cluster: %s\n", flags.ClusterName)
 
-	if err := os.MkdirAll(database.DefaultDataDir, 0755); err != nil {
+	if err := os.MkdirAll(database.OutputDir, 0755); err != nil {
 		return fmt.Errorf("failed to create artifact directory: %w", err)
 	}
 
@@ -184,7 +184,12 @@ func runCollect(cmd *cobra.Command, args []string) error {
 		collector.Run(kpis, flags)
 	}
 
+	absOutputDir, err := filepath.Abs(database.OutputDir)
+	if err != nil {
+		absOutputDir = database.OutputDir
+	}
 	fmt.Println("All queries completed successfully!")
+	fmt.Printf("Artifacts stored in: %s\n", absOutputDir)
 
 	return nil
 }

@@ -3,9 +3,14 @@ package commands
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/database"
 
 	"github.com/spf13/cobra"
 )
+
+var artifactDirFlag string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -14,6 +19,16 @@ var rootCmd = &cobra.Command{
 	Long: `A tool to automate metrics gathering and visualization for KPIs 
 in disconnected environments. Supports Kubernetes auto-discovery, 
 Prometheus/Thanos integration, and multiple database backends.`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if artifactDirFlag != "" {
+			database.OutputDir = filepath.Join(artifactDirFlag, database.DefaultOutputDir)
+		}
+	},
+}
+
+func init() {
+	rootCmd.PersistentFlags().StringVar(&artifactDirFlag, "artifact-dir", "",
+		"parent directory for the kpi-collector-artifacts folder (default: current directory)")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -247,11 +247,11 @@ func runGrafanaContainer(grafanaDir string) error {
 
 	// For SQLite, mount the database file
 	if grafanaStartFlags.datasource == "sqlite" {
-		dbPath := filepath.Join(database.DefaultDataDir, database.DefaultDBFileName)
+		dbPath := filepath.Join(database.OutputDir, database.DefaultDBFileName)
 
 		// Ensure database file exists (podman requires source to exist before mounting)
 		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-			if err := os.MkdirAll(database.DefaultDataDir, 0755); err != nil {
+			if err := os.MkdirAll(database.OutputDir, 0755); err != nil {
 				return fmt.Errorf("failed to create database directory: %w", err)
 			}
 			file, err := os.Create(dbPath)

@@ -4,7 +4,7 @@ View collected KPI metrics in Grafana with a pre-configured dashboard.
 
 The `grafana` command manages a local Grafana instance via Docker. Configuration files are generated in `./kpi-collector-artifacts/grafana/`.
 
-When using SQLite, run `grafana start` from the same directory where `kpi-collector run` was executed.
+When using SQLite, run `grafana start` from the same directory where `kpi-collector run` was executed, or use `--artifact-dir` to point to the artifact directory.
 
 Related guides:
 - [Collecting Metrics](collecting-metrics.md)

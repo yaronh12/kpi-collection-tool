@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/database"
 
@@ -28,9 +29,10 @@ Works with both SQLite (default) and PostgreSQL databases.
 Database connection can be specified via:
   1. CLI flags: --db-type and --postgres-url
   2. Environment variables: KPI_COLLECTOR_DB_TYPE and KPI_COLLECTOR_DB_URL
-  3. SQLite (used when no db-type is specified): ./kpi-collector-artifacts/kpi_metrics.db
+  3. SQLite (used when no db-type is specified): <output-dir>/kpi_metrics.db
 
-When using SQLite, run this command from the same directory where 'kpi-collector run' was executed.`,
+When using SQLite, run this command from the same directory where 'kpi-collector run' was executed,
+or use --artifact-dir to specify the artifact directory.`,
 	Example: `  # Using SQLite (default)
   kpi-collector db show clusters
   
@@ -86,6 +88,12 @@ func connectToDB() (*sql.DB, database.Database, error) {
 	case "postgres":
 		dbImpl = database.NewPostgresDB(postgresURL)
 	case "sqlite":
+		dbPath := filepath.Join(database.OutputDir, database.DefaultDBFileName)
+		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+			return nil, nil, fmt.Errorf("SQLite database not found at %s\n"+
+				"Run 'kpi-collector run' first to collect data, or use --artifact-dir to specify the artifact directory",
+				dbPath)
+		}
 		dbImpl = database.NewSQLiteDB()
 	default:
 		return nil, nil, fmt.Errorf("invalid database type: %s (must be 'sqlite' or 'postgres')", dbType)

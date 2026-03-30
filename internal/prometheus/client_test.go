@@ -158,7 +158,9 @@ var _ = Describe("Client", func() {
 			tmpDir, err = os.MkdirTemp("", "prom-test-*")
 			Expect(err).NotTo(HaveOccurred())
 
-			// Change to temp directory so InitDB creates kpi-collector/ there
+			database.OutputDir = database.DefaultOutputDir
+
+			// Change to temp directory so InitDB creates the artifact dir there
 			originCwd, err = os.Getwd()
 			Expect(err).NotTo(HaveOccurred())
 			err = os.Chdir(tmpDir)
@@ -177,6 +179,7 @@ var _ = Describe("Client", func() {
 				err := testDB.Close()
 				Expect(err).NotTo(HaveOccurred())
 			}
+			database.OutputDir = database.DefaultOutputDir
 			if originCwd != "" {
 				err := os.Chdir(originCwd)
 				Expect(err).NotTo(HaveOccurred())

@@ -249,7 +249,7 @@ SQLite is the default when no `--db-type` is specified.
 - Data stored at `./kpi-collector-artifacts/kpi_metrics.db` (relative to where you run the command)
 - Automatically created on first run
 - No external dependencies
-- All commands (`run`, `db`, `grafana`) must be executed from the same working directory
+- All commands (`run`, `db`, `grafana`) must be executed from the same working directory, or use `--artifact-dir` to specify the artifact directory
 
 ### PostgreSQL
 

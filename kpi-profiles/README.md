@@ -71,6 +71,29 @@ OpenShift GitOps. Covers:
   hub's API load scales with managed cluster count)
 - **Infrastructure** — disk, PV, network, node load, pod health
 
+## Generating a KPI File
+
+Use `kpi-collector kpis generate` to create a tailored `kpis.json` from any of
+the three main profiles (`ran`, `core`, `hub`):
+
+```bash
+# Generate all RAN KPIs at once
+kpi-collector kpis generate ran --all
+
+# Interactively pick which categories to include
+kpi-collector kpis generate core
+
+# Write to a custom path
+kpi-collector kpis generate hub --all -f /path/to/hub-kpis.json
+```
+
+By default the output file is named `<profile>-kpis.json` in the current
+directory. In interactive mode (the default), you are prompted per category —
+use `--all` to skip prompts and include everything.
+
+Once generated, you can edit the file to fine-tune individual KPIs before
+passing it to the collector.
+
 ## Building Your Own
 
 For guidance on writing a custom KPI configuration file from scratch — including

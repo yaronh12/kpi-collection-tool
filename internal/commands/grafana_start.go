@@ -23,10 +23,11 @@ var grafanaStartCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start Grafana dashboard",
 	Long: `Start a local Grafana instance with the KPI dashboard pre-configured.
-Generates configuration files in ./kpi-collector-artifacts/grafana/ and
-launches Grafana via Docker with all necessary volume mounts.
+Generates configuration files in <artifacts-dir>/grafana/ and launches Grafana
+via Docker with all necessary volume mounts.
 
-When using SQLite, run this command from the same directory where 'kpi-collector run' was executed.`,
+When using SQLite, run this command from the same directory where 'kpi-collector run' was executed,
+or use --artifacts-dir to point to the artifacts directory.`,
 	Example: `  # Using SQLite
   kpi-collector grafana start --datasource=sqlite
   # Using PostgreSQL

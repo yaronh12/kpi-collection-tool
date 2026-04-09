@@ -21,15 +21,15 @@ Supports both SQLite and PostgreSQL datasources.
   Use 'grafana start' to launch Grafana and 'grafana stop' to stop it.
 
 When using SQLite, run this command from the same directory where 'kpi-collector run' was executed,
-or use --artifact-dir to point to the artifact directory.`,
+or use --artifacts-dir to point to the artifacts directory.`,
 }
 
 func init() {
 	rootCmd.AddCommand(grafanaCmd)
 }
 
-// getGrafanaConfigDir returns the path to the grafana config directory
-// <OutputDir>/grafana/
+// getGrafanaConfigDir returns the path to the Grafana config directory
+// inside the artifacts directory.
 func getGrafanaConfigDir() string {
 	return filepath.Join(database.OutputDir, "grafana")
 }

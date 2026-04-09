@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	// DefaultOutputDir is the default artifact directory name, relative to CWD
+	// DefaultOutputDir is the default artifacts directory name, relative to CWD
 	DefaultOutputDir = "kpi-collector-artifacts"
 	// DefaultDBFileName is the SQLite database file name
 	DefaultDBFileName = "kpi_metrics.db"
 )
 
-// OutputDir is the resolved artifact directory. It defaults to DefaultOutputDir
-// and can be overridden via the --artifact-dir flag.
+// OutputDir is the resolved artifacts directory. It defaults to DefaultOutputDir
+// and can be overridden via the --artifacts-dir flag.
 var OutputDir = DefaultOutputDir
 
 type SQLiteDB struct{}

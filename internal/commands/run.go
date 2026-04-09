@@ -31,8 +31,8 @@ in a database (SQLite or PostgreSQL). Supports two authentication modes:
 The tool will continuously collect metrics at the specified frequency 
 for the specified duration.
 
-All artifacts (database, logs, output) are stored in a ./kpi-collector-artifacts/ directory
-in the current working directory. Use --artifact-dir to override.`,
+All artifacts (database, logs, output) are stored in ./kpi-collector-artifacts/ by default.
+Use --artifacts-dir to override.`,
 	Example: `  # Using kubeconfig (auto-discovery)
   kpi-collector collect --cluster-name prod --cluster-type ran --kubeconfig ~/.kube/config
 
@@ -70,9 +70,9 @@ func init() {
 
 	// Output flags
 	runCmd.Flags().StringVar(&flags.OutputFile, "output", "",
-		"output file path (default: ./kpi-collector-artifacts/kpi-output-<timestamp>.json)")
+		"output file path (default: <artifacts-dir>/kpi-output-<timestamp>.json)")
 	runCmd.Flags().StringVar(&flags.LogFile, "log", "",
-		"log file path (default: ./kpi-collector-artifacts/kpi-<timestamp>.log)")
+		"log file path (default: <artifacts-dir>/kpi-<timestamp>.log)")
 
 	// Database flags
 	runCmd.Flags().StringVar(&flags.DatabaseType, "db-type", "sqlite",
@@ -121,7 +121,7 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Cluster: %s\n", flags.ClusterName)
 
 	if err := os.MkdirAll(database.OutputDir, 0755); err != nil {
-		return fmt.Errorf("failed to create artifact directory: %w", err)
+		return fmt.Errorf("failed to create artifacts directory: %w", err)
 	}
 
 	// Initialize logger

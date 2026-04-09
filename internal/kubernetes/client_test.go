@@ -246,9 +246,9 @@ users:
 			// A mock client that returns a valid token response (no actual server)
 			mock := &mockK8sClient{
 				createServiceAccountTokenFunc: func(ctx context.Context, namespace, serviceAccount string, tokenRequest *authv1.TokenRequest) (*authv1.TokenRequest, error) {
-					// Verify the correct namespace and service account
-					Expect(namespace).To(Equal("openshift-monitoring"))
-					Expect(serviceAccount).To(Equal("telemeter-client"))
+				// Verify the correct namespace and service account
+				Expect(namespace).To(Equal(MonitoringNamespace))
+				Expect(serviceAccount).To(Equal(TokenServiceAccountName))
 
 					// Return a mock token response
 					return &authv1.TokenRequest{

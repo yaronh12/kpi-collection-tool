@@ -11,29 +11,26 @@ import (
 
 var _ = Describe("Sqlite", func() {
 	var (
-		db           *sql.DB
-		tmpDir       string
-		sqliteDB     *SQLiteDB
-		originalHome string
+		db        *sql.DB
+		tmpDir    string
+		sqliteDB  *SQLiteDB
+		originCwd string
 	)
 
-	// Runs before and after each test (It section)
-	// To provide clean, isolated environment for each test
 	BeforeEach(func() {
-		// Create SQLiteDB instance
 		sqliteDB = NewSQLiteDB()
+		OutputDir = DefaultOutputDir
 
-		// Create a temporary directory to act as HOME for test isolation
 		var err error
 		tmpDir, err = os.MkdirTemp("", "sqlite-test-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		// Override HOME environment variable so GetSQLiteDBPath() uses our temp dir
-		originalHome = os.Getenv("HOME")
-		err = os.Setenv("HOME", tmpDir)
+		// Change to temp directory so InitDB creates the artifact dir there
+		originCwd, err = os.Getwd()
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Chdir(tmpDir)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Initialize database (will create in tmpDir/.kpi-collector/)
 		db, err = sqliteDB.InitDB()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(db).NotTo(BeNil())
@@ -44,12 +41,11 @@ var _ = Describe("Sqlite", func() {
 			err := db.Close()
 			Expect(err).NotTo(HaveOccurred())
 		}
-		// Restore original HOME
-		if originalHome != "" {
-			err := os.Setenv("HOME", originalHome)
+		OutputDir = DefaultOutputDir
+		if originCwd != "" {
+			err := os.Chdir(originCwd)
 			Expect(err).NotTo(HaveOccurred())
 		}
-		// Clean up temporary directory
 		if tmpDir != "" {
 			err := os.RemoveAll(tmpDir)
 			Expect(err).NotTo(HaveOccurred())
@@ -58,9 +54,6 @@ var _ = Describe("Sqlite", func() {
 
 	Describe("SQLite-Specific Features", func() {
 		It("should create the database and required tables", func() {
-			// sqlite_master = special system table in SQLite that contains
-			// metadata about all the database objects (tables, indexes, views, triggers)
-			// in your SQLite database.
 			var tableName string
 			err := db.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND name='clusters'").Scan(&tableName)
 			Expect(err).NotTo(HaveOccurred())
@@ -76,18 +69,17 @@ var _ = Describe("Sqlite", func() {
 		})
 
 		It("should create the data directory", func() {
-			dataDir := filepath.Join(tmpDir, ".kpi-collector")
+			dataDir := filepath.Join(tmpDir, DefaultOutputDir)
 			_, err := os.Stat(dataDir)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should create the database file", func() {
-			dbFile := filepath.Join(tmpDir, ".kpi-collector", "kpi_metrics.db")
+			dbFile := filepath.Join(tmpDir, DefaultOutputDir, DefaultDBFileName)
 			_, err := os.Stat(dbFile)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
-	// Run all the shared interface tests
 	RunDatabaseInterfaceTests(func() (Database, *sql.DB) { return sqliteDB, db })
 })

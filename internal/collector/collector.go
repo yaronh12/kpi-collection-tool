@@ -18,6 +18,9 @@ import (
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/prometheus"
 )
 
+// durationBuffer adds a small grace period to the duration timer so that when
+// duration is an exact multiple of frequency, the final tick fires and its
+// collection completes before the timer expires.
 const durationBuffer = 100 * time.Millisecond
 
 // RunOnce executes every KPI query exactly once and returns.

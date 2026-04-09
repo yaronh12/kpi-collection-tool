@@ -13,7 +13,7 @@ You can specify the database connection in this order:
 
 1. CLI flags: `--db-type`, `--postgres-url`
 2. Environment variables: `KPI_COLLECTOR_DB_TYPE`, `KPI_COLLECTOR_DB_URL`
-3. Default: SQLite at `~/.kpi-collector/kpi_metrics.db`
+3. SQLite (used when no `--db-type` is specified): `<artifacts-dir>/kpi_metrics.db` (default: `./kpi-collector-artifacts/`)
 
 Using environment variables:
 
@@ -241,15 +241,15 @@ kpi-collector db show kpis --name="<kpi-name>" \
 
 ## Database Support
 
-SQLite is used by default when no `--db-type` is specified.
+SQLite is the default when no `--db-type` is specified.
 
-### SQLite (Default)
+### SQLite (default)
 
 - No configuration required
-- Data stored at `~/.kpi-collector/kpi_metrics.db`
+- Data stored at `<artifacts-dir>/kpi_metrics.db` (default: `./kpi-collector-artifacts/`)
 - Automatically created on first run
 - No external dependencies
-- Works from any directory
+- All commands (`run`, `db`, `grafana`) must be executed from the same working directory, or use `--artifacts-dir` to specify the artifacts directory
 
 ### PostgreSQL
 

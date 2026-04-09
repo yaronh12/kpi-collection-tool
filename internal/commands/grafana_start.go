@@ -23,8 +23,11 @@ var grafanaStartCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start Grafana dashboard",
 	Long: `Start a local Grafana instance with the KPI dashboard pre-configured.
-Generates configuration files in ~/.kpi-collector/grafana/ and
-launches Grafana via Docker with all necessary volume mounts.`,
+Generates configuration files in <artifacts-dir>/grafana/ and launches Grafana
+via Docker with all necessary volume mounts.
+
+When using SQLite, run this command from the same directory where 'kpi-collector run' was executed,
+or use --artifacts-dir to point to the artifacts directory.`,
 	Example: `  # Using SQLite
   kpi-collector grafana start --datasource=sqlite
   # Using PostgreSQL
@@ -61,10 +64,7 @@ func runGrafanaStart(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Starting Grafana with %s datasource...\n", grafanaStartFlags.datasource)
 
 	// Get the grafana config directory
-	grafanaDir, err := getGrafanaConfigDir()
-	if err != nil {
-		return fmt.Errorf("failed to get grafana config directory: %w", err)
-	}
+	grafanaDir := getGrafanaConfigDir()
 
 	// Create all necessary directories
 	if err := createGrafanaDirectories(grafanaDir); err != nil {
@@ -225,6 +225,11 @@ func runGrafanaContainer(grafanaDir string) error {
 	stopCmd := exec.Command(runtime, "rm", "-f", grafanaContainerName)
 	_ = stopCmd.Run() // Ignore error if container doesn't exist
 
+	absGrafanaDir, err := filepath.Abs(grafanaDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve grafana config path: %w", err)
+	}
+
 	// Build docker run command
 	args := []string{
 		"run", "-d",
@@ -232,22 +237,22 @@ func runGrafanaContainer(grafanaDir string) error {
 		"-p", fmt.Sprintf("%d:3000", grafanaStartFlags.port),
 		// Mount datasource config
 		"-v", fmt.Sprintf("%s:/etc/grafana/provisioning/datasources:ro,z",
-			filepath.Join(grafanaDir, "datasources")),
+			filepath.Join(absGrafanaDir, "datasources")),
 		// Mount dashboard provisioning config
 		"-v", fmt.Sprintf("%s:/etc/grafana/provisioning/dashboards:ro,z",
-			filepath.Join(grafanaDir, "provisioning", "dashboards")),
+			filepath.Join(absGrafanaDir, "provisioning", "dashboards")),
 		// Mount dashboard JSON
 		"-v", fmt.Sprintf("%s:/var/lib/grafana/dashboards:ro",
-			filepath.Join(grafanaDir, "dashboards")),
+			filepath.Join(absGrafanaDir, "dashboards")),
 	}
 
 	// For SQLite, mount the database file
 	if grafanaStartFlags.datasource == "sqlite" {
-		dbPath := database.GetSQLiteDBPath()
+		dbPath := filepath.Join(database.OutputDir, database.DefaultDBFileName)
 
 		// Ensure database file exists (podman requires source to exist before mounting)
 		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-			if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+			if err := os.MkdirAll(database.OutputDir, 0755); err != nil {
 				return fmt.Errorf("failed to create database directory: %w", err)
 			}
 			file, err := os.Create(dbPath)
@@ -260,8 +265,13 @@ func runGrafanaContainer(grafanaDir string) error {
 			fmt.Println("📝 Created empty database file (no data collected yet)")
 		}
 
+		absDBPath, err := filepath.Abs(dbPath)
+		if err != nil {
+			return fmt.Errorf("failed to resolve database path: %w", err)
+		}
+
 		args = append(args,
-			"-v", fmt.Sprintf("%s:/var/lib/grafana/kpi_metrics.db:ro", dbPath),
+			"-v", fmt.Sprintf("%s:/var/lib/grafana/kpi_metrics.db:ro", absDBPath),
 			"-e", "GF_INSTALL_PLUGINS=frser-sqlite-datasource",
 		)
 	}

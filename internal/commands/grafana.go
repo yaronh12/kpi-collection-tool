@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/database"
+
 	"github.com/spf13/cobra"
 )
 
@@ -16,23 +18,20 @@ var grafanaCmd = &cobra.Command{
 	Long: `Manage a local Grafana instance with the KPI dashboard pre-configured.
 Supports both SQLite and PostgreSQL datasources.
 
-  Use 'grafana start' to launch Grafana and 'grafana stop' to stop it.`,
+  Use 'grafana start' to launch Grafana and 'grafana stop' to stop it.
+
+When using SQLite, run this command from the same directory where 'kpi-collector run' was executed,
+or use --artifacts-dir to point to the artifacts directory.`,
 }
 
 func init() {
 	rootCmd.AddCommand(grafanaCmd)
-
 }
 
-// getGrafanaConfigDir returns the path to the grafana config directory
-// ~/.kpi-collector/grafana/
-func getGrafanaConfigDir() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	return filepath.Join(homeDir, ".kpi-collector", "grafana"), nil
+// getGrafanaConfigDir returns the path to the Grafana config directory
+// inside the artifacts directory.
+func getGrafanaConfigDir() string {
+	return filepath.Join(database.OutputDir, "grafana")
 }
 
 // createGrafanaDirectories creates all necessary directories for grafana config

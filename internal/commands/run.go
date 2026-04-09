@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/collector"
@@ -14,8 +15,6 @@ import (
 
 	"github.com/spf13/cobra"
 )
-
-const defaultLogFile = "kpi.log"
 
 // Use the existing InputFlags struct directly!
 var flags config.InputFlags
@@ -32,7 +31,10 @@ in a database (SQLite or PostgreSQL). Supports two authentication modes:
 The tool will continuously collect metrics at the specified frequency 
 for the specified duration.
 
-For more usage options, see the docs/ directory.`,
+For more usage options, see https://github.com/redhat-best-practices-for-k8s/kpi-collection-tool/blob/main/docs/collecting-metrics.md
+
+All artifacts (database, logs, output) are stored in ./kpi-collector-artifacts/ by default.
+Use --artifacts-dir to override.`,
 	Example: `  # Using kubeconfig (auto-discovery of Thanos URL and token)
   kpi-collector run --cluster-name prod --cluster-type ran \
     --kubeconfig ~/.kube/config --kpis-file kpis.json
@@ -82,7 +84,7 @@ func init() {
 
 	// Database flags
 	runCmd.Flags().StringVar(&flags.DatabaseType, "db-type", "sqlite",
-		"database type: sqlite or postgres")
+		"database type: sqlite (default) or postgres")
 	runCmd.Flags().StringVar(&flags.PostgresURL, "postgres-url", "",
 		"PostgreSQL connection string (required if db-type=postgres)")
 
@@ -115,10 +117,16 @@ func runCollect(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid flags: %w", err)
 	}
 
-	fmt.Printf("Cluster: %s (%s)\n", flags.ClusterName, flags.ClusterType)
+	fmt.Printf("Cluster name: %s (type=%s)\n", flags.ClusterName, flags.ClusterType)
 
-	// Initialize logger
-	logF, err := logger.InitLogger(defaultLogFile)
+	if err := os.MkdirAll(database.OutputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create artifacts directory: %w", err)
+	}
+
+	// Initialize logger with timestamped file in the artifacts directory
+	timestamp := time.Now().Format("2006-01-02-150405")
+	logFile := filepath.Join(database.OutputDir, fmt.Sprintf("kpi-%s.log", timestamp))
+	logF, err := logger.InitLogger(logFile)
 	if err != nil {
 		return fmt.Errorf("failed to initialize logger: %w", err)
 	}
@@ -127,7 +135,7 @@ func runCollect(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(os.Stderr, "Warning: failed to close log file: %v\n", err)
 		}
 	}()
-	fmt.Printf("Log file: %s\n", defaultLogFile)
+	fmt.Printf("Log file: %s\n", logFile)
 	fmt.Printf("Database: %s\n", databaseLocation(flags))
 
 	log.Println("KPI Collector initialized")
@@ -171,9 +179,7 @@ func runCollect(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to setup kubeconfig auth: %w", err)
 		}
 		fmt.Printf("Discovered Thanos URL: %s\n", flags.ThanosURL)
-		fmt.Println("Created service account token")
-	} else {
-		log.Printf("Using manual token authentication for %s", flags.ThanosURL)
+		fmt.Printf("Created service account token (%s)!\n", kubernetes.TokenServiceAccountName)
 	}
 
 	// Run collection
@@ -183,6 +189,13 @@ func runCollect(cmd *cobra.Command, args []string) error {
 		collector.Run(kpis, flags)
 	}
 
+	absOutputDir, err := filepath.Abs(database.OutputDir)
+	if err != nil {
+		absOutputDir = database.OutputDir
+	}
+	fmt.Println("All queries completed successfully!")
+	fmt.Printf("Artifacts stored in: %s\n", absOutputDir)
+
 	return nil
 }
 
@@ -190,7 +203,7 @@ func databaseLocation(flags config.InputFlags) string {
 	if flags.DatabaseType == "postgres" {
 		return "postgres (external)"
 	}
-	return fmt.Sprintf("sqlite (%s)", database.GetSQLiteDBPath())
+	return fmt.Sprintf("sqlite (%s)", filepath.Join(database.OutputDir, database.DefaultDBFileName))
 }
 
 // substituteCPUsIfNeeded checks if queries contain CPU placeholders and if so,

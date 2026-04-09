@@ -133,6 +133,7 @@ func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl data
 	}
 
 	if err != nil {
+		queryResult.Success = false
 		queryResult.Error = err
 		output.PrintQueryResult(info, queryResult)
 		if storeErr := dbImpl.IncrementQueryError(db, info.QueryID); storeErr != nil {
@@ -144,6 +145,7 @@ func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl data
 	// Store results
 	err = dbImpl.StoreQueryResults(db, clusterID, info.QueryID, result)
 	if err != nil {
+		queryResult.Success = false
 		queryResult.Error = fmt.Errorf("failed to store: %v", err)
 		output.PrintQueryResult(info, queryResult)
 		return

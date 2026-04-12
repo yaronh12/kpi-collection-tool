@@ -18,12 +18,15 @@ import (
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/prometheus"
 )
 
-const HUNDRED_MILLIS_DURATION_BUFFER = 100 * time.Millisecond
+// durationBuffer adds a small grace period to the duration timer so that when
+// duration is an exact multiple of frequency, the final tick fires and its
+// collection completes before the timer expires.
+const durationBuffer = 100 * time.Millisecond
 
 // RunOnce executes every KPI query exactly once and returns.
 // It ignores frequency and duration settings entirely.
 func RunOnce(kpis config.KPIs, flags config.InputFlags) {
-	fmt.Printf("\nKPI Collection Started - Single run mode\n\n")
+	fmt.Printf("\nKPI Collection Started - Single run mode\n")
 
 	log.Printf("Single run: executing %d KPIs", len(kpis.Queries))
 
@@ -34,7 +37,7 @@ func RunOnce(kpis config.KPIs, flags config.InputFlags) {
 	output.PrintShutdown("Single run completed")
 }
 
-// Run executes the KPI collection loop
+// Run executes the KPI collection loop until duration expires or interrupted.
 func Run(kpis config.KPIs, flags config.InputFlags) {
 	runOnceKPIs, repeatingKPIs := splitRunOnceQueries(kpis)
 
@@ -53,7 +56,7 @@ func Run(kpis config.KPIs, flags config.InputFlags) {
 		return
 	}
 
-	durationTimer := time.NewTimer(flags.Duration + HUNDRED_MILLIS_DURATION_BUFFER)
+	durationTimer := time.NewTimer(flags.Duration + durationBuffer)
 	defer durationTimer.Stop()
 
 	interruptChan := make(chan os.Signal, 1)
@@ -95,8 +98,8 @@ func splitRunOnceQueries(kpis config.KPIs) (runOnce config.KPIs, repeating confi
 	return runOnce, repeating
 }
 
-// groupKPIsByFrequency groups KPIs by their effective sampling frequency
-// This includes both default and custom frequency KPIs
+// groupKPIsByFrequency groups KPIs by their effective sampling frequency.
+// This includes both default and custom frequency KPIs.
 func groupKPIsByFrequency(kpis config.KPIs, defaultFreq time.Duration) map[time.Duration]config.KPIs {
 	kpisByFreq := make(map[time.Duration]config.KPIs)
 
@@ -111,7 +114,7 @@ func groupKPIsByFrequency(kpis config.KPIs, defaultFreq time.Duration) map[time.
 	if len(kpisByFreq) > 0 {
 		log.Printf("Grouped all KPIs into %d unique frequency groups", len(kpisByFreq))
 		for freq, group := range kpisByFreq {
-			log.Printf("  Frequency %ds: %d KPIs", freq, len(group.Queries))
+			log.Printf("  Frequency %s: %d KPIs", freq, len(group.Queries))
 		}
 	}
 
@@ -181,10 +184,10 @@ func runKPIs(kpis config.KPIs, flags config.InputFlags, sampleNumber int, totalS
 	}
 }
 
-// calculateTotalSamples calculates how many samples will run for a given frequency and duration
+// calculateTotalSamples calculates how many samples will run for a given frequency and duration.
+// First sample runs immediately at t=0, then every frequency seconds.
+// For duration D and frequency F: samples at 0, F, 2F, ... up to < D
 func calculateTotalSamples(frequency time.Duration, duration time.Duration) int {
-	// First sample runs immediately at t=0, then every frequency seconds
-	// For duration D and frequency F: samples at 0, F, 2F, ... up to < D
 	frequencySecs := int(frequency.Seconds())
 	durationSecs := int(duration.Seconds())
 	return (durationSecs / frequencySecs) + 1

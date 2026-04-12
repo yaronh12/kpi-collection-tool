@@ -50,13 +50,13 @@
             "query-type": "range",
             "step": "30s",
             "range": "1h"
-        }
+        },
         {
             // only needs a single snapshot, not repeated sampling
             "id": "cluster-uptime",
             "promquery": "max(time() - process_start_time_seconds{job=\"kubelet\"})",
             "run-once": true
-        },
+        }
     ]
 }
 

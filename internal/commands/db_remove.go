@@ -19,7 +19,7 @@ var removeCmd = &cobra.Command{
 	Short: "Delete data from the database",
 	Long: `Delete clusters, KPI metrics, or error records from the database.
 
-	WARNING: All remove operations are immediate and cannot be undone.`,
+WARNING: All remove operations are immediate and cannot be undone.`,
 }
 
 var removeClustersCmd = &cobra.Command{

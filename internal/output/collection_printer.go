@@ -65,7 +65,6 @@ func PrintStartup(duration string, deadline string) {
 
 	fmt.Println()
 	fmt.Printf("KPI Collection Started - Duration: %s (until %s)\n", duration, deadline)
-	fmt.Println()
 }
 
 // PrintShutdown prints collection shutdown info (thread-safe)

@@ -56,8 +56,6 @@ type InputFlags struct {
 	InsecureTLS  bool
 	SamplingFreq time.Duration
 	Duration     time.Duration
-	OutputFile   string
-	LogFile      string
 	DatabaseType string // "sqlite" or "postgres"
 	PostgresURL  string // PostgreSQL connection string
 	KPIsFile     string

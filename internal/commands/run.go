@@ -179,7 +179,10 @@ func runCollect(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to setup kubeconfig auth: %w", err)
 		}
 		fmt.Printf("Discovered Thanos URL: %s\n", flags.ThanosURL)
-		fmt.Printf("Created service account token (%s)!\n", kubernetes.TokenServiceAccountName)
+		fmt.Printf("Created service account token (sa=%s, ns=%s, duration=%s)\n",
+			kubernetes.TokenServiceAccountName,
+			kubernetes.MonitoringNamespace,
+			"10h")
 	}
 
 	// Run collection

@@ -58,6 +58,12 @@ kpi-collector db --help
 kpi-collector grafana --help
 ```
 
+## AI Skill for Cursor / Claude Code
+
+An AI agent skill is included that teaches your coding assistant how to use
+kpi-collector and generate Telco-specific PromQL queries.
+See [docs/ai-skill/](docs/ai-skill/) for installation and usage instructions.
+
 ## Documentation
 
 - [Documentation Index](docs/index.md)

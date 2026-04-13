@@ -3,17 +3,33 @@
 CLI tool to automate KPI metrics collection from Prometheus/Thanos on
 OpenShift clusters, with built-in storage and Grafana visualization.
 
+## Motivation
+
+Typically, developers and admins collect metrics from OpenShift clusters by running manual curl commands inside the Prometheus pod, crafting URL-encoded PromQL queries, and parsing the JSON output with `jq`:
+
+```bash
+PROM_API='http://localhost:9090/api/v1/query'
+PROM_QUERY='query=rate(container_cpu_usage_seconds_total{id="/system.slice/crio.service"}[5m])'
+
+oc exec -n openshift-monitoring prometheus-k8s-0 -- \
+  curl -ks $PROM_API --data-urlencode $PROM_QUERY \
+  | jq '.data.result[] | .value[0] as $ts | .value[1] as $v | {ts: ($ts | todateiso8601), value: $v}'
+```
+
+The `jq` filters plus some bash magic can produce good enough output, but this approach doesn't scale — when you need to collect dozens of KPIs repeatedly, store results over time, or share them across a team, it quickly becomes error-prone and tedious.
+
+kpi-collector replaces this manual workflow. You define your queries in a simple JSON file, point the tool at a cluster, and it takes care of retrieving the metrics, hiding the Prometheus query issuing, and handling the subsequent parsing, storage, and visualization.
+
 ## What it does
 
-kpi-collector connects to an OpenShift cluster, queries Prometheus/Thanos for
-the metrics you define in a simple JSON file, and stores the results in a local
-SQLite database or a PostgreSQL server. You can then query the stored data from
-the command line or visualize it in a pre-configured Grafana dashboard.
+kpi-collector connects to an OpenShift cluster, queries Prometheus/Thanos for the metrics you define in a simple JSON file, and stores the results in a local SQLite database or a PostgreSQL server. You can then query the stored data from the command line or visualize it in a pre-configured Grafana dashboard.
 
-The tool handles all the plumbing automatically: discovering the Thanos URL,
-creating a short-lived service account token, scheduling repeated queries at
-the frequency you choose, and managing the database lifecycle. You just provide
-a kubeconfig and a list of PromQL queries.
+The tool handles all the plumbing automatically: discovering the Thanos URL, creating a short-lived service account token, scheduling repeated queries at the frequency you choose, and managing the database lifecycle. You just provide a kubeconfig and a list of PromQL queries.
+
+> [!IMPORTANT]
+> The kubeconfig must belong to a user with admin privileges or sufficient permissions to create tokens for the `prometheus-k8s` service account in the `openshift-monitoring` namespace.
+
+Three collection modes are supported: **periodic retrieval** (collect at a set frequency over a duration), **single-shot** (`--once` — collect every KPI once and exit), and **range queries** (fetch a window of historical data points in a single call).
 
 ## Who is this for
 

@@ -66,9 +66,9 @@ See [docs/ai-skill/](docs/ai-skill/) for installation and usage instructions.
 
 ## Documentation
 
-- [Documentation Index](docs/index.md)
 - [Installation](docs/installation.md)
 - [Collecting Metrics](docs/collecting-metrics.md)
+- [KPI Profiles](kpi-profiles/README.md)
 - [Database Commands](docs/database-commands.md)
 - [Grafana](docs/grafana.md)
 - [Troubleshooting](docs/troubleshooting.md)

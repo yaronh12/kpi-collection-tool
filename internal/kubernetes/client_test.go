@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -243,76 +244,60 @@ users:
 
 	Describe("createServiceAccountToken", func() {
 		It("should successfully create and return a service account token", func() {
-			// A mock client that returns a valid token response (no actual server)
+			requestedDuration := 45 * time.Minute
+
 			mock := &mockK8sClient{
 				createServiceAccountTokenFunc: func(ctx context.Context, namespace, serviceAccount string, tokenRequest *authv1.TokenRequest) (*authv1.TokenRequest, error) {
-				// Verify the correct namespace and service account
-				Expect(namespace).To(Equal(MonitoringNamespace))
-				Expect(serviceAccount).To(Equal(TokenServiceAccountName))
+					Expect(namespace).To(Equal(MonitoringNamespace))
+					Expect(serviceAccount).To(Equal(TokenServiceAccountName))
+					Expect(*tokenRequest.Spec.ExpirationSeconds).To(Equal(int64(requestedDuration.Seconds())))
 
-					// Return a mock token response
 					return &authv1.TokenRequest{
 						Status: authv1.TokenRequestStatus{
 							Token: "mock-service-account-token-12345",
 							ExpirationTimestamp: metav1.Time{
-								Time: metav1.Now().Add(36000),
+								Time: metav1.Now().Add(requestedDuration),
 							},
 						},
 					}, nil
 				},
 			}
 
-			// We call createServiceAccountToken
-			token, err := createServiceAccountToken(mock)
+			token, err := createServiceAccountToken(mock, requestedDuration)
 
-			// We should not get an error
 			Expect(err).NotTo(HaveOccurred())
-			// The token should not be empty
-			Expect(token).NotTo(BeEmpty())
-			// The token should match what the mock returned
 			Expect(token).To(Equal("mock-service-account-token-12345"))
 		})
 
 		It("should return an error when service account does not exist", func() {
-			// A mock client that returns an error (no actual server)
 			mock := &mockK8sClient{
 				createServiceAccountTokenFunc: func(ctx context.Context, namespace, serviceAccount string, tokenRequest *authv1.TokenRequest) (*authv1.TokenRequest, error) {
 					return nil, fmt.Errorf("serviceaccount not found")
 				},
 			}
 
-			// We call createServiceAccountToken
-			token, err := createServiceAccountToken(mock)
+			token, err := createServiceAccountToken(mock, time.Hour)
 
-			// We should get an error
 			Expect(err).To(HaveOccurred())
-			// The token should be empty
 			Expect(token).To(BeEmpty())
 		})
 
 		It("should return an error when API returns empty token", func() {
-			// A mock client that returns a response with an empty token (no actual server)
 			mock := &mockK8sClient{
 				createServiceAccountTokenFunc: func(ctx context.Context, namespace, serviceAccount string, tokenRequest *authv1.TokenRequest) (*authv1.TokenRequest, error) {
 					return &authv1.TokenRequest{
 						Status: authv1.TokenRequestStatus{
-							Token: "", // Empty token
+							Token: "",
 						},
 					}, nil
 				},
 			}
 
-			// We call createServiceAccountToken
-			token, err := createServiceAccountToken(mock)
-			// We should not get an error (API call succeeded)
+			token, err := createServiceAccountToken(mock, time.Hour)
+
 			Expect(err).NotTo(HaveOccurred())
-			// The token should be empty
 			Expect(token).To(BeEmpty())
 		})
-
-		// Note: This test is not applicable with mock client
-		// The mock returns Go structs directly, not JSON
-		// JSON parsing errors would only occur at the HTTP layer
 	})
 
 	Describe("SetupKubeconfigAuth", func() {
@@ -339,37 +324,28 @@ users:
 		})
 
 		It("should return an error when kubeconfig file does not exist", func() {
-			// A path to a non-existent kubeconfig file
 			nonExistentPath := filepath.Join(tmpDir, "nonexistent")
 
-			// We call SetupKubeconfigAuth
-			thanosURL, token, err := SetupKubeconfigAuth(nonExistentPath)
+			thanosURL, token, err := SetupKubeconfigAuth(nonExistentPath, time.Hour)
 
-			// We should get an error
 			Expect(err).To(HaveOccurred())
-			// Both return values should be empty
 			Expect(thanosURL).To(BeEmpty())
 			Expect(token).To(BeEmpty())
 		})
 
 		It("should return an error when kubeconfig is invalid", func() {
-			// An invalid kubeconfig file
 			invalidConfig := []byte("invalid yaml {[}")
 			err := os.WriteFile(kubeconfigPath, invalidConfig, 0644)
 			Expect(err).NotTo(HaveOccurred())
 
-			// We call SetupKubeconfigAuth
-			thanosURL, token, err := SetupKubeconfigAuth(kubeconfigPath)
+			thanosURL, token, err := SetupKubeconfigAuth(kubeconfigPath, time.Hour)
 
-			// We should get an error
 			Expect(err).To(HaveOccurred())
-			// Both return values should be empty
 			Expect(thanosURL).To(BeEmpty())
 			Expect(token).To(BeEmpty())
 		})
 
 		It("should return an error when unable to connect to cluster", func() {
-			// A valid kubeconfig structure but pointing to non-existent server
 			validConfig := `
 apiVersion: v1
 kind: Config
@@ -392,12 +368,9 @@ users:
 			err := os.WriteFile(kubeconfigPath, []byte(validConfig), 0644)
 			Expect(err).NotTo(HaveOccurred())
 
-			// We call SetupKubeconfigAuth
-			thanosURL, token, err := SetupKubeconfigAuth(kubeconfigPath)
+			thanosURL, token, err := SetupKubeconfigAuth(kubeconfigPath, time.Hour)
 
-			// We should get an error (cannot connect to non-existent server)
 			Expect(err).To(HaveOccurred())
-			// Both return values should be empty
 			Expect(thanosURL).To(BeEmpty())
 			Expect(token).To(BeEmpty())
 		})

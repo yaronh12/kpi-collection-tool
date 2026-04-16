@@ -174,15 +174,18 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	// If kubeconfig is provided, discover Thanos URL and token
 	if flags.Kubeconfig != "" {
 		log.Printf("Using kubeconfig authentication: %s", flags.Kubeconfig)
-		flags.ThanosURL, flags.BearerToken, err = kubernetes.SetupKubeconfigAuth(flags.Kubeconfig)
+
+		tokenDuration := tokenDurationForCollection(flags.SingleRun, flags.Duration)
+
+		flags.ThanosURL, flags.BearerToken, err = kubernetes.SetupKubeconfigAuth(flags.Kubeconfig, tokenDuration)
 		if err != nil {
 			return fmt.Errorf("failed to setup kubeconfig auth: %w", err)
 		}
 		fmt.Printf("Discovered Thanos URL: %s\n", flags.ThanosURL)
-		fmt.Printf("Created service account token (sa=%s, ns=%s, duration=%s)\n",
+		fmt.Printf("Created service account token (sa=%s, ns=%s, expiry=%s)\n",
 			kubernetes.TokenServiceAccountName,
 			kubernetes.MonitoringNamespace,
-			"10h")
+			tokenDuration)
 	}
 
 	// Run collection
@@ -207,6 +210,17 @@ func databaseLocation(flags config.InputFlags) string {
 		return "postgres (external)"
 	}
 	return fmt.Sprintf("sqlite (%s)", filepath.Join(database.OutputDir, database.DefaultDBFileName))
+}
+
+// tokenDurationForCollection returns the token expiration to use when creating
+// a service-account token via kubeconfig.  In single-run mode the token
+// is short-lived (10 min); otherwise it matches the collection duration
+// plus a 10-minute buffer so it won't expire mid-collection.
+func tokenDurationForCollection(isSingleRun bool, collectionDuration time.Duration) time.Duration {
+	if isSingleRun {
+		return 10 * time.Minute
+	}
+	return collectionDuration + 10*time.Minute
 }
 
 // substituteCPUsIfNeeded checks if queries contain CPU placeholders and if so,

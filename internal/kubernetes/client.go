@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/kubernetes"
@@ -20,15 +21,15 @@ const (
 	TokenServiceAccountName  = "prometheus-k8s"
 )
 
-// setupKubeconfigAuth sets up authentication using kubeconfig file
-// and discovers Thanos URL and creates service account token
-func SetupKubeconfigAuth(kubeconfig string) (string, string, error) {
+// SetupKubeconfigAuth sets up authentication using kubeconfig file,
+// discovers the Thanos URL, and creates a service account token
+// whose lifetime matches tokenDuration.
+func SetupKubeconfigAuth(kubeconfig string, tokenDuration time.Duration) (string, string, error) {
 	clientset, err := setupKubernetesClient(kubeconfig)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to setup Kubernetes client: %v", err)
 	}
 
-	// Wrap the clientset in our interface implementation
 	client := &k8sClientImpl{clientset: clientset}
 
 	thanosURL, err := getThanosURL(client)
@@ -36,7 +37,7 @@ func SetupKubeconfigAuth(kubeconfig string) (string, string, error) {
 		return "", "", fmt.Errorf("failed to get Thanos URL: %v", err)
 	}
 
-	bearerToken, err := createServiceAccountToken(client)
+	bearerToken, err := createServiceAccountToken(client, tokenDuration)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create service account token: %v", err)
 	}
@@ -80,11 +81,13 @@ func getThanosURL(client K8sClient) (string, error) {
 }
 
 // createServiceAccountToken creates a service account token for authentication
-// Equivalent to: oc create token prometheus-k8s -n openshift-monitoring --duration=10h
-func createServiceAccountToken(client K8sClient) (string, error) {
+// with the given expiration duration.
+func createServiceAccountToken(client K8sClient, expiration time.Duration) (string, error) {
+	expirationSeconds := int64(expiration.Seconds())
+
 	tokenRequest := &authv1.TokenRequest{
 		Spec: authv1.TokenRequestSpec{
-			ExpirationSeconds: int64Ptr(36000), // 10 hours = 36000 seconds
+			ExpirationSeconds: &expirationSeconds,
 		},
 	}
 
@@ -101,7 +104,3 @@ func createServiceAccountToken(client K8sClient) (string, error) {
 	return result.Status.Token, nil
 }
 
-// int64Ptr returns a pointer to an int64 value
-func int64Ptr(i int64) *int64 {
-	return &i
-}

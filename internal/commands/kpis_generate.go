@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	kpiprofiles "github.com/redhat-best-practices-for-k8s/kpi-collection-tool/kpi-profiles"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
+	kpiprofiles "github.com/redhat-best-practices-for-k8s/kpi-collection-tool/kpi-profiles"
 
 	"github.com/spf13/cobra"
 )
@@ -34,12 +34,14 @@ var profiles = map[string]profile{
 }
 
 var kpisGenerateFlags struct {
-	file string
-	all  bool
+	profile   string
+	file      string
+	all       bool
+	overwrite bool
 }
 
 var kpisGenerateCmd = &cobra.Command{
-	Use:   "generate <profile>",
+	Use:   "generate --profile <profile>",
 	Short: "Generate a kpis.json file for a cluster profile",
 	Long: `Generate a kpis.json file with KPI queries tailored for a specific cluster profile.
 
@@ -48,29 +50,34 @@ Supported profiles: ran, core, hub
 In interactive mode (default), you will be prompted to select which KPI
 categories to include. Use --all to include all categories without prompts.`,
 	Example: `  # Generate all RAN KPIs
-  kpi-collector kpis generate ran --all
+  kpi-collector kpis generate --profile ran --all
 
   # Interactively select categories for a Core cluster
-  kpi-collector kpis generate core -f core-kpis.json
+  kpi-collector kpis generate --profile core -f core-kpis.json
 
   # Generate Hub KPIs to a custom path
-  kpi-collector kpis generate hub --all -f /path/to/hub-kpis.json`,
-	Args:      cobra.ExactArgs(1),
-	ValidArgs: validProfiles,
-	RunE:      runKpisGenerate,
+  kpi-collector kpis generate --profile hub --all -f /path/to/hub-kpis.json`,
+	Args: cobra.NoArgs,
+	RunE: runKpisGenerate,
 }
 
 func init() {
 	kpisCmd.AddCommand(kpisGenerateCmd)
 
+	kpisGenerateCmd.Flags().StringVarP(&kpisGenerateFlags.profile, "profile", "p", "",
+		fmt.Sprintf("cluster profile (%s)", strings.Join(validProfiles, ", ")))
 	kpisGenerateCmd.Flags().StringVarP(&kpisGenerateFlags.file, "file", "f", "",
 		"output file path (default: <profile>-kpis.json)")
 	kpisGenerateCmd.Flags().BoolVar(&kpisGenerateFlags.all, "all", false,
 		"include all KPI categories without prompts")
+	kpisGenerateCmd.Flags().BoolVar(&kpisGenerateFlags.overwrite, "overwrite", false,
+		"overwrite the output file if it already exists")
+
+	_ = kpisGenerateCmd.MarkFlagRequired("profile")
 }
 
-func runKpisGenerate(_ *cobra.Command, args []string) error {
-	profileName := args[0]
+func runKpisGenerate(_ *cobra.Command, _ []string) error {
+	profileName := kpisGenerateFlags.profile
 
 	prof, ok := profiles[profileName]
 	if !ok {
@@ -80,18 +87,18 @@ func runKpisGenerate(_ *cobra.Command, args []string) error {
 
 	filePath := resolveOutputFile(profileName)
 
-	if err := validateOutputPath(filePath); err != nil {
-		return err
+	if err := validateOutputPath(filePath, kpisGenerateFlags.overwrite); err != nil {
+		return fmt.Errorf("failed to validate output path: %w", err)
 	}
 
 	allKPIs, err := loadProfileKPIs(prof)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load profile KPIs: %w", err)
 	}
 
 	queries, err := selectQueries(prof, allKPIs.Queries, kpisGenerateFlags.all)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to select queries: %w", err)
 	}
 
 	if len(queries) == 0 {
@@ -113,9 +120,14 @@ func resolveOutputFile(profileName string) string {
 	return profileName + "-kpis.json"
 }
 
-func validateOutputPath(filePath string) error {
-	if info, err := os.Stat(filePath); err == nil && info.IsDir() {
-		return fmt.Errorf("%q is a directory, not a file path", filePath)
+func validateOutputPath(filePath string, overwrite bool) error {
+	if info, err := os.Stat(filePath); err == nil { // if err==nil then path exists
+		if info.IsDir() {
+			return fmt.Errorf("%q is a directory, not a file path", filePath)
+		}
+		if !overwrite {
+			return fmt.Errorf("file %q already exists (use --overwrite to replace it)", filePath)
+		}
 	}
 
 	dir := filepath.Dir(filePath)

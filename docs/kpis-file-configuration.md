@@ -177,7 +177,7 @@ How the time controls relate:
 - `step` — spacing between data points in the returned range
 - PromQL windows like `rate(...[5m])` control the per-point lookback, independent of the above
 
-## Dynamic CPU Placeholders
+## Dynamic CPU IDs from PerformanceProfile CRs
 
 Queries can use `{{RESERVED_CPUS}}` and `{{ISOLATED_CPUS}}` placeholders. These are replaced at startup with CPU IDs from PerformanceProfile CRs in the cluster. This feature requires `--kubeconfig` authentication.
 
@@ -188,4 +188,4 @@ Queries can use `{{RESERVED_CPUS}}` and `{{ISOLATED_CPUS}}` placeholders. These 
 }
 ```
 
-For full details on how CPU substitution works and how to obtain CPU IDs manually, see [Collecting Metrics — Dynamic CPU Placeholders](collecting-metrics.md#dynamic-cpu-placeholders).
+For full details on how CPU substitution works and how to obtain CPU IDs manually, see [Collecting Metrics — Dynamic CPU IDs](collecting-metrics.md#dynamic-cpu-ids-from-performanceprofile-crs).

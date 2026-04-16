@@ -54,6 +54,25 @@ Three collection modes are supported: **periodic retrieval** (collect at a set f
 
 ## Example: collect and query
 
+Create a `kpis.json` file with the queries you want to collect:
+
+```json
+{
+    "kpis": [
+        {
+            "id": "node-cpu-usage",
+            "promquery": "avg by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))"
+        },
+        {
+            "id": "cluster-uptime",
+            "promquery": "sum(up)"
+        }
+    ]
+}
+```
+
+Run the collector:
+
 ```bash
 $ kpi-collector run \
     --cluster-name my-cluster --cluster-type ran \
@@ -112,7 +131,7 @@ Total results: 3
 
 - [Getting Started](docs/getting-started.md) — install, collect your first metrics, and verify results in 5 minutes
 - [Installation](docs/installation.md) — pre-built binary, go install, or build from source
-- [Collecting Metrics](docs/collecting-metrics.md) — authentication modes, behind-the-scenes details, and CPU placeholders
+- [Collecting Metrics](docs/collecting-metrics.md) — authentication modes, behind-the-scenes details, and dynamic CPU IDs
 - [KPI Configuration](docs/kpis-file-configuration.md) — KPI file format, sampling, range queries, and built-in profiles
 - [Database Commands](docs/database-commands.md) — query and manage stored data
 - [Grafana](docs/grafana.md) — launch and configure the Grafana dashboard

@@ -6,6 +6,7 @@ The `run` command gathers KPI metrics from Prometheus/Thanos and stores them in 
 > **New here?** Start with the [Getting Started](getting-started.md) tutorial to collect your first metrics in 5 minutes.
 
 Related guides:
+
 - [Getting Started](getting-started.md)
 - [KPI Configuration](kpis-file-configuration.md)
 - [Database Commands](database-commands.md)
@@ -13,12 +14,14 @@ Related guides:
 
 ## Authentication Modes
 
-kpi-collector supports two authentication modes. Both produce the same two values needed to query Prometheus/Thanos: a **bearer token** and a **Thanos querier URL**.
+kpi-collector supports two authentication modes.
 
-| Mode | When to use |
-|------|-------------|
-| `--kubeconfig` | You have kubeconfig access to the cluster. The tool discovers the Thanos URL and creates a token automatically. |
-| `--token` + `--thanos-url` | You don't have kubeconfig access, or you want to use a specific token/URL (e.g. from a different service account). |
+
+| Mode                       | When to use                                                                                                                                                                                                                                                                                         | Requirements                                                                                    |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `--kubeconfig`             | You have kubeconfig access to the cluster. The tool auto-discovers the Thanos URL, creates a short-lived bearer token, and can fetch and template [CPU IDs from PerformanceProfile CRs](#dynamic-cpu-ids-from-performanceprofile-crs).                                                                                 | Admin privileges or permissions to create tokens for `prometheus-k8s` in `openshift-monitoring` |
+| `--token` + `--thanos-url` | You don't have kubeconfig access, or you want to use a specific token/URL. You provide both values manually. Automatic [CPU ID resolution](#dynamic-cpu-ids-from-performanceprofile-crs) is not available — see the [manual alternative](#manual-alternative-obtaining-cpu-ids-without---kubeconfig) to hardcode them. | A valid bearer token and the Thanos querier hostname                                            |
+
 
 ### 1) Using Kubeconfig (Automatic Discovery)
 
@@ -53,6 +56,10 @@ oc create token prometheus-k8s -n openshift-monitoring --duration=10m
 No new service account is created; the tool uses the existing `prometheus-k8s` account that ships with OpenShift monitoring.
 
 After these two steps, the discovered URL and token are used exactly like the manual `--token` / `--thanos-url` flags for the rest of the collection run.
+
+#### How metrics are stored
+
+Each query returns a Prometheus result — either a **vector** (instant queries) or a **matrix** (range queries). The tool parses the result, extracts each individual sample, and stores it as a separate row in the database with its value, timestamp, and labels (serialized as JSON). You can then query the stored data with [`db show`](database-commands.md) or visualize it in [Grafana](grafana.md).
 
 #### Additional examples
 
@@ -151,11 +158,13 @@ kpi-collector run \
 ```
 
 What it does:
+
 - Skips TLS certificate verification for HTTPS requests
 - Applies to Kubernetes API calls and Thanos/Prometheus queries
 - Helps in environments where the certificate cannot be validated
 
 When to use:
+
 - Self-signed certificates
 - Disconnected, lab, or air-gapped clusters
 - kubeconfig without a valid CA
@@ -176,28 +185,30 @@ kpi-collector run \
 
 ## Command Line Flags (`run`)
 
-| Flag | Required | Default | Description |
-|------|----------|---------|-------------|
-| `--cluster-name` | Yes | - | Name of the cluster being monitored |
-| `--cluster-type` | Yes | - | Cluster type for categorization: `ran`, `core`, or `hub` |
-| `--kubeconfig` | No* | - | Path to kubeconfig file for auto-discovery |
-| `--token` | No* | - | Bearer token for Thanos authentication |
-| `--thanos-url` | No* | - | Thanos querier URL (without `https://`) |
-| `--insecure-tls` | No | false | Skip TLS certificate verification (dev only) |
-| `--frequency` | No | 1m | Sampling frequency (for example: `10s`, `1m`, `2h`, `24h`) |
-| `--duration` | No | 45m | Total sampling duration (for example: `10s`, `1m`, `2h`, `24h`) |
-| `--db-type` | No | sqlite | Database type: `sqlite` or `postgres` |
-| `--postgres-url` | No** | - | PostgreSQL connection string |
-| `--once` | No | false | Collect all KPIs once and exit (ignores `--frequency` and `--duration`) |
-| `--kpis-file` | Yes | - | Path to KPIs configuration file (see `kpis.json.template`) |
-| `--artifacts-dir` | No | `./kpi-collector-artifacts/` | Directory for database, logs, and output files |
 
-\* Either provide `--kubeconfig` OR both `--token` and `--thanos-url`  
-\*\* Required when `--db-type=postgres`
+| Flag              | Required | Default                      | Description                                                             |
+| ----------------- | -------- | ---------------------------- | ----------------------------------------------------------------------- |
+| `--cluster-name`  | Yes      | -                            | Name of the cluster being monitored                                     |
+| `--cluster-type`  | Yes      | -                            | Cluster type for categorization: `ran`, `core`, or `hub`                |
+| `--kubeconfig`    | No*      | -                            | Path to kubeconfig file for auto-discovery                              |
+| `--token`         | No*      | -                            | Bearer token for Thanos authentication                                  |
+| `--thanos-url`    | No*      | -                            | Thanos querier URL (without `https://`)                                 |
+| `--insecure-tls`  | No       | false                        | Skip TLS certificate verification (dev only)                            |
+| `--frequency`     | No       | 1m                           | Sampling frequency (for example: `10s`, `1m`, `2h`, `24h`)              |
+| `--duration`      | No       | 45m                          | Total sampling duration (for example: `10s`, `1m`, `2h`, `24h`)         |
+| `--db-type`       | No       | sqlite                       | Database type: `sqlite` or `postgres`                                   |
+| `--postgres-url`  | No**     | -                            | PostgreSQL connection string                                            |
+| `--once`          | No       | false                        | Collect all KPIs once and exit (ignores `--frequency` and `--duration`) |
+| `--kpis-file`     | Yes      | -                            | Path to KPIs configuration file (see `kpis.json.template`)              |
+| `--artifacts-dir` | No       | `./kpi-collector-artifacts/` | Directory for database, logs, and output files                          |
 
-## Dynamic CPU Placeholders
 
-Queries can use `{{RESERVED_CPUS}}` and `{{ISOLATED_CPUS}}` placeholders. At startup, these are replaced with actual CPU IDs from the cluster so that your PromQL queries target the correct cores. This feature requires `--kubeconfig` authentication.
+ Either provide `--kubeconfig` OR both `--token` and `--thanos-url`  
+ Required when `--db-type=postgres`
+
+## Dynamic CPU IDs from PerformanceProfile CRs
+
+Queries can use `{{RESERVED_CPUS}}` and `{{ISOLATED_CPUS}}` placeholders. At startup, these are replaced with actual CPU IDs from the cluster's PerformanceProfile CRs so that your PromQL queries target the correct cores. This feature requires `--kubeconfig` authentication.
 
 Example query in `kpis.json`:
 

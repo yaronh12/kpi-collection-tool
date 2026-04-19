@@ -20,23 +20,29 @@ For source-based installation and uninstall instructions, see [docs/installation
 
 ## Quick Start (5 Minutes)
 
-1. Collect KPI metrics:
+1. Generate a KPI configuration file for your cluster profile:
+
+```bash
+kpi-collector kpis generate ran
+```
+
+2. Collect KPI metrics:
 
 ```bash
 kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.json
+  --kpis-file ran-kpis.json
 ```
 
-2. Query collected data:
+3. Query collected data:
 
 ```bash
 kpi-collector db show clusters
 ```
 
-3. Visualize in Grafana:
+4. Visualize in Grafana:
 
 ```bash
 kpi-collector grafana start --datasource=sqlite
@@ -44,6 +50,7 @@ kpi-collector grafana start --datasource=sqlite
 
 ## Command Map
 
+- `kpi-collector kpis generate`: generate a kpis.json file for a cluster profile
 - `kpi-collector run`: collect KPI metrics
 - `kpi-collector db show`: query collected data
 - `kpi-collector db remove`: remove stored data

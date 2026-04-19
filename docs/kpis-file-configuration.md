@@ -73,13 +73,16 @@ The tool includes built-in KPI profiles for common cluster types. Use the `kpis 
 
 ```bash
 # Generate all KPIs for a RAN cluster
-kpi-collector kpis generate ran --all
+kpi-collector kpis generate --profile ran --all
 
 # Interactively choose which categories to include
-kpi-collector kpis generate core
+kpi-collector kpis generate --profile core
 
 # Custom output path
-kpi-collector kpis generate hub --all -f /path/to/hub-kpis.json
+kpi-collector kpis generate --profile hub --all -f /path/to/hub-kpis.json
+
+# Overwrite an existing file
+kpi-collector kpis generate --profile ran --all --overwrite
 ```
 
 Available profiles:

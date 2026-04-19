@@ -121,7 +121,7 @@ Total results: 3
 
 ## Command Map
 
-- `kpi-collector kpis generate`: generate a KPI file for a cluster profile (ran, core, hub)
+- `kpi-collector kpis generate --profile <profile>`: generate a KPI file for a cluster profile (ran, core, hub)
 - `kpi-collector run`: collect KPI metrics
 - `kpi-collector db show`: query collected data
 - `kpi-collector db remove`: remove stored data

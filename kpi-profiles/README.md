@@ -78,18 +78,22 @@ the three main profiles (`ran`, `core`, `hub`):
 
 ```bash
 # Generate all RAN KPIs at once
-kpi-collector kpis generate ran --all
+kpi-collector kpis generate --profile ran --all
 
 # Interactively pick which categories to include
-kpi-collector kpis generate core
+kpi-collector kpis generate --profile core
 
 # Write to a custom path
-kpi-collector kpis generate hub --all -f /path/to/hub-kpis.json
+kpi-collector kpis generate --profile hub --all -f /path/to/hub-kpis.json
+
+# Overwrite an existing file
+kpi-collector kpis generate --profile ran --all --overwrite
 ```
 
 By default the output file is named `<profile>-kpis.json` in the current
-directory. In interactive mode (the default), you are prompted per category —
-use `--all` to skip prompts and include everything.
+directory. If the file already exists, the command will refuse to overwrite it
+unless you pass `--overwrite`. In interactive mode (the default), you are
+prompted per category — use `--all` to skip prompts and include everything.
 
 Once generated, you can edit the file to fine-tune individual KPIs before
 passing it to the collector.

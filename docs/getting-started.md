@@ -34,10 +34,10 @@ The fastest way to create one is with the built-in generator. Pick the profile t
 
 ```bash
 # Generate all KPIs for a RAN cluster
-kpi-collector kpis generate ran --all
+kpi-collector kpis generate --profile ran --all
 
 # Or interactively select which KPI categories to include
-kpi-collector kpis generate ran
+kpi-collector kpis generate --profile ran
 ```
 
 This creates a `ran-kpis.json` file in your current directory with battle-tested PromQL queries for that profile. Use `-f <path>` to write to a custom location.
@@ -174,7 +174,7 @@ If you see data, everything is working correctly.
 
 ## Next steps
 
-- **Generate a full KPI profile** — use `kpi-collector kpis generate ran --all` to create a comprehensive KPI file tailored to your cluster type. See [KPI Configuration](kpis-file-configuration.md).
+- **Generate a full KPI profile** — use `kpi-collector kpis generate --profile ran --all` to create a comprehensive KPI file tailored to your cluster type. See [KPI Configuration](kpis-file-configuration.md).
 - **Longer collection runs** — remove `--once` and use `--frequency 1m --duration 1h` to collect metrics over time. See [Collecting Metrics](collecting-metrics.md).
 - **Write your own KPIs** — learn the KPI file format, per-query frequency overrides, and range queries in [KPI Configuration](kpis-file-configuration.md).
 - **Visualize in Grafana** — launch a local Grafana dashboard with `kpi-collector grafana start --datasource=sqlite`. See [Grafana](grafana.md).

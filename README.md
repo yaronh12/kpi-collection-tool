@@ -18,11 +18,11 @@ oc exec -n openshift-monitoring prometheus-k8s-0 -- \
 
 The `jq` filters plus some bash magic can produce good enough output, but this approach doesn't scale — when you need to collect dozens of KPIs repeatedly, store results over time, or share them across a team, it quickly becomes error-prone and tedious.
 
-kpi-collector replaces this manual workflow. You define your queries in a simple JSON file, point the tool at a cluster, and it takes care of retrieving the metrics, hiding the Prometheus query issuing, and handling the subsequent parsing, storage, and visualization.
+kpi-collector replaces this manual workflow. You define your queries in a simple YAML file, point the tool at a cluster, and it takes care of retrieving the metrics, hiding the Prometheus query issuing, and handling the subsequent parsing, storage, and visualization.
 
 ## What it does
 
-kpi-collector connects to an OpenShift cluster, queries Prometheus/Thanos for the metrics you define in a simple JSON file, and stores the results in a local SQLite database or a PostgreSQL server. You can then query the stored data from the command line or visualize it in a pre-configured Grafana dashboard.
+kpi-collector connects to an OpenShift cluster, queries Prometheus/Thanos for the metrics you define in a simple YAML file, and stores the results in a local SQLite database or a PostgreSQL server. You can then query the stored data from the command line or visualize it in a pre-configured Grafana dashboard.
 
 The tool handles all the plumbing automatically: discovering the Thanos URL, creating a short-lived service account token, scheduling repeated queries at the frequency you choose, and managing the database lifecycle. You just provide a kubeconfig and a list of PromQL queries.
 
@@ -54,21 +54,15 @@ Three collection modes are supported: **periodic retrieval** (collect at a set f
 
 ## Example: collect and query
 
-Create a `kpis.json` file with the queries you want to collect:
+Create a `kpis.yaml` file with the queries you want to collect:
 
-```json
-{
-    "kpis": [
-        {
-            "id": "node-cpu-usage",
-            "promquery": "avg by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))"
-        },
-        {
-            "id": "cluster-uptime",
-            "promquery": "sum(up)"
-        }
-    ]
-}
+```yaml
+kpis:
+  - id: node-cpu-usage
+    promquery: avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m]))
+
+  - id: cluster-uptime
+    promquery: sum(up)
 ```
 
 Run the collector:
@@ -76,7 +70,7 @@ Run the collector:
 ```bash
 $ kpi-collector run \
     --cluster-name my-cluster --cluster-type ran \
-    --kubeconfig ~/.kube/config --kpis-file kpis.json --once
+    --kubeconfig ~/.kube/config --kpis-file kpis.yaml --once
 
 KPI Collector starting...
 Cluster name: my-cluster (type=ran)

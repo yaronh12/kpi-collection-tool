@@ -1,6 +1,6 @@
 # KPI Configuration
 
-This guide covers the KPI JSON file format, sampling controls, and run modes.
+This guide covers the KPI YAML file format, sampling controls, and run modes.
 
 Related guides:
 - [Getting Started](getting-started.md)
@@ -8,19 +8,14 @@ Related guides:
 
 ## KPI File Format
 
-KPIs are defined in a JSON file passed to `--kpis-file`. Each entry describes a PromQL query to execute against Prometheus/Thanos.
+KPIs are defined in a YAML file passed to `--kpis-file`. Each entry describes a PromQL query to execute against Prometheus/Thanos.
 
 Minimal example:
 
-```json
-{
-    "kpis": [
-        {
-            "id": "node-cpu-usage",
-            "promquery": "avg by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))"
-        }
-    ]
-}
+```yaml
+kpis:
+  - id: node-cpu-usage
+    promquery: avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m]))
 ```
 
 ### Field Reference
@@ -29,42 +24,34 @@ Minimal example:
 |-------|----------|---------|-------------|
 | `id` | Yes | - | Unique identifier used in the database and output |
 | `promquery` | Yes | - | PromQL query to execute |
-| `sample-frequency` | No | global `--frequency` | Per-query override (duration string like `"2m"` or seconds like `120`) |
+| `sample-frequency` | No | global `--frequency` | Per-query override (duration string like `2m` or seconds like `120`) |
 | `run-once` | No | false | Collect this query only once, skip repeated sampling |
-| `query-type` | No | `"instant"` | `"instant"` or `"range"` |
+| `query-type` | No | `instant` | `instant` or `range` |
 | `step` | No* | - | Resolution between points in a range query |
 | `range` | No* | - | Lookback window for a range query |
 
-\* Required when `query-type` is `"range"`
+\* Required when `query-type` is `range`
 
 ### Full example with all fields
 
-```json
-{
-    "kpis": [
-        {
-            "id": "node-cpu-usage",
-            "promquery": "avg by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))"
-        },
-        {
-            "id": "node-memory-usage",
-            "promquery": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
-            "sample-frequency": "2m"
-        },
-        {
-            "id": "cluster-uptime",
-            "promquery": "max(time() - process_start_time_seconds{job=\"kubelet\"})",
-            "run-once": true
-        },
-        {
-            "id": "node-cpu-usage-range",
-            "promquery": "avg by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))",
-            "query-type": "range",
-            "step": "30s",
-            "range": "1h"
-        }
-    ]
-}
+```yaml
+kpis:
+  - id: node-cpu-usage
+    promquery: avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m]))
+
+  - id: node-memory-usage
+    promquery: node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes
+    sample-frequency: 2m
+
+  - id: cluster-uptime
+    promquery: max(time() - process_start_time_seconds{job="kubelet"})
+    run-once: true
+
+  - id: node-cpu-usage-range
+    promquery: avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m]))
+    query-type: range
+    step: 30s
+    range: 1h
 ```
 
 ## KPI Profiles
@@ -79,7 +66,7 @@ kpi-collector kpis generate --profile ran --all
 kpi-collector kpis generate --profile core
 
 # Custom output path
-kpi-collector kpis generate --profile hub --all -f /path/to/hub-kpis.json
+kpi-collector kpis generate --profile hub --all -f /path/to/hub-kpis.yaml
 
 # Overwrite an existing file
 kpi-collector kpis generate --profile ran --all --overwrite
@@ -126,51 +113,44 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.json \
+  --kpis-file kpis.yaml \
   --once
 ```
 
 ## Per-Query `run-once`
 
-Individual queries can be marked with `"run-once": true` in the KPI file. These execute once at the start of collection and are excluded from the repeated sampling loop, even when running with `--frequency` and `--duration`.
+Individual queries can be marked with `run-once: true` in the KPI file. These execute once at the start of collection and are excluded from the repeated sampling loop, even when running with `--frequency` and `--duration`.
 
 Useful for:
 - Range queries that aggregate over a window (e.g. `rate(...[30m])`)
 - Static cluster information (uptime, version, node count)
 - Baseline snapshots before continuous monitoring begins
 
-```json
-{
-    "kpis": [
-        {
-            "id": "cluster-uptime",
-            "promquery": "max(time() - process_start_time_seconds{job=\"kubelet\"})",
-            "run-once": true
-        },
-        {
-            "id": "node-cpu-usage",
-            "promquery": "avg by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))"
-        }
-    ]
-}
+```yaml
+kpis:
+  - id: cluster-uptime
+    promquery: max(time() - process_start_time_seconds{job="kubelet"})
+    run-once: true
+
+  - id: node-cpu-usage
+    promquery: avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m]))
 ```
 
 In this example, `cluster-uptime` runs once immediately, while `node-cpu-usage` is sampled repeatedly at the configured frequency.
 
-If all queries are marked `"run-once": true`, the collector executes them all once and exits without waiting for the duration timer.
+If all queries are marked `run-once: true`, the collector executes them all once and exits without waiting for the duration timer.
 
 ## Range Queries
 
-Set `"query-type": "range"` to execute a Prometheus range query instead of an instant query. Range queries return a series of data points over a time window.
+Set `query-type: range` to execute a Prometheus range query instead of an instant query. Range queries return a series of data points over a time window.
 
-```json
-{
-    "id": "node-cpu-range",
-    "promquery": "avg by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\"}[5m]))",
-    "query-type": "range",
-    "step": "30s",
-    "range": "1h"
-}
+```yaml
+kpis:
+  - id: node-cpu-range
+    promquery: avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m]))
+    query-type: range
+    step: 30s
+    range: 1h
 ```
 
 How the time controls relate:
@@ -184,11 +164,10 @@ How the time controls relate:
 
 Queries can use `{{RESERVED_CPUS}}` and `{{ISOLATED_CPUS}}` placeholders. These are replaced at startup with CPU IDs from PerformanceProfile CRs in the cluster. This feature requires `--kubeconfig` authentication.
 
-```json
-{
-    "id": "cpu-reserved-set",
-    "promquery": "rate(node_cpu_seconds_total{cpu=~\"{{RESERVED_CPUS}}\"}[30m])"
-}
+```yaml
+kpis:
+  - id: cpu-reserved-set
+    promquery: rate(node_cpu_seconds_total{cpu=~"{{RESERVED_CPUS}}"}[30m])
 ```
 
 For full details on how CPU substitution works and how to obtain CPU IDs manually, see [Collecting Metrics — Dynamic CPU IDs](collecting-metrics.md#dynamic-cpu-ids-from-performanceprofile-crs).

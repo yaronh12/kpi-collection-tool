@@ -7,7 +7,7 @@ var kpisCmd = &cobra.Command{
 	Short: "Manage KPI configuration files",
 	Long: `Create and manage KPI configuration files for different cluster profiles.
 
-Use 'kpis generate' to generate a kpis.json file tailored for your cluster type.`,
+Use 'kpis generate' to generate a kpis.yaml file tailored for your cluster type.`,
 }
 
 func init() {

@@ -2,11 +2,11 @@ package kpiprofiles
 
 import "embed"
 
-//go:embed kpis-ran.json kpis-core.json kpis-hub.json
+//go:embed kpis-ran.yaml kpis-core.yaml kpis-hub.yaml
 var FS embed.FS
 
 const (
-	RAN  = "kpis-ran.json"
-	Core = "kpis-core.json"
-	Hub  = "kpis-hub.json"
+	RAN  = "kpis-ran.yaml"
+	Core = "kpis-core.yaml"
+	Hub  = "kpis-hub.yaml"
 )

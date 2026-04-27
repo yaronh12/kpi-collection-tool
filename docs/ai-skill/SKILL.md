@@ -1,6 +1,6 @@
 ---
 name: kpi-collector
-description: Use and configure the kpi-collector CLI for collecting Prometheus/Thanos metrics from OpenShift clusters. Generates kpis.json files with Telco-specific PromQL queries for RAN, Core, PTP, networking, and resource compliance. Triggered when the user mentions kpi-collector, KPI collection, kpis.json, Telco metrics, PromQL for OpenShift, or Grafana dashboards for cluster monitoring.
+description: Use and configure the kpi-collector CLI for collecting Prometheus/Thanos metrics from OpenShift clusters. Generates kpis.yaml files with Telco-specific PromQL queries for RAN, Core, PTP, networking, and resource compliance. Triggered when the user mentions kpi-collector, KPI collection, kpis.yaml, Telco metrics, PromQL for OpenShift, or Grafana dashboards for cluster monitoring.
 ---
 
 # kpi-collector CLI Skill
@@ -9,9 +9,9 @@ description: Use and configure the kpi-collector CLI for collecting Prometheus/T
 
 | Action | Command |
 |--------|---------|
-| Collect metrics (kubeconfig) | `kpi-collector run --cluster-name NAME --cluster-type ran --kubeconfig ~/.kube/config --kpis-file kpis.json` |
-| Collect metrics (manual auth) | `kpi-collector run --cluster-name NAME --cluster-type core --token $TOKEN --thanos-url $URL --kpis-file kpis.json` |
-| Collect once and exit | `kpi-collector run --cluster-name NAME --kpis-file kpis.json --once` |
+| Collect metrics (kubeconfig) | `kpi-collector run --cluster-name NAME --cluster-type ran --kubeconfig ~/.kube/config --kpis-file kpis.yaml` |
+| Collect metrics (manual auth) | `kpi-collector run --cluster-name NAME --cluster-type core --token $TOKEN --thanos-url $URL --kpis-file kpis.yaml` |
+| Collect once and exit | `kpi-collector run --cluster-name NAME --kpis-file kpis.yaml --once` |
 | List clusters | `kpi-collector db show clusters` |
 | Show KPI metrics | `kpi-collector db show kpis --name "cpu-system" --cluster-name "mycluster"` |
 | Show errors | `kpi-collector db show errors` |
@@ -27,7 +27,7 @@ description: Use and configure the kpi-collector CLI for collecting Prometheus/T
 | Flag | Required | Default | Description |
 |------|----------|---------|-------------|
 | `--cluster-name` | Yes | — | Cluster identifier |
-| `--kpis-file` | Yes | — | Path to kpis.json |
+| `--kpis-file` | Yes | — | Path to kpis.yaml |
 | `--cluster-type` | No | — | `ran`, `core`, or `hub` |
 | `--kubeconfig` | No* | — | Auto-discovers Thanos URL and creates token |
 | `--token` | No* | — | Bearer token (manual auth) |
@@ -56,19 +56,14 @@ description: Use and configure the kpi-collector CLI for collecting Prometheus/T
 | `--no-truncate` | Show full labels |
 | `-o` | Output format: `table`, `json`, `csv` |
 
-## kpis.json File Format
+## kpis.yaml File Format
 
-When generating a kpis.json file, use this structure:
+When generating a kpis.yaml file, use this structure:
 
-```json
-{
-    "kpis": [
-        {
-            "id": "unique-kpi-id",
-            "promquery": "your_promql_query_here"
-        }
-    ]
-}
+```yaml
+kpis:
+  - id: unique-kpi-id
+    promquery: your_promql_query_here
 ```
 
 ### Supported fields per KPI entry
@@ -77,11 +72,11 @@ When generating a kpis.json file, use this structure:
 |-------|----------|---------|-------------|
 | `id` | Yes | — | Unique identifier (used in DB and output) |
 | `promquery` | Yes | — | PromQL query string |
-| `sample-frequency` | No | global `--frequency` | Override per-KPI (seconds or duration string like `"2m"`) |
+| `sample-frequency` | No | global `--frequency` | Override per-KPI (seconds or duration string like `2m`) |
 | `run-once` | No | `false` | Collect once at start, skip repeated sampling |
-| `query-type` | No | `"instant"` | `"instant"` or `"range"` |
-| `step` | range only | — | Resolution between points (e.g. `"30s"`) |
-| `range` | range only | — | Lookback window (e.g. `"1h"`) |
+| `query-type` | No | `instant` | `instant` or `range` |
+| `step` | range only | — | Resolution between points (e.g. `30s`) |
+| `range` | range only | — | Lookback window (e.g. `1h`) |
 
 ### Range query rules
 
@@ -131,10 +126,10 @@ If using the AskQuestion tool, structure it like:
 - "Skip TLS verification?" → ["No (production)", "Yes (lab/self-signed certs)"]
 ```
 
-## Generating kpis.json for Telco Workloads
+## Generating kpis.yaml for Telco Workloads
 
 When the user asks to create KPIs for a Telco cluster, ask which cluster type they are
-monitoring: **RAN**, **Core**, or **Hub**. Then assemble a `kpis.json` using queries
+monitoring: **RAN**, **Core**, or **Hub**. Then assemble a `kpis.yaml` using queries
 from the matching section in [telco-promql.md](telco-promql.md), which is organized
 by cluster type with complete ready-to-use KPI sets.
 
@@ -151,7 +146,7 @@ by cluster type with complete ready-to-use KPI sets.
    `frequency <= range`.
 
 4. **`--once` vs `run-once`**: `--once` (CLI flag) runs ALL KPIs once.
-   `"run-once": true` (in kpis.json) runs only THAT specific KPI once while others
+   `run-once: true` (in kpis.yaml) runs only THAT specific KPI once while others
    continue at their frequency.
 
 5. **Thanos URL format**: Pass without `https://` prefix — the tool adds it.
@@ -159,8 +154,10 @@ by cluster type with complete ready-to-use KPI sets.
 6. **SQLite concurrency**: SQLite is single-writer. For high-frequency collection
    across many KPIs, use `--db-type postgres`.
 
-7. **PromQL escaping in JSON**: Backslashes in regex need double-escaping:
-   `"id=~\"/system.slice/.*\""` in JSON becomes `id=~"/system.slice/.*"` in PromQL.
+7. **PromQL in YAML**: KPI configuration uses YAML, not JSON—you do not need JSON-style
+   backslash doubling or nested quote escaping for PromQL. Write queries naturally; use
+   single-quoted scalars or a `|` block scalar when the expression contains double quotes
+   or characters YAML would otherwise treat specially (for example `id=~"/system.slice/.*"`).
 
 8. **TLS certificate errors**: Lab and disconnected clusters often use self-signed
    certs. If queries fail with `x509: certificate signed by unknown authority`,
@@ -175,11 +172,11 @@ by cluster type with complete ready-to-use KPI sets.
 
 ## Workflow: End-to-End Cluster Monitoring Setup
 
-1. Generate kpis.json based on customer requirements
+1. Generate kpis.yaml based on customer requirements
 2. Run collection:
    ```bash
    kpi-collector run --cluster-name customer-ran-01 --cluster-type ran \
-     --kubeconfig ~/.kube/config --kpis-file kpis.json \
+     --kubeconfig ~/.kube/config --kpis-file kpis.yaml \
      --frequency 60s --duration 24h
    ```
 3. Verify data is flowing:

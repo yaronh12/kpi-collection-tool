@@ -30,16 +30,12 @@ var _ = Describe("KPIs Loader", func() {
 	Describe("LoadKPIs", func() {
 		Context("when loading a valid KPIs file", func() {
 			It("should load KPIs without custom frequency", func() {
-				kpisJSON := `{
-					"kpis": [
-						{
-							"id": "cpu-usage",
-							"promquery": "avg(rate(node_cpu_seconds_total[5m]))"
-						}
-					]
-				}`
-				kpisPath := filepath.Join(tmpDir, "kpis.json")
-				err := os.WriteFile(kpisPath, []byte(kpisJSON), 0644)
+				kpisYAML := `kpis:
+  - id: cpu-usage
+    promquery: avg(rate(node_cpu_seconds_total[5m]))
+`
+				kpisPath := filepath.Join(tmpDir, "kpis.yaml")
+				err := os.WriteFile(kpisPath, []byte(kpisYAML), 0644)
 				Expect(err).NotTo(HaveOccurred())
 
 				kpis, err := LoadKPIs(kpisPath)
@@ -52,17 +48,13 @@ var _ = Describe("KPIs Loader", func() {
 			})
 
 			It("should load KPIs with custom frequency as integer seconds", func() {
-				kpisJSON := `{
-					"kpis": [
-						{
-							"id": "memory-usage",
-							"promquery": "node_memory_MemTotal_bytes",
-							"sample-frequency": 120
-						}
-					]
-				}`
-				kpisPath := filepath.Join(tmpDir, "kpis.json")
-				err := os.WriteFile(kpisPath, []byte(kpisJSON), 0644)
+				kpisYAML := `kpis:
+  - id: memory-usage
+    promquery: node_memory_MemTotal_bytes
+    sample-frequency: 120
+`
+				kpisPath := filepath.Join(tmpDir, "kpis.yaml")
+				err := os.WriteFile(kpisPath, []byte(kpisYAML), 0644)
 				Expect(err).NotTo(HaveOccurred())
 
 				kpis, err := LoadKPIs(kpisPath)
@@ -75,17 +67,13 @@ var _ = Describe("KPIs Loader", func() {
 			})
 
 			It("should load KPIs with custom frequency as duration string", func() {
-				kpisJSON := `{
-					"kpis": [
-						{
-							"id": "disk-usage",
-							"promquery": "node_filesystem_avail_bytes",
-							"sample-frequency": "2m30s"
-						}
-					]
-				}`
-				kpisPath := filepath.Join(tmpDir, "kpis.json")
-				err := os.WriteFile(kpisPath, []byte(kpisJSON), 0644)
+				kpisYAML := `kpis:
+  - id: disk-usage
+    promquery: node_filesystem_avail_bytes
+    sample-frequency: 2m30s
+`
+				kpisPath := filepath.Join(tmpDir, "kpis.yaml")
+				err := os.WriteFile(kpisPath, []byte(kpisYAML), 0644)
 				Expect(err).NotTo(HaveOccurred())
 
 				kpis, err := LoadKPIs(kpisPath)
@@ -97,15 +85,17 @@ var _ = Describe("KPIs Loader", func() {
 			})
 
 			It("should load multiple KPIs", func() {
-				kpisJSON := `{
-					"kpis": [
-						{"id": "kpi-1", "promquery": "query1"},
-						{"id": "kpi-2", "promquery": "query2"},
-						{"id": "kpi-3", "promquery": "query3", "sample-frequency": 60}
-					]
-				}`
-				kpisPath := filepath.Join(tmpDir, "kpis.json")
-				err := os.WriteFile(kpisPath, []byte(kpisJSON), 0644)
+				kpisYAML := `kpis:
+  - id: kpi-1
+    promquery: query1
+  - id: kpi-2
+    promquery: query2
+  - id: kpi-3
+    promquery: query3
+    sample-frequency: 60
+`
+				kpisPath := filepath.Join(tmpDir, "kpis.yaml")
+				err := os.WriteFile(kpisPath, []byte(kpisYAML), 0644)
 				Expect(err).NotTo(HaveOccurred())
 
 				kpis, err := LoadKPIs(kpisPath)
@@ -118,9 +108,9 @@ var _ = Describe("KPIs Loader", func() {
 			})
 
 			It("should load an empty KPIs array", func() {
-				kpisJSON := `{"kpis": []}`
-				kpisPath := filepath.Join(tmpDir, "kpis.json")
-				err := os.WriteFile(kpisPath, []byte(kpisJSON), 0644)
+				kpisYAML := `kpis: []`
+				kpisPath := filepath.Join(tmpDir, "kpis.yaml")
+				err := os.WriteFile(kpisPath, []byte(kpisYAML), 0644)
 				Expect(err).NotTo(HaveOccurred())
 
 				kpis, err := LoadKPIs(kpisPath)
@@ -128,11 +118,29 @@ var _ = Describe("KPIs Loader", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(kpis.Queries).To(BeEmpty())
 			})
+
+			It("should load PromQL queries with double quotes without escaping", func() {
+				kpisYAML := `kpis:
+  - id: cpu-system-slice
+    promquery: sort_desc(rate(container_cpu_usage_seconds_total{id=~"/system.slice/.*"}[5m]))
+`
+				kpisPath := filepath.Join(tmpDir, "kpis.yaml")
+				err := os.WriteFile(kpisPath, []byte(kpisYAML), 0644)
+				Expect(err).NotTo(HaveOccurred())
+
+				kpis, err := LoadKPIs(kpisPath)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(kpis.Queries).To(HaveLen(1))
+				Expect(kpis.Queries[0].PromQuery).To(Equal(
+					`sort_desc(rate(container_cpu_usage_seconds_total{id=~"/system.slice/.*"}[5m]))`,
+				))
+			})
 		})
 
 		Context("when the file does not exist", func() {
 			It("should return an error", func() {
-				nonExistentPath := filepath.Join(tmpDir, "nonexistent.json")
+				nonExistentPath := filepath.Join(tmpDir, "nonexistent.yaml")
 
 				kpis, err := LoadKPIs(nonExistentPath)
 
@@ -142,11 +150,13 @@ var _ = Describe("KPIs Loader", func() {
 			})
 		})
 
-		Context("when the file contains invalid JSON", func() {
-			It("should return an error for malformed JSON", func() {
-				invalidJSON := `{"kpis": [{"id": "test"`
-				kpisPath := filepath.Join(tmpDir, "invalid.json")
-				err := os.WriteFile(kpisPath, []byte(invalidJSON), 0644)
+		Context("when the file contains invalid YAML", func() {
+			It("should return an error for malformed YAML", func() {
+				invalidYAML := `kpis:
+  - id: test
+    promquery: [invalid`
+				kpisPath := filepath.Join(tmpDir, "invalid.yaml")
+				err := os.WriteFile(kpisPath, []byte(invalidYAML), 0644)
 				Expect(err).NotTo(HaveOccurred())
 
 				kpis, err := LoadKPIs(kpisPath)
@@ -157,16 +167,12 @@ var _ = Describe("KPIs Loader", func() {
 			})
 
 			It("should return an error for invalid duration string", func() {
-				invalidDuration := `{
-					"kpis": [
-						{
-							"id": "test",
-							"promquery": "test",
-							"sample-frequency": "invalid-duration"
-						}
-					]
-				}`
-				kpisPath := filepath.Join(tmpDir, "invalid-duration.json")
+				invalidDuration := `kpis:
+  - id: test
+    promquery: test
+    sample-frequency: invalid-duration
+`
+				kpisPath := filepath.Join(tmpDir, "invalid-duration.yaml")
 				err := os.WriteFile(kpisPath, []byte(invalidDuration), 0644)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -179,15 +185,14 @@ var _ = Describe("KPIs Loader", func() {
 		})
 
 		Context("when the file is empty", func() {
-			It("should return an error", func() {
-				emptyPath := filepath.Join(tmpDir, "empty.json")
+			It("should return no error and empty queries", func() {
+				emptyPath := filepath.Join(tmpDir, "empty.yaml")
 				err := os.WriteFile(emptyPath, []byte(""), 0644)
 				Expect(err).NotTo(HaveOccurred())
 
 				kpis, err := LoadKPIs(emptyPath)
 
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("failed to decode kpis file"))
+				Expect(err).NotTo(HaveOccurred())
 				Expect(kpis.Queries).To(BeNil())
 			})
 		})

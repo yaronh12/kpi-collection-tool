@@ -1,29 +1,23 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/prometheus/prometheus/promql/parser"
+	"gopkg.in/yaml.v3"
 )
 
-// LoadKPIs loads Prometheus queries from kpis file
+// LoadKPIs loads Prometheus queries from a YAML kpis file
 func LoadKPIs(filepath string) (KPIs, error) {
-	kpisFile, err := os.Open(filepath)
+	data, err := os.ReadFile(filepath)
 	if err != nil {
 		return KPIs{}, fmt.Errorf("failed to open kpis file: %v", err)
 	}
-	defer func() {
-		if closeErr := kpisFile.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to close kpis file: %v\n", closeErr)
-		}
-	}()
 
 	var kpis KPIs
-	decoder := json.NewDecoder(kpisFile)
-	if err := decoder.Decode(&kpis); err != nil {
+	if err := yaml.Unmarshal(data, &kpis); err != nil {
 		return KPIs{}, fmt.Errorf("failed to decode kpis file: %v", err)
 	}
 

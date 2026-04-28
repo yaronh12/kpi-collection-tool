@@ -42,4 +42,3 @@ func SubstituteCPUPlaceholders(kpis KPIs, cpus *CPUPlaceholders) KPIs {
 
 	return resolvedKPIs
 }
-

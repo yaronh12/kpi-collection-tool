@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/prometheus/prometheus/promql/parser"
 )
@@ -71,25 +72,82 @@ func validateQueryType(kpi Query) []error {
 
 	switch kpi.GetEffectiveQueryType() {
 	case "instant":
-		if kpi.Step != nil {
-			errors = append(errors, fmt.Errorf("KPI '%s': step can only be set when query-type is 'range'", kpi.ID))
-		}
 		if kpi.Range != nil {
 			errors = append(errors, fmt.Errorf("KPI '%s': range can only be set when query-type is 'range'", kpi.ID))
 		}
 	case "range":
-		if kpi.Step == nil || kpi.Step.Duration <= 0 {
-			errors = append(errors, fmt.Errorf("KPI '%s': step is required and must be > 0 when query-type is 'range'", kpi.ID))
-		}
-		if kpi.Range == nil || kpi.Range.Duration <= 0 {
-			errors = append(errors, fmt.Errorf("KPI '%s': range is required and must be > 0 when query-type is 'range'", kpi.ID))
-		}
-		if kpi.Step != nil && kpi.Range != nil && kpi.Step.Duration > kpi.Range.Duration {
-			errors = append(errors, fmt.Errorf("KPI '%s': step must be less than or equal to range", kpi.ID))
-		}
+		errors = append(errors, validateRangeWindow(kpi)...)
 	default:
 		errors = append(errors, fmt.Errorf("KPI '%s': invalid query-type '%s' (must be 'instant' or 'range')", kpi.ID, kpi.QueryType))
 	}
 
 	return errors
+}
+
+// validateRangeWindow checks that the range window is properly configured:
+// step and since are required; until is optional (defaults to "now").
+func validateRangeWindow(kpi Query) []error {
+	now := time.Now()
+	rw := kpi.Range
+
+	if rw == nil {
+		return []error{fmt.Errorf("KPI '%s': range is required when query-type is 'range'", kpi.ID)}
+	}
+
+	var errors []error
+	if rw.Step == nil {
+		errors = append(errors, fmt.Errorf("KPI '%s': range.step is required when query-type is 'range'", kpi.ID))
+	} else if rw.Step.Duration <= 0 {
+		errors = append(errors, fmt.Errorf("KPI '%s': range.step must be > 0 when query-type is 'range'", kpi.ID))
+	}
+
+	if rw.Since == nil {
+		errors = append(errors, fmt.Errorf("KPI '%s': range.since is required when query-type is 'range'", kpi.ID))
+	} else if err := validateTimeRefPositive(kpi.ID, "since", rw.Since); err != nil {
+		errors = append(errors, err)
+	}
+
+	if rw.Until != nil {
+		if err := validateTimeRefPositive(kpi.ID, "until", rw.Until); err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	// No need to check since before until if there are errors or until is not set
+	if len(errors) > 0 {
+		return errors
+	}
+
+	since := rw.Since.Resolve(now)
+	if rw.Until == nil {
+		rangeDuration := now.Sub(since)
+		if rangeDuration < rw.Step.Duration {
+			fmt.Printf("WARNING: KPI '%s': step is greater than range window duration (step: %s, range duration: %s)\n",
+				kpi.ID, rw.Step.String(), rangeDuration.String())
+		}
+
+		return nil
+	}
+
+	until := rw.Until.Resolve(now)
+	if !since.Before(until) {
+		return []error{fmt.Errorf("KPI '%s': since must be before until (since: %s, until: %s)",
+			kpi.ID, since, until)}
+	}
+
+	rangeDuration := until.Sub(since)
+	if rangeDuration < rw.Step.Duration {
+		fmt.Printf("WARNING: KPI '%s': step is greater than range window duration (step: %s, range duration: %s)\n",
+			kpi.ID, rw.Step.String(), rangeDuration.String())
+	}
+
+	return nil
+}
+
+func validateTimeRefPositive(kpiID, field string, timeRef *TimeRef) error {
+	if timeRef.IsDuration() && timeRef.DurationValue() <= 0 {
+		return fmt.Errorf("KPI '%s': range.%s must be > 0 when specified as a duration", kpiID, field)
+	}
+
+	return nil
 }

@@ -2,7 +2,6 @@ package commands
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	kpiprofiles "github.com/redhat-best-practices-for-k8s/kpi-collection-tool/kpi-profiles"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 type domain struct {
@@ -42,8 +42,8 @@ var kpisGenerateFlags struct {
 
 var kpisGenerateCmd = &cobra.Command{
 	Use:   "generate --profile <profile>",
-	Short: "Generate a kpis.json file for a cluster profile",
-	Long: `Generate a kpis.json file with KPI queries tailored for a specific cluster profile.
+	Short: "Generate a KPI configuration file for a cluster profile",
+	Long: `Generate a YAML KPI configuration file with queries tailored for a specific cluster profile.
 
 Supported profiles: ran, core, hub
 
@@ -53,10 +53,10 @@ categories to include. Use --all to include all categories without prompts.`,
   kpi-collector kpis generate --profile ran --all
 
   # Interactively select categories for a Core cluster
-  kpi-collector kpis generate --profile core -f core-kpis.json
+  kpi-collector kpis generate --profile core -f core-kpis.yaml
 
   # Generate Hub KPIs to a custom path
-  kpi-collector kpis generate --profile hub --all -f /path/to/hub-kpis.json`,
+  kpi-collector kpis generate --profile hub --all -f /path/to/hub-kpis.yaml`,
 	Args: cobra.NoArgs,
 	RunE: runKpisGenerate,
 }
@@ -67,7 +67,7 @@ func init() {
 	kpisGenerateCmd.Flags().StringVarP(&kpisGenerateFlags.profile, "profile", "p", "",
 		fmt.Sprintf("cluster profile (%s)", strings.Join(validProfiles, ", ")))
 	kpisGenerateCmd.Flags().StringVarP(&kpisGenerateFlags.file, "file", "f", "",
-		"output file path (default: <profile>-kpis.json)")
+		"output file path (default: <profile>-kpis.yaml)")
 	kpisGenerateCmd.Flags().BoolVar(&kpisGenerateFlags.all, "all", false,
 		"include all KPI categories without prompts")
 	kpisGenerateCmd.Flags().BoolVar(&kpisGenerateFlags.overwrite, "overwrite", false,
@@ -117,7 +117,7 @@ func resolveOutputFile(profileName string) string {
 	if kpisGenerateFlags.file != "" {
 		return kpisGenerateFlags.file
 	}
-	return profileName + "-kpis.json"
+	return profileName + "-kpis.yaml"
 }
 
 func validateOutputPath(filePath string, overwrite bool) error {
@@ -149,12 +149,14 @@ func validateOutputPath(filePath string, overwrite bool) error {
 func writeKPIsFile(filePath string, queries []config.Query) error {
 	kpisData := config.KPIs{Queries: queries}
 
-	data, err := json.MarshalIndent(kpisData, "", "    ")
+	data, err := yaml.Marshal(kpisData)
 	if err != nil {
 		return fmt.Errorf("failed to marshal KPIs: %w", err)
 	}
 
-	data = append(data, '\n')
+	// Add blank lines between KPI entries for readability
+	formatted := strings.ReplaceAll(string(data), "\n  - id:", "\n\n  - id:")
+	data = []byte(formatted)
 
 	absPath, err := filepath.Abs(filePath)
 	if err != nil {
@@ -167,10 +169,10 @@ func writeKPIsFile(filePath string, queries []config.Query) error {
 
 	fmt.Printf("Generated %s with %d KPIs\n", absPath, len(queries))
 	fmt.Println("You can edit this file to customize each KPI. Per-query options:")
-	fmt.Println("  sample-frequency  Override the global collection frequency (e.g. \"2m\", \"30s\")")
+	fmt.Println("  sample-frequency  Override the global collection frequency (e.g. 2m, 30s)")
 	fmt.Println("  run-once          Set to true to collect a KPI only once")
-	fmt.Println("  query-type        \"instant\" (default) or \"range\" for time-window queries")
-	fmt.Println("  step / range      Required when query-type is \"range\" (e.g. \"30s\" / \"1h\")")
+	fmt.Println("  query-type        instant (default) or range for time-window queries")
+	fmt.Println("  range             Required when query-type is range (nested: step, since, until)")
 	return nil
 }
 
@@ -185,7 +187,7 @@ func loadProfileKPIs(prof profile) (config.KPIs, error) {
 	}
 
 	var kpis config.KPIs
-	if err := json.Unmarshal(data, &kpis); err != nil {
+	if err := yaml.Unmarshal(data, &kpis); err != nil {
 		return config.KPIs{}, fmt.Errorf("failed to parse profile %q: %w", prof.File, err)
 	}
 
@@ -258,7 +260,7 @@ func promptYesNo(reader *bufio.Reader, domainName string) (bool, error) {
 }
 
 // ---------------------------------------------------------------------------
-// Profile definitions — domain groupings reference KPI IDs from the JSON files
+// Profile definitions — domain groupings reference KPI IDs from the YAML files
 // ---------------------------------------------------------------------------
 
 func ranProfile() profile {

@@ -30,7 +30,7 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.json
+  --kpis-file kpis.yaml
 ```
 
 #### What happens behind the scenes
@@ -70,7 +70,7 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.json \
+  --kpis-file kpis.yaml \
   --frequency 30s \
   --duration 1h
 ```
@@ -82,7 +82,7 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.json \
+  --kpis-file kpis.yaml \
   --db-type postgres \
   --postgres-url "postgresql://myuser:mypass@localhost:5432/kpi_metrics?sslmode=disable"
 ```
@@ -141,7 +141,7 @@ kpi-collector run \
   --cluster-type ran \
   --token $TOKEN \
   --thanos-url $THANOS_URL \
-  --kpis-file kpis.json
+  --kpis-file kpis.yaml
 ```
 
 ## `--insecure-tls`
@@ -153,7 +153,7 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.json \
+  --kpis-file kpis.yaml \
   --insecure-tls
 ```
 
@@ -177,7 +177,7 @@ kpi-collector run \
   --cluster-name dev-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.json \
+  --kpis-file kpis.yaml \
   --frequency 60s \
   --duration 1h \
   --insecure-tls
@@ -199,7 +199,7 @@ kpi-collector run \
 | `--db-type`       | No       | sqlite                       | Database type: `sqlite` or `postgres`                                   |
 | `--postgres-url`  | No**     | -                            | PostgreSQL connection string                                            |
 | `--once`          | No       | false                        | Collect all KPIs once and exit (ignores `--frequency` and `--duration`) |
-| `--kpis-file`     | Yes      | -                            | Path to KPIs configuration file (see `kpis.json.template`)              |
+| `--kpis-file`     | Yes      | -                            | Path to KPIs configuration file (see `kpis.yaml.template`)              |
 | `--artifacts-dir` | No       | `./kpi-collector-artifacts/` | Directory for database, logs, and output files                          |
 
 
@@ -210,13 +210,12 @@ kpi-collector run \
 
 Queries can use `{{RESERVED_CPUS}}` and `{{ISOLATED_CPUS}}` placeholders. At startup, these are replaced with actual CPU IDs from the cluster's PerformanceProfile CRs so that your PromQL queries target the correct cores. This feature requires `--kubeconfig` authentication.
 
-Example query in `kpis.json`:
+Example query in `kpis.yaml`:
 
-```json
-{
-    "id": "cpu-reserved-set",
-    "promquery": "rate(node_cpu_seconds_total{cpu=~\"{{RESERVED_CPUS}}\"}[30m])"
-}
+```yaml
+kpis:
+  - id: cpu-reserved-set
+    promquery: rate(node_cpu_seconds_total{cpu=~"{{RESERVED_CPUS}}"}[30m])
 ```
 
 If the cluster's PerformanceProfile defines `reserved: "0-1,32-33"`, the query
@@ -237,7 +236,7 @@ Before collection starts, the tool checks if any query contains `{{RESERVED_CPUS
 
 ### Manual alternative: obtaining CPU IDs without --kubeconfig
 
-If `--kubeconfig` is not available, you can fetch the CPU sets manually and hardcode them in your `kpis.json`.
+If `--kubeconfig` is not available, you can fetch the CPU sets manually and hardcode them in your `kpis.yaml`.
 
 **1. List PerformanceProfiles**
 
@@ -266,15 +265,14 @@ Expand the ranges and join with `|`:
 
 **4. Use the values directly in your query**
 
-```json
-{
-    "id": "cpu-reserved-set",
-    "promquery": "rate(node_cpu_seconds_total{cpu=~\"0|1|32|33\"}[30m])"
-}
+```yaml
+kpis:
+  - id: cpu-reserved-set
+    promquery: rate(node_cpu_seconds_total{cpu=~"0|1|32|33"}[30m])
 ```
 
 This approach avoids the need for `--kubeconfig` at the cost of hardcoding cluster-specific CPU assignments.
 
 ## Sampling, KPI File Format, and Run Modes
 
-For details on frequency/duration, single run mode (`--once`), per-query `run-once`, range queries, and the KPI JSON file format, see [KPI Configuration](kpis-file-configuration.md).
+For details on frequency/duration, single run mode (`--once`), per-query `run-once`, range queries, and the KPI YAML file format, see [KPI Configuration](kpis-file-configuration.md).

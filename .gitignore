@@ -4,5 +4,5 @@ collected-data/
 .DS_Store
 kpi.log
 grafana/datasource/datasource.yaml
-kpis.json
+kpis.yaml
 minimal-performanceprofile.yaml

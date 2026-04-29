@@ -28,7 +28,7 @@ kpi-collector --help
 
 ## Step 2: Prepare a KPI file
 
-kpi-collector reads a JSON file that tells it **which Prometheus metrics to collect**. Each entry has a unique `id` (the name you'll see in the database) and a `promquery` (a [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/) expression that Thanos will evaluate).
+kpi-collector reads a YAML file that tells it **which Prometheus metrics to collect**. Each entry has a unique `id` (the name you'll see in the database) and a `promquery` (a [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/) expression that Thanos will evaluate).
 
 The fastest way to create one is with the built-in generator. Pick the profile that matches your cluster type (`ran`, `core`, or `hub`):
 
@@ -40,23 +40,17 @@ kpi-collector kpis generate --profile ran --all
 kpi-collector kpis generate --profile ran
 ```
 
-This creates a `ran-kpis.json` file in your current directory with battle-tested PromQL queries for that profile. Use `-f <path>` to write to a custom location.
+This creates a `ran-kpis.yaml` file in your current directory with battle-tested PromQL queries for that profile. Use `-f <path>` to write to a custom location.
 
-**Alternatively**, you can write a KPI file by hand. Save the following as `my-kpis.json` — a minimal example with two basic cluster-health queries:
+**Alternatively**, you can write a KPI file by hand. Save the following as `my-kpis.yaml` — a minimal example with two basic cluster-health queries:
 
-```json
-{
-    "kpis": [
-        {
-            "id": "targets-healthy",
-            "promquery": "up"
-        },
-        {
-            "id": "pods-running",
-            "promquery": "kubelet_running_pods"
-        }
-    ]
-}
+```yaml
+kpis:
+  - id: targets-healthy
+    promquery: up
+
+  - id: pods-running
+    promquery: kubelet_running_pods
 ```
 
 What these queries do:
@@ -79,12 +73,12 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig /path/to/your/kubeconfig \
-  --kpis-file my-kpis.json \
+  --kpis-file my-kpis.yaml \
   --once \
   --insecure-tls
 ```
 
-Replace `/path/to/your/kubeconfig` with your kubeconfig path, and `my-kpis.json` with `ran-kpis.json` if you used the generator in Step 2.
+Replace `/path/to/your/kubeconfig` with your kubeconfig path, and `my-kpis.yaml` with `ran-kpis.yaml` if you used the generator in Step 2.
 
 > [!NOTE]
 > The `--insecure-tls` flag skips TLS certificate verification, which is
@@ -102,7 +96,7 @@ Replace `/path/to/your/kubeconfig` with your kubeconfig path, and `my-kpis.json`
 | `--cluster-name` | A label you choose to identify this cluster in the database                                                                                      |
 | `--cluster-type` | Category for grouping clusters — `ran`, `core`, or `hub`                                                                                         |
 | `--kubeconfig`   | Path to a kubeconfig with access to the cluster. The tool uses it to auto-discover the Thanos URL and create a short-lived service account token |
-| `--kpis-file`    | Path to the KPI JSON file you created in Step 2                                                                                                  |
+| `--kpis-file`    | Path to the KPI YAML file you created in Step 2                                                                                                  |
 | `--once`         | Collect every KPI once and exit (instead of repeating on a schedule)                                                                             |
 
 
@@ -179,4 +173,3 @@ If you see data, everything is working correctly.
 - **Write your own KPIs** — learn the KPI file format, per-query frequency overrides, and range queries in [KPI Configuration](kpis-file-configuration.md).
 - **Visualize in Grafana** — launch a local Grafana dashboard with `kpi-collector grafana start --datasource=sqlite`. See [Grafana](grafana.md).
 - **Query and manage data** — filter, sort, and export stored metrics with `kpi-collector db show`. See [Database Commands](database-commands.md).
-

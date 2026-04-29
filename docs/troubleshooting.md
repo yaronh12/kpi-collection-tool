@@ -25,7 +25,7 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.json \
+  --kpis-file kpis.yaml \
   --insecure-tls
 ```
 
@@ -51,7 +51,7 @@ export TOKEN=$(oc create token prometheus-k8s -n openshift-monitoring --duration
 **Cause:** Your KPI queries contain `{{RESERVED_CPUS}}` or `{{ISOLATED_CPUS}}` placeholders, but the cluster does not have a PerformanceProfile CR installed.
 
 **Fix:** Either:
-- Remove the placeholder queries from your `kpis.json` file
+- Remove the placeholder queries from your `kpis.yaml` file
 - Install the Node Tuning Operator and create a PerformanceProfile on the cluster
 - Hardcode the CPU IDs directly in your queries (see [Collecting Metrics — Manual CPU IDs](collecting-metrics.md#manual-alternative-obtaining-cpu-ids-without---kubeconfig))
 
@@ -60,11 +60,11 @@ export TOKEN=$(oc create token prometheus-k8s -n openshift-monitoring --duration
 **Symptom:** `found N KPI validation error(s)` at startup.
 
 **Common causes:**
-- **Invalid JSON syntax** — missing commas, trailing commas, unescaped quotes.
-  Validate with `python3 -m json.tool kpis.json` or `jq . kpis.json`.
+- **Invalid YAML syntax** — indentation errors, tabs instead of spaces, unclosed quotes.
+  Validate with `yamllint kpis.yaml` or `yq . kpis.yaml`.
 - **Duplicate KPI IDs** — each `id` must be unique across all entries.
 - **Missing required fields** — `id` and `promquery` are required for every KPI.
-- **Range query missing step/range** — when `query-type` is `"range"`, both `step` and `range` must be provided.
+- **Range query missing fields** — when `query-type` is `range`, a `range` object with `step` and `since` must be provided.
 
 ## Empty results from `db show kpis`
 

@@ -4,29 +4,30 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 )
 
-// Duration is a wrapper around time.Duration that supports JSON unmarshaling
+// Duration is a wrapper around time.Duration that supports YAML unmarshaling
 // from both duration strings (e.g., "30s", "2m", "1h") and integer seconds
 type Duration struct {
 	time.Duration
 }
 
-// UnmarshalJSON implements json.Unmarshaler for Duration
-// Supports both string format ("30s", "2m", "1h") and integer seconds (60)
-func (d *Duration) UnmarshalJSON(b []byte) error {
+// UnmarshalYAML implements yaml.Unmarshaler for Duration.
+// Supports both string format ("30s", "2m", "1h") and integer seconds (60).
+func (d *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var v interface{}
-	if err := json.Unmarshal(b, &v); err != nil {
+	if err := unmarshal(&v); err != nil {
 		return err
 	}
 
 	switch value := v.(type) {
+	case int:
+		d.Duration = time.Duration(value) * time.Second
+		return nil
 	case float64:
-		// JSON numbers are float64, treat as seconds for backward compatibility
 		d.Duration = time.Duration(value) * time.Second
 		return nil
 	case string:
@@ -41,9 +42,9 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	}
 }
 
-// MarshalJSON implements json.Marshaler for Duration
-func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(d.String())
+// MarshalYAML implements yaml.Marshaler for Duration
+func (d Duration) MarshalYAML() (interface{}, error) {
+	return d.String(), nil
 }
 
 // TimeRef represents a flexible time specification that can be either a Go
@@ -75,11 +76,11 @@ func (t *TimeRef) Resolve(now time.Time) time.Time {
 	return now.Add(-*t.duration)
 }
 
-// UnmarshalJSON implements json.Unmarshaler for TimeRef.
-// Accepts either a Go duration string ("2h", "30m") or an RFC 3339 time reference.
-func (t *TimeRef) UnmarshalJSON(b []byte) error {
+// UnmarshalYAML implements yaml.Unmarshaler for TimeRef.
+// Accepts either a Go duration string ("2h", "30m") or an RFC 3339 timestamp.
+func (t *TimeRef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
+	if err := unmarshal(&s); err != nil {
 		return fmt.Errorf("time reference must be a string: %w", err)
 	}
 
@@ -98,24 +99,24 @@ func (t *TimeRef) UnmarshalJSON(b []byte) error {
 	return fmt.Errorf("invalid time reference %q: must be a Go duration (e.g. \"2h\") or RFC 3339 format (e.g. \"2026-04-07T12:24:25Z\")", s)
 }
 
-// MarshalJSON implements json.Marshaler for TimeRef
-func (t TimeRef) MarshalJSON() ([]byte, error) {
+// MarshalYAML implements yaml.Marshaler for TimeRef
+func (t TimeRef) MarshalYAML() (interface{}, error) {
 	if t.duration != nil {
-		return json.Marshal(t.duration.String())
+		return t.duration.String(), nil
 	}
 	if t.absolute != nil {
-		return json.Marshal(t.absolute.Format(time.RFC3339))
+		return t.absolute.Format(time.RFC3339), nil
 	}
-	return json.Marshal(nil)
+	return nil, nil
 }
 
 // RangeWindow defines the time window for a range query.
 // Step is always required. Since is required; Until is optional (defaults to "now").
 // Both Since and Until accept either a Go duration ("2h") or an RFC 3339 timestamp.
 type RangeWindow struct {
-	Step  *Duration `json:"step"`
-	Since *TimeRef  `json:"since"`
-	Until *TimeRef  `json:"until,omitempty"`
+	Step  *Duration `yaml:"step"`
+	Since *TimeRef  `yaml:"since"`
+	Until *TimeRef  `yaml:"until,omitempty"`
 }
 
 // InputFlags holds all command line flag values
@@ -136,12 +137,12 @@ type InputFlags struct {
 
 // Query represents a single KPI query configuration
 type Query struct {
-	ID              string       `json:"id"`
-	PromQuery       string       `json:"promquery"`
-	SampleFrequency *Duration    `json:"sample-frequency,omitempty"`
-	QueryType       string       `json:"query-type,omitempty"`
-	Range           *RangeWindow `json:"range,omitempty"`
-	RunOnce         *bool        `json:"run-once,omitempty"`
+	ID              string       `yaml:"id"`
+	PromQuery       string       `yaml:"promquery"`
+	SampleFrequency *Duration    `yaml:"sample-frequency,omitempty"`
+	QueryType       string       `yaml:"query-type,omitempty"`
+	Range           *RangeWindow `yaml:"range,omitempty"`
+	RunOnce         *bool        `yaml:"run-once,omitempty"`
 }
 
 // IsRunOnce returns true if this query is configured to run only once
@@ -149,10 +150,10 @@ func (q *Query) IsRunOnce() bool {
 	return q.RunOnce != nil && *q.RunOnce
 }
 
-// KPIs represents the structure of the kpis.json file containing
+// KPIs represents the structure of the KPI configuration file containing
 // the list of KPI queries to be executed against Prometheus/Thanos
 type KPIs struct {
-	Queries []Query `json:"kpis"`
+	Queries []Query `yaml:"kpis"`
 }
 
 // GetEffectiveFrequency returns the sample frequency for this query,

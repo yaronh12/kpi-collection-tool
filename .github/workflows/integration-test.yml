@@ -62,7 +62,7 @@ jobs:
             --cluster-name integration-test \
             --cluster-type ran \
             --kubeconfig "$KUBECONFIG" \
-            --kpis-file kpi-profiles/kpis-quickstart.json \
+            --kpis-file kpi-profiles/kpis-quickstart.yaml \
             --insecure-tls \
             --once
 

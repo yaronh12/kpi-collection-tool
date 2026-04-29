@@ -37,24 +37,24 @@ All artifacts (database, logs, output) are stored in ./kpi-collector-artifacts/ 
 Use --artifacts-dir to override.`,
 	Example: `  # Using kubeconfig (auto-discovery of Thanos URL and token)
   kpi-collector run --cluster-name prod --cluster-type ran \
-    --kubeconfig ~/.kube/config --kpis-file kpis.json
+    --kubeconfig ~/.kube/config --kpis-file kpis.yaml
 
   # Using manual credentials
   kpi-collector run --cluster-name prod --cluster-type core \
-    --token $TOKEN --thanos-url thanos.example.com --kpis-file kpis.json
+    --token $TOKEN --thanos-url thanos.example.com --kpis-file kpis.yaml
 
   # Collect all KPIs once and exit
   kpi-collector run --cluster-name prod --cluster-type ran \
-    --kubeconfig ~/.kube/config --kpis-file kpis.json --once
+    --kubeconfig ~/.kube/config --kpis-file kpis.yaml --once
 
   # Custom sampling: every 30s for 2 hours
   kpi-collector run --cluster-name prod --cluster-type ran \
-    --kubeconfig ~/.kube/config --kpis-file kpis.json \
+    --kubeconfig ~/.kube/config --kpis-file kpis.yaml \
     --frequency 30s --duration 2h
 
   # With PostgreSQL backend
   kpi-collector run --cluster-name prod --cluster-type hub \
-    --kubeconfig ~/.kube/config --kpis-file kpis.json \
+    --kubeconfig ~/.kube/config --kpis-file kpis.yaml \
     --db-type postgres --postgres-url "postgresql://user:pass@localhost:5432/kpi"`,
 	RunE: runCollect,
 }

@@ -4,34 +4,34 @@ Ready-to-use KPI configuration files for common use cases. Pick the file that
 matches your cluster profile and pass it to the collector:
 
 ```bash
-kpi-collector run --kpis-file <path-to>/kpis-ran.json ...
+kpi-collector run --kpis-file <path-to>/kpis-ran.yaml ...
 ```
 
 ## Available Profiles
 
 | File | Use Case | KPIs |
 |------|----------|------|
-| `kpis-quickstart.json` | Smoke test — verify the tool connects and collects | 2 |
-| `kpis-basic.json` | General cluster health (CPU, memory, disk, pods) | 11 |
-| `kpis-ran.json` | RAN DU single-node clusters (reserved/isolated CPUs, hugepages, PTP, OVN) | 31 |
-| `kpis-core.json` | Core clusters (control plane, etcd, API server, ingress, storage) | 22 |
-| `kpis-hub.json` | Hub/ACM clusters (managed clusters, policy compliance, GitOps, etcd) | 22 |
+| `kpis-quickstart.yaml` | Smoke test — verify the tool connects and collects | 2 |
+| `kpis-basic.yaml` | General cluster health (CPU, memory, disk, pods) | 11 |
+| `kpis-ran.yaml` | RAN DU single-node clusters (reserved/isolated CPUs, hugepages, PTP, OVN) | 31 |
+| `kpis-core.yaml` | Core clusters (control plane, etcd, API server, ingress, storage) | 22 |
+| `kpis-hub.yaml` | Hub/ACM clusters (managed clusters, policy compliance, GitOps, etcd) | 22 |
 
 ## Profile Details
 
-### kpis-quickstart.json
+### kpis-quickstart.yaml
 
 Two KPIs that return data on virtually any OpenShift or Kubernetes cluster.
 Use this to confirm connectivity and database storage before moving to a
 full profile.
 
-### kpis-basic.json
+### kpis-basic.yaml
 
 A profile-agnostic health baseline: node CPU, memory, load, disk, namespace
 resource consumption, pod restarts, and cluster uptime. Works on any cluster
 type.
 
-### kpis-ran.json
+### kpis-ran.yaml
 
 Tailored for RAN Distributed Unit (DU) nodes running on Single Node OpenShift
 with a PerformanceProfile. Covers:
@@ -46,7 +46,7 @@ with a PerformanceProfile. Covers:
 - **OVN** — controller CPU and memory
 - **System jitter** — context switches and hardware interrupts
 
-### kpis-core.json
+### kpis-core.yaml
 
 Designed for centralized core clusters that run control-plane services,
 ingress, and shared workloads. Covers:
@@ -58,7 +58,7 @@ ingress, and shared workloads. Covers:
 - **Node health** — CPU, memory, load averages
 - **Pod health** — restart counts, non-ready pods
 
-### kpis-hub.json
+### kpis-hub.yaml
 
 Built for hub clusters running Red Hat Advanced Cluster Management (ACM) and
 OpenShift GitOps. Covers:
@@ -73,7 +73,7 @@ OpenShift GitOps. Covers:
 
 ## Generating a KPI File
 
-Use `kpi-collector kpis generate` to create a tailored `kpis.json` from any of
+Use `kpi-collector kpis generate` to create a tailored `kpis.yaml` from any of
 the three main profiles (`ran`, `core`, `hub`):
 
 ```bash
@@ -84,13 +84,13 @@ kpi-collector kpis generate --profile ran --all
 kpi-collector kpis generate --profile core
 
 # Write to a custom path
-kpi-collector kpis generate --profile hub --all -f /path/to/hub-kpis.json
+kpi-collector kpis generate --profile hub --all -f /path/to/hub-kpis.yaml
 
 # Overwrite an existing file
 kpi-collector kpis generate --profile ran --all --overwrite
 ```
 
-By default the output file is named `<profile>-kpis.json` in the current
+By default the output file is named `<profile>-kpis.yaml` in the current
 directory. If the file already exists, the command will refuse to overwrite it
 unless you pass `--overwrite`. In interactive mode (the default), you are
 prompted per category — use `--all` to skip prompts and include everything.
@@ -102,5 +102,5 @@ passing it to the collector.
 
 For guidance on writing a custom KPI configuration file from scratch — including
 per-KPI frequency overrides, range queries, `run-once` mode, and CPU
-placeholders — see the annotated [`kpis.json.template`](../kpis.json.template)
+placeholders — see the annotated [`kpis.yaml.template`](../kpis.yaml.template)
 in the project root.

@@ -43,6 +43,7 @@ func setupPromClient(prometheusURL, bearerToken string, insecureTLS bool) (promv
 		Address: address,
 		RoundTripper: &tokenRoundTripper{
 			Token: bearerToken,
+			// TLSClientConfig is only relevant for HTTPS; for plain HTTP, Go ignores it.
 			RT: &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureTLS},
 			},

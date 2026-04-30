@@ -61,7 +61,7 @@ jobs:
             --cluster-type ran \
             --token unused \
             --thanos-url http://localhost:9090 \
-            --kpis-file kpi-profiles/kpis-quickstart.json \
+            --kpis-file kpi-profiles/kpis-quickstart.yaml \
             --once
 
       - name: Verify cluster was stored

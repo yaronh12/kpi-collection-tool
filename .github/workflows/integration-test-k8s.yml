@@ -24,15 +24,9 @@ jobs:
           go-version-file: go.mod
 
       - name: Deploy K8s cluster with monitoring
-        uses: palmsoftware/quick-k8s@v0.0.64
+        uses: palmsoftware/quick-k8s@v0.0.65
         with:
           enableClusterMonitoring: 'true'
-
-      - name: Remove monitoring NetworkPolicies
-        run: |
-          echo "Deleting kube-prometheus NetworkPolicies (they block Thanos Query → sidecar gRPC)..."
-          kubectl delete networkpolicies --all -n monitoring
-          echo "Done"
 
       - name: Wait for monitoring stack
         timeout-minutes: 10
@@ -41,7 +35,7 @@ jobs:
           kubectl rollout status deployment/thanos-query -n monitoring --timeout=300s
 
       - name: Build kpi-collector
-        run: go build -o kpi-collector ./cmd/kpi-collector
+        run: make
 
       - name: Wait for scrape data and collect KPIs
         timeout-minutes: 10
@@ -51,7 +45,7 @@ jobs:
 
           for i in $(seq 1 60); do
             count=$(curl -sf 'http://localhost:9090/api/v1/query?query=up' \
-              | python3 -c "import sys,json; print(len(json.load(sys.stdin)['data']['result']))" 2>/dev/null || echo 0)
+              | jq '.data.result | length' 2>/dev/null || echo 0)
             [ "$count" -gt 0 ] && echo "Thanos has data ($count series)" && break
             echo "  attempt $i/60: waiting for scrape data..."
             sleep 5
@@ -81,7 +75,7 @@ jobs:
           output=$(./kpi-collector db show kpis -o json)
           echo "$output"
 
-          count=$(echo "$output" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
+          count=$(echo "$output" | jq 'length')
           echo "Collected $count metric(s)"
 
           if [ "$count" -lt 1 ]; then
@@ -93,7 +87,7 @@ jobs:
         run: |
           for kpi in node-cpu-usage cluster-uptime; do
             output=$(./kpi-collector db show kpis --name "$kpi" -o json)
-            count=$(echo "$output" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
+            count=$(echo "$output" | jq 'length')
             echo "$kpi: $count metric(s)"
             if [ "$count" -lt 1 ]; then
               echo "FAIL: KPI '$kpi' has no data in the database"

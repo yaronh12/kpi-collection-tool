@@ -54,7 +54,7 @@ jobs:
           echo "Monitoring stack is ready"
 
       - name: Build kpi-collector
-        run: go build -o kpi-collector ./cmd/kpi-collector
+        run: make
 
       - name: Collect KPIs (quickstart profile)
         run: |
@@ -77,7 +77,7 @@ jobs:
           output=$(./kpi-collector db show kpis -o json)
           echo "$output"
 
-          count=$(echo "$output" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
+          count=$(echo "$output" | jq 'length')
           echo "Collected $count metric(s)"
 
           if [ "$count" -lt 1 ]; then
@@ -89,7 +89,7 @@ jobs:
         run: |
           for kpi in node-cpu-usage cluster-uptime; do
             output=$(./kpi-collector db show kpis --name "$kpi" -o json)
-            count=$(echo "$output" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
+            count=$(echo "$output" | jq 'length')
             echo "$kpi: $count metric(s)"
             if [ "$count" -lt 1 ]; then
               echo "FAIL: KPI '$kpi' has no data in the database"

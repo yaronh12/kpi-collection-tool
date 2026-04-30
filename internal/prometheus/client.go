@@ -32,9 +32,9 @@ const (
 )
 
 // setupPromClient creates and configures a Prometheus API client.
-// thanosURL may include a scheme (http:// or https://); if omitted, https:// is assumed.
-func setupPromClient(thanosURL, bearerToken string, insecureTLS bool) (promv1.API, error) {
-	address := thanosURL
+// prometheusURL may include a scheme (http:// or https://); if omitted, https:// is assumed.
+func setupPromClient(prometheusURL, bearerToken string, insecureTLS bool) (promv1.API, error) {
+	address := prometheusURL
 	if !strings.HasPrefix(address, "http://") && !strings.HasPrefix(address, "https://") {
 		address = "https://" + address
 	}

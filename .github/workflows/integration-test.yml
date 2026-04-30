@@ -11,7 +11,7 @@ permissions: read-all
 
 jobs:
   integration-test:
-    if: github.repository_owner == 'redhat-best-practices-for-k8s'
+    if: github.repository_owner == 'redhat-best-practices-for-k8s' && github.event.pull_request.head.repo.fork != true
     name: KPI Collection on OCP
     runs-on: ubuntu-24.04
     timeout-minutes: 120
@@ -62,7 +62,7 @@ jobs:
             --cluster-name integration-test \
             --cluster-type ran \
             --kubeconfig "$KUBECONFIG" \
-            --kpis-file kpi-profiles/kpis-quickstart.json \
+            --kpis-file kpi-profiles/kpis-quickstart.yaml \
             --insecure-tls \
             --once
 

@@ -71,7 +71,7 @@ kpi-collection-tool/
 │   ├── config/              # Configuration types and validation
 │   │   ├── types.go         # InputFlags, Query, KPIs structs
 │   │   ├── cli_flags.go     # Flag validation
-│   │   ├── kpis_loader.go   # KPI JSON file loading
+│   │   ├── kpis_loader.go   # KPI YAML file loading
 │   │   └── query_placeholders.go  # CPU placeholder substitution
 │   ├── database/            # Database abstraction layer
 │   │   ├── interface.go     # Database interface definition
@@ -95,7 +95,7 @@ kpi-collection-tool/
 │   ├── embed.go             # Go embed directives
 │   ├── sqlite-dashboard.json
 │   └── postgres-dashboard.json
-├── kpis.json.template       # Example KPI configuration file
+├── kpis.yaml.template       # Example KPI configuration file
 ├── golangci.yml             # Linter configuration
 └── Makefile                 # Build automation
 ```
@@ -155,24 +155,22 @@ type Database interface {
 - All commands (`run`, `db`, `grafana`) must be executed from the same working directory when using SQLite, or use `--artifacts-dir`
 
 ### KPI Configuration File Format
-KPIs are defined in JSON format (see `kpis.json.template`):
-```json
-{
-    "kpis": [
-        {
-            "id": "unique-kpi-id",
-            "promquery": "your_promql_query",
-            "sample-frequency": "2m", // Optional: override global frequency (duration string or seconds)
-            "run-once": true,         // Optional: collect this query only once
-            "query-type": "range",    // Optional: "instant" (default) or "range"
-            "range": {                // Required when query-type is "range"
-                "step": "30s",        //   Resolution between data points (required)
-                "since": "1h",        //   Start of the window (required)
-                "until": "30m"        //   End of the window (optional, defaults to "now")
-            }
-        }
-    ]
-}
+KPIs are defined in YAML format (see `kpis.yaml.template`):
+```yaml
+kpis:
+  - id: unique-kpi-id
+    promquery: your_promql_query
+    # Optional: override global frequency (duration string or seconds)
+    sample-frequency: 2m
+    # Optional: collect this query only once
+    run-once: true
+    # Optional: instant (default) or range
+    query-type: range
+    # Required when query-type is range
+    range:
+      step: 30s    # Resolution between data points (required)
+      since: 1h    # Start of the window (required)
+      until: 30m   # End of the window (optional, defaults to "now")
 ```
 
 Range query notes:
@@ -209,7 +207,7 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.json \
+  --kpis-file kpis.yaml \
   --frequency 60 \
   --duration 1h
 
@@ -219,14 +217,14 @@ kpi-collector run \
   --cluster-type core \
   --token $TOKEN \
   --thanos-url $THANOS_URL \
-  --kpis-file kpis.json
+  --kpis-file kpis.yaml
 
 # Single run: collect all KPIs once and exit
 kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.json \
+  --kpis-file kpis.yaml \
   --once
 ```
 
@@ -270,7 +268,7 @@ make install
 ## Architecture Notes
 
 ### Collection Flow
-1. CLI parses flags and loads KPI configuration from JSON file
+1. CLI parses flags and loads KPI configuration from YAML file
 2. If kubeconfig provided, discovers Thanos URL and creates service account token
 3. CPU placeholders are substituted if detected in queries
 4. KPIs are grouped by sampling frequency

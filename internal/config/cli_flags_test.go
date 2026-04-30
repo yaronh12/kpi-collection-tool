@@ -16,7 +16,7 @@ const (
 	validSamplingFreq = 60 * time.Second
 	validDuration     = 45 * time.Minute
 	validDatabaseType = "sqlite"
-	validKPIsFile     = "/path/to/kpis.json"
+	validKPIsFile     = "/path/to/kpis.yaml"
 
 	errClusterNameRequiredMsg = "cluster name is required: use --cluster-name flag"
 	errClusterTypeRequiredMsg = "cluster-type is required: must be 'ran', 'core', or 'hub'"

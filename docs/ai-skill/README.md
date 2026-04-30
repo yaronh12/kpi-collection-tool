@@ -10,7 +10,7 @@ Works with Cursor, Claude Code, and any IDE that supports the
 When installed, your AI coding assistant will be able to:
 
 - **Run kpi-collector commands** — collect metrics, query stored data, manage Grafana dashboards
-- **Generate `kpis.json` files** — with battle-tested PromQL queries for Telco workloads
+- **Generate `kpis.yaml` files** — with battle-tested PromQL queries for Telco workloads
 - **Cover Telco domains** — RAN/DU, PTP timing, SRIOV networking, 5G Core, cluster health
 - **Troubleshoot issues** — knows common gotchas like Thanos staleness, TLS certs, and sandbox limitations
 
@@ -66,12 +66,12 @@ Once installed, just ask your AI assistant naturally:
 
 | What you say | What the skill helps with |
 |---|---|
-| "Check my cluster's health" | Generates a health-check `kpis.json`, asks for auth details, runs collection |
-| "Create KPIs for a RAN cluster" | Asks which areas (CPU, PTP, networking), assembles a tailored `kpis.json` |
+| "Check my cluster's health" | Generates a health-check `kpis.yaml`, asks for auth details, runs collection |
+| "Create KPIs for a RAN cluster" | Asks which areas (CPU, PTP, networking), assembles a tailored `kpis.yaml` |
 | "Generate PTP monitoring queries" | Produces PTP-specific KPIs (clock state, offset, clock class, delay) |
-| "Collect CPU and memory every 30s for 2 hours" | Sets up `kpis.json` and runs with `--frequency 30s --duration 2h` |
+| "Collect CPU and memory every 30s for 2 hours" | Sets up `kpis.yaml` and runs with `--frequency 30s --duration 2h` |
 | "Monitor my cluster overnight, sample every 5 minutes" | Configures a long-running collection with `--frequency 5m --duration 12h` |
-| "Collect PTP offset once and network stats every minute" | Creates a mixed `kpis.json` with `run-once` for PTP and `sample-frequency` for networking |
+| "Collect PTP offset once and network stats every minute" | Creates a mixed `kpis.yaml` with `run-once` for PTP and `sample-frequency` for networking |
 | "Show me the last hour of CPU metrics for cluster prod-ran" | Runs `kpi-collector db show kpis` with `--since 1h --cluster-name prod-ran` |
 | "Export all KPIs from today as CSV" | Runs `kpi-collector db show kpis --since 24h -o csv` |
 | "Start Grafana to view results" | Runs `kpi-collector grafana start` with the right datasource |
@@ -82,7 +82,7 @@ Once installed, just ask your AI assistant naturally:
 
 ```
 docs/ai-skill/
-├── SKILL.md          # Main skill — CLI reference, kpis.json format, common KPIs, gotchas, workflows
+├── SKILL.md          # Main skill — CLI reference, kpis.yaml format, common KPIs, gotchas, workflows
 ├── telco-promql.md   # Extended PromQL library — cluster health, node/pod resources,
 │                     #   RAN/DU, PTP, networking, SRIOV, 5G Core, range query examples
 └── README.md         # This file

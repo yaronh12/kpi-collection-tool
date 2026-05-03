@@ -13,6 +13,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
@@ -30,16 +31,20 @@ const (
 	queryTimeoutPerKPI = 5 * time.Second
 )
 
-// setupPromClient creates and configures a Prometheus API client
-func setupPromClient(thanosURL, bearerToken string, insecureTLS bool) (promv1.API, error) {
+// setupPromClient creates and configures a Prometheus API client.
+// prometheusURL may include a scheme (http:// or https://); if omitted, https:// is assumed.
+func setupPromClient(prometheusURL, bearerToken string, insecureTLS bool) (promv1.API, error) {
+	address := prometheusURL
+	if !strings.HasPrefix(address, "http://") && !strings.HasPrefix(address, "https://") {
+		address = "https://" + address
+	}
+
 	client, err := api.NewClient(api.Config{
-		Address: "https://" + thanosURL,
+		Address: address,
 		RoundTripper: &tokenRoundTripper{
 			Token: bearerToken,
+			// TLSClientConfig is only relevant for HTTPS; for plain HTTP, Go ignores it.
 			RT: &http.Transport{
-				// NOTE: InsecureSkipVerify is set to true for development purposes only.
-				// In production environments, this should be false and proper certificate
-				// validation should be implemented.
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureTLS},
 			},
 		},

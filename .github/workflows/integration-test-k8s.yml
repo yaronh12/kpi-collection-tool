@@ -1,22 +1,18 @@
-name: Integration Test (OCP)
+name: Integration Test (K8s)
 
 on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
 
 permissions: read-all
 
 jobs:
   integration-test:
-    if: github.repository_owner == 'redhat-best-practices-for-k8s' && github.event.pull_request.head.repo.fork != true
-    name: KPI Collection on OCP
+    if: github.repository_owner == 'redhat-best-practices-for-k8s'
+    name: KPI Collection on K8s
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
-    env:
-      KUBECONFIG: '/home/runner/.crc/machines/crc/kubeconfig'
+    timeout-minutes: 30
 
     steps:
       - name: Check out code
@@ -27,43 +23,45 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Check for CRC pull secret
-        env:
-          pull_secret: ${{ secrets.CRC_PULL_SECRET }}
-        if: ${{ env.pull_secret == '' }}
-        run: |
-          echo "CRC_PULL_SECRET is not set — skipping integration test"
-          exit 1
-
-      - name: Deploy OCP cluster
-        uses: palmsoftware/quick-ocp@v0.0.32
+      - name: Deploy K8s cluster with monitoring
+        uses: palmsoftware/quick-k8s@v0.0.65
         with:
-          ocpPullSecret: $OCP_PULL_SECRET
-          bundleCache: true
           enableClusterMonitoring: 'true'
-        env:
-          OCP_PULL_SECRET: ${{ secrets.CRC_PULL_SECRET }}
 
       - name: Wait for monitoring stack
-        timeout-minutes: 30
+        timeout-minutes: 10
         run: |
-          until oc get route thanos-querier -n openshift-monitoring &>/dev/null; do
-            echo "Waiting for thanos-querier route..."
-            sleep 30
-          done
-          echo "Monitoring stack is ready"
+          kubectl rollout status statefulset/prometheus-k8s -n monitoring --timeout=300s
+          kubectl rollout status deployment/thanos-query -n monitoring --timeout=300s
 
       - name: Build kpi-collector
         run: make
 
-      - name: Collect KPIs (quickstart profile)
+      - name: Wait for scrape data and collect KPIs
+        timeout-minutes: 10
         run: |
+          kubectl port-forward -n monitoring svc/thanos-query 9090:9090 &
+          sleep 3
+
+          for i in $(seq 1 60); do
+            count=$(curl -sf 'http://localhost:9090/api/v1/query?query=up' \
+              | jq '.data.result | length' 2>/dev/null || echo 0)
+            [ "$count" -gt 0 ] && echo "Thanos has data ($count series)" && break
+            echo "  attempt $i/60: waiting for scrape data..."
+            sleep 5
+          done
+
+          if [ "$count" -eq 0 ] 2>/dev/null || [ -z "$count" ]; then
+            echo "FAIL: no metric data after 5 minutes"
+            exit 1
+          fi
+
           ./kpi-collector run \
             --cluster-name integration-test \
             --cluster-type ran \
-            --kubeconfig "$KUBECONFIG" \
+            --token unused \
+            --thanos-url http://localhost:9090 \
             --kpis-file kpi-profiles/kpis-quickstart.yaml \
-            --insecure-tls \
             --once
 
       - name: Verify cluster was stored

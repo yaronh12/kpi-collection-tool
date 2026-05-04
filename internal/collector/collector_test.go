@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"sync/atomic"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -197,14 +198,15 @@ var _ = Describe("Collector", func() {
 
 		Context("when there are KPIs with various frequencies", func() {
 			It("should return cancel function and WaitGroup", func() {
-				kpis := config.KPIs{
-					Queries: []config.Query{
-						{ID: "kpi-1", PromQuery: "query1", SampleFrequency: durationPtr(5 * time.Second)},
-						{ID: "kpi-2", PromQuery: "query2"}, // default frequency
-					},
-				}
+			kpis := config.KPIs{
+				Queries: []config.Query{
+					{ID: "kpi-1", PromQuery: "query1", SampleFrequency: durationPtr(5 * time.Second)},
+					{ID: "kpi-2", PromQuery: "query2"}, // default frequency
+				},
+			}
 
-				cancel, wg := startKPIGoroutines(kpis, flags)
+				var hadFailures atomic.Bool
+				cancel, wg := startKPIGoroutines(kpis, flags, &hadFailures)
 
 				Expect(cancel).NotTo(BeNil())
 				Expect(wg).NotTo(BeNil())
@@ -224,7 +226,8 @@ var _ = Describe("Collector", func() {
 					},
 				}
 
-				cancel, wg := startKPIGoroutines(kpis, flags)
+				var hadFailures atomic.Bool
+				cancel, wg := startKPIGoroutines(kpis, flags, &hadFailures)
 
 				Expect(cancel).NotTo(BeNil())
 				Expect(wg).NotTo(BeNil())
@@ -239,7 +242,8 @@ var _ = Describe("Collector", func() {
 			It("should return cancel function and empty WaitGroup", func() {
 				kpis := config.KPIs{Queries: []config.Query{}}
 
-				cancel, wg := startKPIGoroutines(kpis, flags)
+				var hadFailures atomic.Bool
+				cancel, wg := startKPIGoroutines(kpis, flags, &hadFailures)
 
 				Expect(cancel).NotTo(BeNil())
 				Expect(wg).NotTo(BeNil())

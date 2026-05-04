@@ -86,6 +86,7 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags, sampleNumber int
 	ctx, cancel := context.WithTimeout(context.Background(), totalTimeout)
 	defer cancel()
 
+	var failedCount int
 	for _, query := range kpisToRun.Queries {
 		queryInfo := output.QueryInfo{
 			QueryID:      query.ID,
@@ -109,14 +110,21 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags, sampleNumber int
 				queryInfo.Until = now
 			}
 		}
-		executeQuery(ctx, v1api, db, dbImpl, clusterID, queryInfo)
+		if !executeQuery(ctx, v1api, db, dbImpl, clusterID, queryInfo) {
+			failedCount++
+		}
+	}
+
+	if failedCount > 0 {
+		return fmt.Errorf("%d of %d queries failed", failedCount, len(kpisToRun.Queries))
 	}
 
 	return nil
 }
 
-// executeQuery executes a single Prometheus query and handles the result
-func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl database.Database, clusterID int64, info output.QueryInfo) {
+// executeQuery executes a single Prometheus query, handles the result,
+// and returns true if the query succeeded.
+func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl database.Database, clusterID int64, info output.QueryInfo) bool {
 	now := time.Now()
 
 	var (
@@ -148,7 +156,7 @@ func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl data
 		if storeErr := dbImpl.IncrementQueryError(db, info.QueryID); storeErr != nil {
 			fmt.Fprintf(os.Stderr, "Failed to increment error count: %v\n", storeErr)
 		}
-		return
+		return false
 	}
 
 	// Filter out NaN/Inf values
@@ -166,7 +174,7 @@ func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl data
 			fmt.Printf("  Warning: query returned no data (metric may not exist on this cluster)\n")
 			log.Printf("[%s] Query returned no data: %s", info.QueryID, info.PromQuery)
 		}
-		return
+		return true
 	}
 
 	// Store results
@@ -175,7 +183,7 @@ func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl data
 		queryResult.Success = false
 		queryResult.Error = fmt.Errorf("failed to store: %v", err)
 		output.PrintQueryResult(info, queryResult)
-		return
+		return false
 	}
 
 	queryResult.Success = true
@@ -184,6 +192,7 @@ func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl data
 		fmt.Printf("  Note: skipped %d NaN value(s)\n", nanCount)
 		log.Printf("[%s] Skipped %d NaN/Inf value(s): %s", info.QueryID, nanCount, info.PromQuery)
 	}
+	return true
 }
 
 // isEmptyResult checks whether a Prometheus query returned no data points.

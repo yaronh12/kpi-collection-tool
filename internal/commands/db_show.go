@@ -191,13 +191,13 @@ func runShowKPIs(cmd *cobra.Command, args []string) error {
 }
 
 func runShowClusters(cmd *cobra.Command, args []string) error {
-	db, _, err := connectToDB()
+	db, dbImpl, err := connectToDB()
 	if err != nil {
 		return fmt.Errorf("failed to connect to DB: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
-	clusters, err := listClusters(db, clusterQueryFlags.clusterName)
+	clusters, err := listClusters(db, dbImpl, clusterQueryFlags.clusterName)
 	if err != nil {
 		return fmt.Errorf("failed to list clusters: %w", err)
 	}
@@ -396,7 +396,7 @@ type ClusterInfo struct {
 	TotalMetrics int64
 }
 
-func listClusters(db *sql.DB, clusterName string) ([]ClusterInfo, error) {
+func listClusters(db *sql.DB, dbImpl database.Database, clusterName string) ([]ClusterInfo, error) {
 	query := `
 		SELECT c.id, c.cluster_name, c.created_at, COUNT(qr.id) as total_metrics
 		FROM clusters c
@@ -405,11 +405,15 @@ func listClusters(db *sql.DB, clusterName string) ([]ClusterInfo, error) {
 	args := []interface{}{}
 
 	if clusterName != "" {
-		query += " WHERE c.cluster_name = ?"
+		query += " WHERE c.cluster_name = $1"
 		args = append(args, clusterName)
 	}
 
 	query += " GROUP BY c.id, c.cluster_name, c.created_at ORDER BY c.created_at DESC"
+
+	if _, ok := dbImpl.(*database.SQLiteDB); ok {
+		query = convertPostgresToSQLitePlaceholders(query)
+	}
 
 	rows, err := db.Query(query, args...)
 	if err != nil {

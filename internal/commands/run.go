@@ -189,18 +189,22 @@ func runCollect(cmd *cobra.Command, args []string) error {
 	}
 
 	// Run collection
+	var collectionErr error
 	if flags.SingleRun {
-		collector.RunOnce(kpis, flags)
+		collectionErr = collector.RunOnce(kpis, flags)
 	} else {
-		collector.Run(kpis, flags)
+		collectionErr = collector.Run(kpis, flags)
 	}
 
 	absOutputDir, err := filepath.Abs(database.OutputDir)
 	if err != nil {
 		absOutputDir = database.OutputDir
 	}
-	fmt.Println("All queries completed successfully!")
+
 	fmt.Printf("Artifacts stored in: %s\n", absOutputDir)
+	if collectionErr != nil {
+		return fmt.Errorf("collection completed with errors: %w", collectionErr)
+	}
 
 	return nil
 }

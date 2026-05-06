@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
@@ -25,20 +26,26 @@ const durationBuffer = 100 * time.Millisecond
 
 // RunOnce executes every KPI query exactly once and returns.
 // It ignores frequency and duration settings entirely.
-func RunOnce(kpis config.KPIs, flags config.InputFlags) {
+// Returns an error if any queries failed.
+func RunOnce(kpis config.KPIs, flags config.InputFlags) error {
 	fmt.Printf("\nKPI Collection Started - Single run mode\n")
 
 	log.Printf("Single run: executing %d KPIs", len(kpis.Queries))
 
-	if err := prometheus.RunQueries(kpis, flags, 1, 1, 0); err != nil {
+	err := prometheus.RunQueries(kpis, flags, 1, 1, 0)
+	if err != nil {
 		log.Printf("RunQueries failed in single-run mode: %v", err)
 	}
 
 	output.PrintShutdown("Single run completed")
+	return err
 }
 
 // Run executes the KPI collection loop until duration expires or interrupted.
-func Run(kpis config.KPIs, flags config.InputFlags) {
+// Returns an error if any query failures occurred during collection.
+func Run(kpis config.KPIs, flags config.InputFlags) error {
+	var hadFailures atomic.Bool
+
 	runOnceKPIs, repeatingKPIs := splitRunOnceQueries(kpis)
 
 	// Execute run-once queries immediately before starting the loop
@@ -48,12 +55,16 @@ func Run(kpis config.KPIs, flags config.InputFlags) {
 
 		if err := prometheus.RunQueries(runOnceKPIs, flags, 1, 1, 0); err != nil {
 			log.Printf("RunQueries failed for run-once KPIs: %v", err)
+			hadFailures.Store(true)
 		}
 	}
 
 	if len(repeatingKPIs.Queries) == 0 {
 		output.PrintShutdown("All queries are run-once, collection complete")
-		return
+		if hadFailures.Load() {
+			return fmt.Errorf("some queries failed during collection")
+		}
+		return nil
 	}
 
 	durationTimer := time.NewTimer(flags.Duration + durationBuffer)
@@ -65,7 +76,7 @@ func Run(kpis config.KPIs, flags config.InputFlags) {
 	output.PrintStartup(flags.Duration.String(), time.Now().Add(flags.Duration).Format(time.RFC3339))
 
 	// Start repeating KPI goroutines grouped by frequency
-	cancel, wg := startKPIGoroutines(repeatingKPIs, flags)
+	cancel, wg := startKPIGoroutines(repeatingKPIs, flags, &hadFailures)
 	defer cancel()
 
 	// Main goroutine only handles duration timer and interrupts
@@ -83,6 +94,11 @@ func Run(kpis config.KPIs, flags config.InputFlags) {
 	// Wait for all goroutines to finish, then print shutdown message
 	shutdown(cancel, wg)
 	output.PrintShutdown(shutdownReason)
+
+	if hadFailures.Load() {
+		return fmt.Errorf("some queries failed during collection")
+	}
+	return nil
 }
 
 // splitRunOnceQueries separates KPIs into run-once and repeating groups
@@ -122,7 +138,7 @@ func groupKPIsByFrequency(kpis config.KPIs, defaultFreq time.Duration) map[time.
 }
 
 // startKPIGoroutines starts one goroutine per unique frequency for all KPIs
-func startKPIGoroutines(kpis config.KPIs, flags config.InputFlags) (context.CancelFunc, *sync.WaitGroup) {
+func startKPIGoroutines(kpis config.KPIs, flags config.InputFlags, hadFailures *atomic.Bool) (context.CancelFunc, *sync.WaitGroup) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 
@@ -134,7 +150,7 @@ func startKPIGoroutines(kpis config.KPIs, flags config.InputFlags) (context.Canc
 		wg.Add(1)
 		go func(frequency time.Duration, kpiGroup config.KPIs) {
 			defer wg.Done()
-			runKPIGroupLoop(ctx, kpiGroup, frequency, flags)
+			runKPIGroupLoop(ctx, kpiGroup, frequency, flags, hadFailures)
 		}(freq, kpisForFreq)
 	}
 
@@ -147,7 +163,7 @@ func shutdown(cancel context.CancelFunc, wg *sync.WaitGroup) {
 }
 
 // runKPIGroupLoop runs a group of KPIs that share the same sampling frequency
-func runKPIGroupLoop(ctx context.Context, kpis config.KPIs, frequency time.Duration, flags config.InputFlags) {
+func runKPIGroupLoop(ctx context.Context, kpis config.KPIs, frequency time.Duration, flags config.InputFlags, hadFailures *atomic.Bool) {
 	ticker := time.NewTicker(frequency)
 	defer ticker.Stop()
 
@@ -156,13 +172,13 @@ func runKPIGroupLoop(ctx context.Context, kpis config.KPIs, frequency time.Durat
 	log.Printf("Starting goroutine for %d KPIs with frequency %s (total samples: %d)", len(kpis.Queries), frequency, totalSamples)
 	// Run immediately on start
 	sampleCount++
-	runKPIs(kpis, flags, sampleCount, totalSamples, frequency)
+	runKPIs(kpis, flags, sampleCount, totalSamples, frequency, hadFailures)
 
 	for {
 		select {
 		case <-ticker.C:
 			sampleCount++
-			runKPIs(kpis, flags, sampleCount, totalSamples, frequency)
+			runKPIs(kpis, flags, sampleCount, totalSamples, frequency, hadFailures)
 
 		case <-ctx.Done():
 			log.Printf("KPI group (frequency %s) stopped after %d samples", frequency, sampleCount)
@@ -172,7 +188,7 @@ func runKPIGroupLoop(ctx context.Context, kpis config.KPIs, frequency time.Durat
 }
 
 // runKPIs executes a group of KPIs and logs the results
-func runKPIs(kpis config.KPIs, flags config.InputFlags, sampleNumber int, totalSamples int, frequency time.Duration) {
+func runKPIs(kpis config.KPIs, flags config.InputFlags, sampleNumber int, totalSamples int, frequency time.Duration, hadFailures *atomic.Bool) {
 	if len(kpis.Queries) == 0 {
 		return
 	}
@@ -181,6 +197,7 @@ func runKPIs(kpis config.KPIs, flags config.InputFlags, sampleNumber int, totalS
 
 	if err := prometheus.RunQueries(kpis, flags, sampleNumber, totalSamples, frequency); err != nil {
 		log.Printf("RunQueries failed for frequency %s KPIs: %v", frequency, err)
+		hadFailures.Store(true)
 	}
 }
 

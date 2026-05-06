@@ -278,7 +278,7 @@ func runGrafanaContainer(grafanaDir string) error {
 	}
 
 	// Add the image name
-	args = append(args, "grafana/grafana:latest")
+	args = append(args, "grafana/grafana:11.4.0")
 
 	containerRuntimeCmd := exec.Command(runtime, args...)
 	output, err := containerRuntimeCmd.CombinedOutput()

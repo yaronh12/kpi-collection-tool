@@ -1,70 +1,151 @@
+# Prerequisites (present on every OpenShift cluster with default monitoring):
+#   - node_exporter: node-level metrics (node_*). DaemonSet in openshift-monitoring.
+#   - cAdvisor: container-level metrics (container_*). Built into the kubelet.
+#   - kube-state-metrics: Kubernetes object metrics (kube_*). Deployed by openshift-monitoring.
+#   - kube-apiserver: API server metrics (apiserver_*). Built into the control plane.
+#   - etcd: etcd metrics (etcd_*). Exposed by openshift-etcd.
+#
+# Additional prerequisites are noted per KPI when they require an operator or
+# cluster configuration beyond the defaults.
+
 kpis:
+  # --- API Server ---
+
+  # 99th-percentile API request latency, broken down by HTTP verb.
+  # Unit: seconds. Excludes WATCH (long-poll) requests which skew the histogram.
   - id: apiserver-request-duration-99p
     promquery: histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket{verb!="WATCH"}[5m])) by (verb, le))
 
+  # API request throughput by verb and HTTP status code.
+  # Unit: requests/second.
   - id: apiserver-request-rate
     promquery: sum(rate(apiserver_request_total[5m])) by (verb, code)
 
+  # API server 5xx error rate by verb.
+  # Unit: errors/second. Non-zero values indicate server-side failures.
   - id: apiserver-error-rate
     promquery: sum(rate(apiserver_request_total{code=~"5.."}[5m])) by (verb)
 
+  # --- etcd ---
+
+  # Total etcd database size on disk.
+  # Unit: bytes. Growth over time can indicate excessive object churn or missing compaction.
   - id: etcd-db-size
     promquery: etcd_mvcc_db_total_size_in_bytes
 
+  # 99th-percentile WAL fsync latency — time to flush writes to disk.
+  # Unit: seconds. Values above 10 ms often correlate with disk I/O bottlenecks.
   - id: etcd-disk-wal-fsync-duration-99p
     promquery: histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m])) by (le))
 
+  # Number of etcd leader elections in the past hour.
+  # Unit: count. Frequent changes suggest network instability or slow disks.
+  # Sampled every 5 min since this is a slow-moving gauge.
   - id: etcd-leader-changes
     promquery: increase(etcd_server_leader_changes_seen_total[1h])
     sample-frequency: 5m
 
+  # --- CPU ---
+
+  # Overall node CPU usage averaged across all cores.
+  # Unit: percentage (0–100).
   - id: cpu-node-total
     promquery: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
 
+  # --- Memory ---
+
+  # Node memory utilization as a percentage of total physical RAM.
+  # Unit: percentage (0–100).
   - id: memory-node-used-percentage
     promquery: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))
 
+  # --- ACM (Advanced Cluster Management) ---
+  # Requires: ACM operator installed (open-cluster-management, multicluster-engine namespaces).
+
+  # CPU usage per pod in ACM and multicluster-engine namespaces.
+  # Unit: cores. Sorted descending to surface top consumers.
   - id: acm-cpu-usage
     promquery: sort_desc(sum(rate(container_cpu_usage_seconds_total{container!="",container!="POD",namespace=~"open-cluster-management.*|multicluster-engine"}[5m])) by (namespace, pod))
 
+  # Working-set memory per pod in ACM and multicluster-engine namespaces.
+  # Unit: bytes.
   - id: acm-memory-usage
     promquery: sort_desc(sum(container_memory_working_set_bytes{container!="",container!="POD",namespace=~"open-cluster-management.*|multicluster-engine"}) by (namespace, pod))
 
-  - id: gitops-cpu-usage
-    promquery: sort_desc(sum(rate(container_cpu_usage_seconds_total{container!="",container!="POD",namespace=~"openshift-gitops.*"}[5m])) by (namespace, pod))
-
-  - id: gitops-memory-usage
-    promquery: sort_desc(sum(container_memory_working_set_bytes{container!="",container!="POD",namespace=~"openshift-gitops.*"}) by (namespace, pod))
-
+  # Total number of clusters managed by ACM.
+  # Unit: count. Sampled every 5 min since fleet size changes infrequently.
   - id: acm-managed-clusters
     promquery: count(acm_managed_cluster_info)
     sample-frequency: 5m
 
+  # Number of root governance policies in NonCompliant state.
+  # Unit: count. Non-zero means one or more policies are violated.
+  # type=root filters out replicated per-cluster policies, showing only the source.
+  # Requires: governance policy framework enabled.
   - id: acm-policy-noncompliant
     promquery: count(policy_governance_info{type="root",compliant="NonCompliant"})
     sample-frequency: 5m
 
+  # --- GitOps ---
+  # Requires: OpenShift GitOps operator installed (openshift-gitops namespace).
+
+  # CPU usage per pod in OpenShift GitOps (Argo CD) namespaces.
+  # Unit: cores.
+  - id: gitops-cpu-usage
+    promquery: sort_desc(sum(rate(container_cpu_usage_seconds_total{container!="",container!="POD",namespace=~"openshift-gitops.*"}[5m])) by (namespace, pod))
+
+  # Working-set memory per pod in OpenShift GitOps namespaces.
+  # Unit: bytes.
+  - id: gitops-memory-usage
+    promquery: sort_desc(sum(container_memory_working_set_bytes{container!="",container!="POD",namespace=~"openshift-gitops.*"}) by (namespace, pod))
+
+  # --- Disk / Storage ---
+
+  # Root filesystem usage as a percentage.
+  # Unit: percentage (0–100). Monitors the / mountpoint, excludes tmpfs.
   - id: disk-usage-percentage
     promquery: 100 - ((node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"}) * 100)
 
+  # PersistentVolume usage as a percentage of capacity.
+  # Unit: percentage (0–100). Covers all PVCs mounted by the kubelet.
   - id: pv-usage-percentage
     promquery: 100 * (1 - (kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes))
 
+  # --- Network ---
+
+  # Bytes received per second on physical node interfaces.
+  # Unit: bytes/second. Excludes loopback, veth, bridge, and OVS virtual interfaces.
   - id: network-node-rx-bytes
     promquery: sort_desc(rate(node_network_receive_bytes_total{device!~"lo|veth.*|br.*|ovs.*"}[5m]))
 
+  # Bytes transmitted per second on physical node interfaces.
+  # Unit: bytes/second.
   - id: network-node-tx-bytes
     promquery: sort_desc(rate(node_network_transmit_bytes_total{device!~"lo|veth.*|br.*|ovs.*"}[5m]))
 
+  # --- System Load ---
+
+  # 1-minute load average. Comparable to the output of `uptime`.
+  # Unit: dimensionless (approximate number of runnable + uninterruptible tasks).
   - id: node-load-1min
     promquery: node_load1
 
+  # --- Pod Health ---
+
+  # Cumulative container restart count per pod.
+  # Unit: count (monotonically increasing). Sorted to surface crashlooping pods.
   - id: pod-restart-count
     promquery: sort_desc(sum(kube_pod_container_status_restarts_total) by (namespace, pod))
 
+  # Number of pods in Pending or Failed phase, grouped by namespace and phase.
+  # Unit: count. Non-zero values indicate scheduling or runtime issues.
   - id: pod-status-not-ready
     promquery: count(kube_pod_status_phase{phase=~"Pending|Failed"}) by (namespace, phase)
 
+  # --- Cluster Info ---
+
+  # Elapsed time since the oldest kubelet process started (proxy for cluster uptime).
+  # Unit: seconds. Collected once since it only needs a single snapshot.
   - id: cluster-uptime
     promquery: max(time() - process_start_time_seconds{job="kubelet"})
     run-once: true

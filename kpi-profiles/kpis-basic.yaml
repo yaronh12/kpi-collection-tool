@@ -1,34 +1,77 @@
+# Prerequisites (present on every OpenShift cluster with default monitoring):
+#   - node_exporter: node-level metrics (node_*). DaemonSet in openshift-monitoring.
+#   - cAdvisor: container-level metrics (container_*). Built into the kubelet.
+#   - kube-state-metrics: Kubernetes object metrics (kube_*). Deployed by openshift-monitoring.
+#
+# No additional prerequisites — all KPIs in this profile use default components.
+
 kpis:
+  # --- CPU ---
+
+  # Average CPU utilization per node across all cores.
+  # Unit: ratio 0–1 (fraction of time CPUs are busy).
   - id: node-cpu-usage
     promquery: avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m]))
 
+  # --- Memory ---
+
+  # Node memory utilization as a percentage of total physical RAM.
+  # Unit: percentage (0–100).
   - id: node-memory-used-percentage
     promquery: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))
 
+  # Available memory on each node.
+  # Unit: bytes. Represents memory the kernel considers available without swapping.
   - id: node-memory-available
     promquery: node_memory_MemAvailable_bytes
 
+  # --- System Load ---
+
+  # 1-minute load average. Comparable to the output of `uptime`.
+  # Unit: dimensionless (approximate number of runnable + uninterruptible tasks).
   - id: node-load-1min
     promquery: node_load1
 
+  # 5-minute load average. Smoother than the 1-min value.
+  # Unit: dimensionless.
   - id: node-load-5min
     promquery: node_load5
 
+  # --- Disk ---
+
+  # Root filesystem usage as a percentage.
+  # Unit: percentage (0–100). Monitors the / mountpoint, excludes tmpfs.
   - id: disk-usage-percentage
     promquery: 100 - ((node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"}) * 100)
 
+  # --- Namespace Resource Usage ---
+
+  # CPU usage summed by namespace to identify noisy tenants.
+  # Unit: cores. Excludes infra containers (pause/"POD").
   - id: cpu-usage-by-namespace
     promquery: sort_desc(sum(rate(container_cpu_usage_seconds_total{container!="",container!="POD"}[5m])) by (namespace))
 
+  # Working-set memory summed by namespace.
+  # Unit: bytes. Helps find namespaces consuming the most memory.
   - id: memory-usage-by-namespace
     promquery: sort_desc(sum(container_memory_working_set_bytes{container!="",container!="POD"}) by (namespace))
 
+  # --- Pod Health ---
+
+  # Cumulative container restart count per pod.
+  # Unit: count (monotonically increasing). Sorted to surface crashlooping pods.
   - id: pod-restart-count
     promquery: sort_desc(sum(kube_pod_container_status_restarts_total) by (namespace, pod))
 
+  # Number of pods in Pending or Failed phase, grouped by namespace and phase.
+  # Unit: count. Non-zero values indicate scheduling or runtime issues.
   - id: pod-status-not-ready
     promquery: count(kube_pod_status_phase{phase=~"Pending|Failed"}) by (namespace, phase)
 
+  # --- Cluster Info ---
+
+  # Elapsed time since the oldest kubelet process started (proxy for cluster uptime).
+  # Unit: seconds. Collected once since it only needs a single snapshot.
   - id: cluster-uptime
     promquery: max(time() - process_start_time_seconds{job="kubelet"})
     run-once: true

@@ -1,7 +1,16 @@
+# Prerequisites (present on every OpenShift cluster with default monitoring):
+#   - node_exporter: node-level metrics (node_*). DaemonSet in openshift-monitoring.
+#
+# No additional prerequisites — all KPIs in this profile use default components.
+
 kpis:
+  # Average CPU utilization per node across all cores.
+  # Unit: ratio 0–1 (fraction of time CPUs are busy).
   - id: node-cpu-usage
     promquery: avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m]))
 
+  # Elapsed time since the oldest kubelet process started (proxy for cluster uptime).
+  # Unit: seconds. Collected once since it only needs a single snapshot.
   - id: cluster-uptime
     promquery: max(time() - process_start_time_seconds{job="kubelet"})
     run-once: true

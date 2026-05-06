@@ -1,93 +1,186 @@
+# Prerequisites (present on every OpenShift cluster with default monitoring):
+#   - node_exporter: node-level metrics (node_*). DaemonSet in openshift-monitoring.
+#   - cAdvisor: container-level metrics (container_*). Built into the kubelet.
+#   - kube-state-metrics: Kubernetes object metrics (kube_*). Deployed by openshift-monitoring.
+#
+# Additional prerequisites are noted per KPI when they require an operator or
+# cluster configuration beyond the defaults.
+
 kpis:
+  # --- CPU ---
+  # The first two KPIs use {{RESERVED_CPUS}} / {{ISOLATED_CPUS}} placeholders
+  # substituted at runtime with CPU IDs from the cluster's PerformanceProfile CR.
+  # Requires: PerformanceProfile CR (openshift-node-tuning-operator).
+
+  # Average per-core utilization of reserved (housekeeping) CPUs.
+  # Unit: ratio 0–1 (multiply by 100 for percentage).
   - id: cpu-reserved-cores
     promquery: avg by (cpu) (rate(node_cpu_seconds_total{cpu=~"{{RESERVED_CPUS}}",mode!="idle"}[5m]))
 
+  # Average per-core utilization of isolated (workload) CPUs.
+  # Unit: ratio 0–1.
   - id: cpu-isolated-cores
     promquery: avg by (cpu) (rate(node_cpu_seconds_total{cpu=~"{{ISOLATED_CPUS}}",mode!="idle"}[5m]))
 
+  # Overall node CPU usage averaged across all cores.
+  # Unit: percentage (0–100).
+  # Subtracts idle ratio from 100 to get busy percentage.
   - id: cpu-node-total
     promquery: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
 
+  # CPU usage of cgroup processes under /system.slice (systemd services like kubelet, crio).
+  # Unit: cores (seconds/second). Sorted descending to surface top consumers.
   - id: cpu-system-slice
     promquery: sort_desc(rate(container_cpu_usage_seconds_total{id=~"/system.slice/.*"}[5m]))
 
+  # CPU usage of cgroup processes under /ovs.slice (Open vSwitch daemons).
+  # Unit: cores. Helps track OVS overhead on the data plane.
+  # Requires: OVS running under a dedicated cgroup slice.
   - id: cpu-ovs-slice
     promquery: sort_desc(rate(container_cpu_usage_seconds_total{id=~"/ovs.slice/.*"}[5m]))
 
+  # Average CPU consumed per pod over a 5-minute window.
+  # Unit: cores. Uses the pre-computed recording rule pod:container_cpu_usage:sum.
   - id: cpu-pods-average
     promquery: sort_desc(avg_over_time(pod:container_cpu_usage:sum[5m]))
 
+  # --- Memory ---
+
+  # Node memory utilization as a percentage of total physical RAM.
+  # Unit: percentage (0–100).
   - id: memory-node-used-percentage
     promquery: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))
 
+  # Working-set memory per pod (RSS + cache in active use, excludes reclaimable cache).
+  # Unit: bytes. Grouped by pod and namespace.
+  # Filters out the pause container ("POD") and empty container names.
   - id: memory-working-set-by-pod
     promquery: sort_desc(sum(container_memory_working_set_bytes{container!="",container!="POD"}) by (pod, namespace))
 
+  # Resident Set Size (RSS) per pod — physical memory that cannot be reclaimed.
+  # Unit: bytes. Better indicator of true memory pressure than working set.
   - id: memory-rss-by-pod
     promquery: sort_desc(sum(container_memory_rss{container!="",container!="POD"}) by (pod, namespace))
 
+  # --- Hugepages ---
+  # Unit: count of pages. hugepagesize filter is in KiB (1048576 = 1 GiB, 2048 = 2 MiB).
+  # Requires: hugepages configured via kernel parameters or PerformanceProfile.
+
+  # Free 1 GiB hugepages on each node.
   - id: hugepages-1g-free
     promquery: node_hugepages_free{hugepagesize="1048576"}
 
+  # Total 1 GiB hugepages allocated on each node.
   - id: hugepages-1g-total
     promquery: node_hugepages_total{hugepagesize="1048576"}
 
+  # Free 2 MiB hugepages on each node.
   - id: hugepages-2m-free
     promquery: node_hugepages_free{hugepagesize="2048"}
 
+  # Total 2 MiB hugepages allocated on each node.
   - id: hugepages-2m-total
     promquery: node_hugepages_total{hugepagesize="2048"}
 
+  # --- Network (node) ---
+  # All node network KPIs exclude virtual interfaces (loopback, veth, bridge, OVS)
+  # to show only physical NIC traffic.
+
+  # Bytes received per second. Unit: bytes/second.
   - id: network-node-rx-bytes
     promquery: sort_desc(rate(node_network_receive_bytes_total{device!~"lo|veth.*|br.*|ovs.*"}[5m]))
 
+  # Bytes transmitted per second. Unit: bytes/second.
   - id: network-node-tx-bytes
     promquery: sort_desc(rate(node_network_transmit_bytes_total{device!~"lo|veth.*|br.*|ovs.*"}[5m]))
 
+  # Receive errors per second. Unit: errors/second.
+  # Non-zero values may indicate NIC, driver, or cable issues.
   - id: network-node-rx-errors
     promquery: sort_desc(rate(node_network_receive_errs_total{device!~"lo|veth.*|br.*|ovs.*"}[5m]))
 
+  # Transmit errors per second. Unit: errors/second.
   - id: network-node-tx-errors
     promquery: sort_desc(rate(node_network_transmit_errs_total{device!~"lo|veth.*|br.*|ovs.*"}[5m]))
 
+  # Bytes received per second on the primary container interface (eth0).
+  # Unit: bytes/second. Shows per-pod network ingress.
   - id: network-container-rx-bytes
     promquery: sort_desc(rate(container_network_receive_bytes_total{interface="eth0"}[5m]))
 
+  # Bytes transmitted per second on the primary container interface (eth0).
+  # Unit: bytes/second. Shows per-pod network egress.
   - id: network-container-tx-bytes
     promquery: sort_desc(rate(container_network_transmit_bytes_total{interface="eth0"}[5m]))
 
+  # --- PTP (Precision Time Protocol) ---
+  # Requires: ptp-operator with linuxptp daemons (ptp4l, phc2sys) running.
+
+  # Current PTP offset from the master clock as seen by phc2sys.
+  # Unit: nanoseconds. iface=CLOCK_REALTIME means system clock vs PTP hardware clock.
   - id: ptp-offset-master
     promquery: openshift_ptp_offset_ns{iface="CLOCK_REALTIME",process="phc2sys"}
 
+  # Maximum PTP offset observed since the last metric reset.
+  # Unit: nanoseconds. Useful for detecting worst-case clock drift.
   - id: ptp-max-offset-master
     promquery: openshift_ptp_max_offset_ns{iface="CLOCK_REALTIME",process="phc2sys"}
 
+  # PTP clock synchronization state per node.
+  # Unit: enum (0=FREERUN, 1=LOCKED, 2=HOLDOVER). LOCKED means synchronized.
   - id: ptp-clock-state
     promquery: openshift_ptp_clock_state
 
+  # Role of each PTP-capable interface (master, slave, passive, listening).
+  # Unit: enum (role label). Helps verify expected PTP topology.
   - id: ptp-interface-role
     promquery: openshift_ptp_interface_role
 
+  # --- Disk I/O ---
+
+  # Bytes read per second from physical block devices.
+  # Unit: bytes/second. Excludes device-mapper (dm-*) virtual devices.
   - id: disk-io-read-bytes
     promquery: sort_desc(rate(node_disk_read_bytes_total{device!~"dm-.*"}[5m]))
 
+  # Bytes written per second to physical block devices.
+  # Unit: bytes/second.
   - id: disk-io-write-bytes
     promquery: sort_desc(rate(node_disk_written_bytes_total{device!~"dm-.*"}[5m]))
 
+  # Root filesystem usage as a percentage.
+  # Unit: percentage (0–100). Monitors the / mountpoint, excludes tmpfs.
   - id: disk-usage-percentage
     promquery: 100 - ((node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"}) * 100)
 
+  # --- OVN-Kubernetes ---
+  # Requires: OVN-Kubernetes network plugin (default on OpenShift 4.x).
+
+  # CPU usage of the ovn-controller container (per-node OVN data-plane agent).
+  # Unit: cores.
   - id: ovn-controller-cpu
     promquery: rate(container_cpu_usage_seconds_total{container="ovn-controller"}[5m])
 
+  # Working-set memory of the ovn-controller container.
+  # Unit: bytes.
   - id: ovn-controller-memory
     promquery: container_memory_working_set_bytes{container="ovn-controller"}
 
+  # --- Kernel Scheduling ---
+
+  # Voluntary and involuntary context switches per second across all CPUs.
+  # Unit: switches/second. High values may indicate excessive scheduling overhead.
   - id: node-context-switches
     promquery: rate(node_context_switches_total[5m])
 
+  # Hardware and software interrupts per second.
+  # Unit: interrupts/second. Spikes may correlate with network traffic or device activity.
   - id: node-interrupts
     promquery: rate(node_intr_total[5m])
 
+  # --- Pod Health ---
+
+  # Cumulative container restart count per pod.
+  # Unit: count (monotonically increasing). Sorted to surface crashlooping pods.
   - id: pod-restart-count
     promquery: sort_desc(sum(kube_pod_container_status_restarts_total) by (namespace, pod))

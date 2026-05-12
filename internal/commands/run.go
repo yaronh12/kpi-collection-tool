@@ -166,9 +166,11 @@ func runCollect(cmd *cobra.Command, args []string) error {
 		warnFrequencyExceedsDuration(kpis, flags)
 	}
 
-	// Validate range query frequency/range mismatches
-	if err := validateRangeFrequency(kpis, flags); err != nil {
-		return err
+	// Validate range query frequency/range mismatches (only relevant for periodic collection)
+	if !flags.SingleRun {
+		if err := validateRangeFrequency(kpis, flags); err != nil {
+			return err
+		}
 	}
 
 	// If kubeconfig is provided, discover Thanos URL and token

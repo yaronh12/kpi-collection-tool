@@ -1,0 +1,19 @@
+# KPI file for e2e-postgres.sh — range queries with short time windows.
+# Results appear quickly even on freshly started clusters.
+
+kpis:
+  # CPU usage over the last 10 minutes with 1-minute resolution.
+  - id: node-cpu-usage-range
+    promquery: avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m]))
+    query-type: range
+    range:
+      since: 10m
+      step: 1m
+
+  # Memory utilization over the last 5 minutes with 30-second steps.
+  - id: node-memory-range
+    promquery: 1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+    query-type: range
+    range:
+      since: 5m
+      step: 30s

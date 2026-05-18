@@ -75,6 +75,11 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags, sampleNumber int
 		return fmt.Errorf("failed to get cluster ID: %v", err)
 	}
 
+	// Verify that no KPI has changed its category since the last run
+	if err := dbImpl.ValidateCategoryConsistency(db, kpisToRun.Queries); err != nil {
+		return fmt.Errorf("category consistency check failed: %w", err)
+	}
+
 	// Create Prometheus client
 	v1api, err := setupPromClient(flags.ThanosURL, flags.BearerToken, flags.InsecureTLS)
 	if err != nil {
@@ -91,6 +96,7 @@ func RunQueries(kpisToRun config.KPIs, flags config.InputFlags, sampleNumber int
 		queryInfo := output.QueryInfo{
 			QueryID:      query.ID,
 			PromQuery:    query.PromQuery,
+			Category:     query.Category,
 			Frequency:    frequency,
 			SampleNumber: sampleNumber,
 			TotalSamples: totalSamples,
@@ -178,7 +184,7 @@ func executeQuery(ctx context.Context, v1api promv1.API, db *sql.DB, dbImpl data
 	}
 
 	// Store results
-	err = dbImpl.StoreQueryResults(db, clusterID, info.QueryID, result)
+	err = dbImpl.StoreQueryResults(db, clusterID, info.QueryID, info.Category, result)
 	if err != nil {
 		queryResult.Success = false
 		queryResult.Error = fmt.Errorf("failed to store: %v", err)

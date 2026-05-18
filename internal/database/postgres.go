@@ -7,6 +7,7 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/common/model"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
 )
 
 // PostgresDB implements the Database interface for PostgreSQL
@@ -115,8 +116,25 @@ func (p *PostgresDB) GetQueryErrorCount(db *sql.DB, kpiID string) (int, error) {
 	return count, err
 }
 
-// StoreQueryResults stores the results of a Prometheus query in the database
-func (p *PostgresDB) StoreQueryResults(db *sql.DB, clusterID int64, queryID string, result model.Value) error {
+// EnsureCategoryTable is a no-op stub for PostgreSQL. Category table support
+// will be implemented in a future PR; all writes go to query_results for now.
+// --- TODO ---
+func (p *PostgresDB) EnsureCategoryTable(_ *sql.DB, _ string, _ string) (string, error) {
+	return "query_results", nil
+}
+
+// ValidateCategoryConsistency is a no-op stub for PostgreSQL until category
+// table support is implemented.
+// --- TODO ---
+func (p *PostgresDB) ValidateCategoryConsistency(_ *sql.DB, _ []config.Query) error {
+	return nil
+}
+
+// StoreQueryResults stores the results of a Prometheus query in the database.
+// The category parameter is accepted for interface compatibility but ignored —
+// all data is written to the default query_results table until PostgreSQL
+// category support is implemented.
+func (p *PostgresDB) StoreQueryResults(db *sql.DB, clusterID int64, queryID string, _ string, result model.Value) error {
 	switch values := result.(type) {
 	case model.Vector:
 		return p.storeVectorResults(db, clusterID, queryID, values)

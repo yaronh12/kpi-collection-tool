@@ -33,6 +33,10 @@ func NewAppRecoveryTimeTask(cfg config.AppRecoveryTimeTaskConfig, kubeconfig, ar
 
 func (t *AppRecoveryTimeTask) Name() string { return config.TaskConfigAppRecoveryTime }
 
+// Run reboots nodeNames, waits until they are NotReady or the API is
+// unreachable (SNO / control-plane reboot), then polls workload pods for
+// duration. List/get failures are written to pod_status.out; the poll loop
+// continues until duration elapses. File write errors and Ctrl+C still fail.
 func (t *AppRecoveryTimeTask) Run(ctx context.Context) error {
 	client, err := kubernetes.ClientsetFromKubeconfig(t.kubeconfig)
 	if err != nil {
@@ -85,9 +89,18 @@ func (t *AppRecoveryTimeTask) writePollBlock(ctx context.Context, client *k8scli
 	}
 
 	for _, ns := range t.cfg.WorkloadNamespaces {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		pods, err := kubernetes.ListPods(ctx, client, ns)
 		if err != nil {
-			return err
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			if _, werr := fmt.Fprintf(w, "error listing pods in %s: %v\n", ns, err); werr != nil {
+				return werr
+			}
+			continue
 		}
 		for i := range pods {
 			if err := writePodRow(w, &pods[i]); err != nil {

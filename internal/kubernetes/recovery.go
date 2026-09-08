@@ -2,19 +2,24 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
 	authv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8snet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/client-go/kubernetes"
 )
 
 const (
 	rebootPodPrefix    = "kpi-app-recovery-reboot-"
 	rebootPodNamespace = "default"
+	apiCallTimeout     = 15 * time.Second
 )
 
 // CheckAppRecoveryAccess verifies the kubeconfig can reboot nodes and list workload pods.
@@ -124,7 +129,8 @@ func CreateRebootPod(ctx context.Context, client *kubernetes.Clientset, nodeName
 	return nil
 }
 
-// WaitForNodesNotReady polls until every node in nodeNames is NotReady or timeout expires.
+// WaitForNodesNotReady polls until every node in nodeNames is NotReady, the API
+// is unreachable (SNO / control-plane reboot), or timeout expires.
 func WaitForNodesNotReady(ctx context.Context, client *kubernetes.Clientset, nodeNames []string, timeout time.Duration) error {
 	waitCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -150,8 +156,16 @@ func WaitForNodesNotReady(ctx context.Context, client *kubernetes.Clientset, nod
 
 func nodesNotReady(ctx context.Context, client *kubernetes.Clientset, nodeNames []string) (bool, error) {
 	for _, name := range nodeNames {
-		node, err := client.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
+		callCtx, cancel := context.WithTimeout(ctx, apiCallTimeout)
+		node, err := client.CoreV1().Nodes().Get(callCtx, name, metav1.GetOptions{})
+		cancel()
+		if ctx.Err() != nil {
+			return false, ctx.Err()
+		}
 		if err != nil {
+			if isAPIUnreachable(err) {
+				continue
+			}
 			return false, fmt.Errorf("failed to get node %s: %w", name, err)
 		}
 		if nodeIsReady(node) {
@@ -159,6 +173,26 @@ func nodesNotReady(ctx context.Context, client *kubernetes.Clientset, nodeNames 
 		}
 	}
 	return true, nil
+}
+
+func isAPIUnreachable(err error) bool {
+	if err == nil || errors.Is(err, context.Canceled) {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+	return apierrors.IsTimeout(err) ||
+		apierrors.IsServerTimeout(err) ||
+		apierrors.IsServiceUnavailable(err) ||
+		apierrors.IsInternalError(err) ||
+		k8snet.IsProbableEOF(err) ||
+		k8snet.IsConnectionReset(err) ||
+		k8snet.IsConnectionRefused(err)
 }
 
 func nodeIsReady(node *corev1.Node) bool {
@@ -172,7 +206,9 @@ func nodeIsReady(node *corev1.Node) bool {
 
 // ListPods returns pods in namespace.
 func ListPods(ctx context.Context, client *kubernetes.Clientset, namespace string) ([]corev1.Pod, error) {
-	list, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	callCtx, cancel := context.WithTimeout(ctx, apiCallTimeout)
+	defer cancel()
+	list, err := client.CoreV1().Pods(namespace).List(callCtx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list pods in %s: %w", namespace, err)
 	}

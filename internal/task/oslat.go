@@ -8,6 +8,7 @@ import (
 
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/kubernetes"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/output"
 )
 
 const oslatLogsFileName = "oslat_logs.out"
@@ -45,7 +46,13 @@ func (t *OslatTask) Run(ctx context.Context) error {
 		return fmt.Errorf("%s: %w", t.Name(), err)
 	}
 
-	finished, waitErr := kubernetes.WaitForPodTerminal(ctx, client, created.Namespace, created.Name, t.cfg.Timeout.Duration)
+	ns := created.Namespace
+	output.PrintTaskProgress(t.Name(), fmt.Sprintf("waiting for pod %s/%s (timeout=%s)", ns, created.Name, t.cfg.Timeout))
+	waitReporter := output.NewWaitReporter(t.Name())
+	finished, waitErr := kubernetes.WaitForPodTerminal(
+		ctx, client, created.Namespace, created.Name, t.cfg.Timeout.Duration,
+		waitReporter.OnPhase,
+	)
 	logPod := created
 	if finished != nil {
 		logPod = finished

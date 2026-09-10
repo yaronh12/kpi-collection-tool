@@ -26,18 +26,32 @@ func CreatePod(ctx context.Context, client *kubernetes.Clientset, pod *corev1.Po
 	return created, nil
 }
 
+// PodWaitTick is called on each poll while waiting for a pod to finish.
+type PodWaitTick func(phase string, elapsed time.Duration)
+
 // WaitForPodTerminal polls until Succeeded or Failed, or until timeout / cancel.
-func WaitForPodTerminal(ctx context.Context, client *kubernetes.Clientset, namespace, name string, timeout time.Duration) (*corev1.Pod, error) {
+// onTick is optional; when set it is called after each successful Get.
+func WaitForPodTerminal(
+	ctx context.Context,
+	client *kubernetes.Clientset,
+	namespace, name string,
+	timeout time.Duration,
+	onTick PodWaitTick,
+) (*corev1.Pod, error) {
 	waitCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	ticker := time.NewTicker(podPollInterval)
 	defer ticker.Stop()
+	start := time.Now()
 
 	for {
 		pod, err := client.CoreV1().Pods(namespace).Get(waitCtx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to get pod %s/%s: %w", namespace, name, err)
+		}
+		if onTick != nil {
+			onTick(string(pod.Status.Phase), time.Since(start))
 		}
 		switch pod.Status.Phase {
 		case corev1.PodSucceeded:

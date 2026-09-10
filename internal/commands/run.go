@@ -14,6 +14,7 @@ import (
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/database"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/kubernetes"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/logger"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/output"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/task"
 
 	"github.com/spf13/cobra"
@@ -324,14 +325,15 @@ func runAllTasks(cmd *cobra.Command, tasks []task.Task, parallel, failFast bool)
 
 	run := func(t task.Task) {
 		defer wg.Done()
-		log.Printf("Running task: %s", t.Name())
+		output.PrintTaskStart(t.Name())
 		if err := t.Run(cmd.Context()); err != nil {
-			log.Printf("Task %s failed: %v", t.Name(), err)
-			fmt.Fprintf(os.Stderr, "Task %s failed: %v\n", t.Name(), err)
+			output.PrintTaskFailed(t.Name(), err)
 			mu.Lock()
 			failedTasks = append(failedTasks, t.Name())
 			mu.Unlock()
+			return
 		}
+		output.PrintTaskDone(t.Name())
 	}
 
 	for _, t := range tasks {

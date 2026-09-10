@@ -18,6 +18,7 @@ import (
 
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/kubernetes"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/output"
 )
 
 const (
@@ -53,6 +54,7 @@ func (t *PerNodeDataTask) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", t.Name(), err)
 	}
+	output.PrintTaskProgress(t.Name(), fmt.Sprintf("collecting from %d node(s)", len(nodes)))
 
 	nodeErr := t.collectAll(ctx, client, nodes)
 	descErr := t.writeDescribes(ctx, client)
@@ -90,13 +92,14 @@ func (t *PerNodeDataTask) collectAll(ctx context.Context, client *k8s.Clientset,
 }
 
 func (t *PerNodeDataTask) collectNode(ctx context.Context, client *k8s.Clientset, node string) error {
+	output.PrintTaskProgress(t.Name(), node+": collecting")
 	created, err := kubernetes.CreatePod(ctx, client, t.debugPod(node))
 	if err != nil {
 		return fmt.Errorf("%s: %w", node, err)
 	}
 
 	wait := t.cfg.Duration.Duration + debugWaitBuffer
-	finished, waitErr := kubernetes.WaitForPodTerminal(ctx, client, created.Namespace, created.Name, wait)
+	finished, waitErr := kubernetes.WaitForPodTerminal(ctx, client, created.Namespace, created.Name, wait, nil)
 	logPod := created
 	if finished != nil {
 		logPod = finished

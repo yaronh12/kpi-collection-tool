@@ -29,16 +29,20 @@ func CreatePod(ctx context.Context, client *kubernetes.Clientset, pod *corev1.Po
 // PodWaitTick is called on each poll while waiting for a pod to finish.
 type PodWaitTick func(phase string, elapsed time.Duration)
 
+// PodWaitParams configures WaitForPodTerminal. OnTick is optional.
+type PodWaitParams struct {
+	Ctx       context.Context
+	Client    *kubernetes.Clientset
+	Namespace string
+	Name      string
+	Timeout   time.Duration
+	OnTick    PodWaitTick
+}
+
 // WaitForPodTerminal polls until Succeeded or Failed, or until timeout / cancel.
-// onTick is optional; when set it is called after each successful Get.
-func WaitForPodTerminal(
-	ctx context.Context,
-	client *kubernetes.Clientset,
-	namespace, name string,
-	timeout time.Duration,
-	onTick PodWaitTick,
-) (*corev1.Pod, error) {
-	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+// When OnTick is set, it is called after each successful Get.
+func WaitForPodTerminal(podWaitParams PodWaitParams) (*corev1.Pod, error) {
+	waitCtx, cancel := context.WithTimeout(podWaitParams.Ctx, podWaitParams.Timeout)
 	defer cancel()
 
 	ticker := time.NewTicker(podPollInterval)
@@ -46,22 +50,22 @@ func WaitForPodTerminal(
 	start := time.Now()
 
 	for {
-		pod, err := client.CoreV1().Pods(namespace).Get(waitCtx, name, metav1.GetOptions{})
+		pod, err := podWaitParams.Client.CoreV1().Pods(podWaitParams.Namespace).Get(waitCtx, podWaitParams.Name, metav1.GetOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to get pod %s/%s: %w", namespace, name, err)
+			return nil, fmt.Errorf("failed to get pod %s/%s: %w", podWaitParams.Namespace, podWaitParams.Name, err)
 		}
-		if onTick != nil {
-			onTick(string(pod.Status.Phase), time.Since(start))
+		if podWaitParams.OnTick != nil {
+			podWaitParams.OnTick(string(pod.Status.Phase), time.Since(start))
 		}
 		switch pod.Status.Phase {
 		case corev1.PodSucceeded:
 			return pod, nil
 		case corev1.PodFailed:
-			return pod, fmt.Errorf("pod %s/%s failed", namespace, name)
+			return pod, fmt.Errorf("pod %s/%s failed", podWaitParams.Namespace, podWaitParams.Name)
 		}
 		select {
 		case <-waitCtx.Done():
-			return pod, fmt.Errorf("timed out waiting for pod %s/%s: %w", namespace, name, waitCtx.Err())
+			return pod, fmt.Errorf("timed out waiting for pod %s/%s: %w", podWaitParams.Namespace, podWaitParams.Name, waitCtx.Err())
 		case <-ticker.C:
 		}
 	}

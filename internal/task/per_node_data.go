@@ -99,7 +99,13 @@ func (t *PerNodeDataTask) collectNode(ctx context.Context, client *k8s.Clientset
 	}
 
 	wait := t.cfg.Duration.Duration + debugWaitBuffer
-	finished, waitErr := kubernetes.WaitForPodTerminal(ctx, client, created.Namespace, created.Name, wait, nil)
+	finished, waitErr := kubernetes.WaitForPodTerminal(kubernetes.PodWaitParams{
+		Ctx:       ctx,
+		Client:    client,
+		Namespace: created.Namespace,
+		Name:      created.Name,
+		Timeout:   wait,
+	})
 	logPod := created
 	if finished != nil {
 		logPod = finished

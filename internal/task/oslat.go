@@ -49,10 +49,14 @@ func (t *OslatTask) Run(ctx context.Context) error {
 	ns := created.Namespace
 	output.PrintTaskProgress(t.Name(), fmt.Sprintf("waiting for pod %s/%s (timeout=%s)", ns, created.Name, t.cfg.Timeout))
 	waitReporter := output.NewWaitReporter(t.Name())
-	finished, waitErr := kubernetes.WaitForPodTerminal(
-		ctx, client, created.Namespace, created.Name, t.cfg.Timeout.Duration,
-		waitReporter.OnPhase,
-	)
+	finished, waitErr := kubernetes.WaitForPodTerminal(kubernetes.PodWaitParams{
+		Ctx:       ctx,
+		Client:    client,
+		Namespace: created.Namespace,
+		Name:      created.Name,
+		Timeout:   t.cfg.Timeout.Duration,
+		OnTick:    waitReporter.OnPhase,
+	})
 	logPod := created
 	if finished != nil {
 		logPod = finished

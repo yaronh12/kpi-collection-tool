@@ -131,15 +131,24 @@ func CreateRebootPod(ctx context.Context, client *kubernetes.Clientset, nodeName
 
 // WaitForNodesNotReady polls until every node in nodeNames is NotReady, the API
 // is unreachable (SNO / control-plane reboot), or timeout expires.
-func WaitForNodesNotReady(ctx context.Context, client *kubernetes.Clientset, nodeNames []string, timeout time.Duration) error {
+// onNodeNotReady is invoked at most once per node when it is first observed NotReady
+// or its status cannot be fetched because the API is unreachable.
+func WaitForNodesNotReady(
+	ctx context.Context,
+	client *kubernetes.Clientset,
+	nodeNames []string,
+	timeout time.Duration,
+	onNodeNotReady func(string),
+) error {
 	waitCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	reported := make(map[string]bool, len(nodeNames))
 	ticker := time.NewTicker(podPollInterval)
 	defer ticker.Stop()
 
 	for {
-		allNotReady, err := nodesNotReady(waitCtx, client, nodeNames)
+		allNotReady, err := nodesNotReady(waitCtx, client, nodeNames, reported, onNodeNotReady)
 		if err != nil {
 			return err
 		}
@@ -154,7 +163,13 @@ func WaitForNodesNotReady(ctx context.Context, client *kubernetes.Clientset, nod
 	}
 }
 
-func nodesNotReady(ctx context.Context, client *kubernetes.Clientset, nodeNames []string) (bool, error) {
+func nodesNotReady(
+	ctx context.Context,
+	client *kubernetes.Clientset,
+	nodeNames []string,
+	reported map[string]bool,
+	onNodeNotReady func(string),
+) (bool, error) {
 	for _, name := range nodeNames {
 		callCtx, cancel := context.WithTimeout(ctx, apiCallTimeout)
 		node, err := client.CoreV1().Nodes().Get(callCtx, name, metav1.GetOptions{})
@@ -164,6 +179,7 @@ func nodesNotReady(ctx context.Context, client *kubernetes.Clientset, nodeNames 
 		}
 		if err != nil {
 			if isAPIUnreachable(err) {
+				markNodeNotReady(name, reported, onNodeNotReady)
 				continue
 			}
 			return false, fmt.Errorf("failed to get node %s: %w", name, err)
@@ -171,8 +187,17 @@ func nodesNotReady(ctx context.Context, client *kubernetes.Clientset, nodeNames 
 		if nodeIsReady(node) {
 			return false, nil
 		}
+		markNodeNotReady(name, reported, onNodeNotReady)
 	}
 	return true, nil
+}
+
+func markNodeNotReady(name string, reported map[string]bool, onNodeNotReady func(string)) {
+	if onNodeNotReady == nil || reported[name] {
+		return
+	}
+	reported[name] = true
+	onNodeNotReady(name)
 }
 
 func isAPIUnreachable(err error) bool {

@@ -82,3 +82,23 @@ func formatElapsed(d time.Duration) string {
 	return fmt.Sprintf("%ds", int(d.Seconds()))
 }
 
+// PollReporter emits throttled "still polling" heartbeats during long poll loops.
+type PollReporter struct {
+	task    string
+	lastOut time.Time
+}
+
+// NewPollReporter creates a reporter for a poll loop without per-sample terminal lines.
+func NewPollReporter(task string) *PollReporter {
+	return &PollReporter{task: task, lastOut: time.Now()}
+}
+
+// MaybeHeartbeat prints a progress line at most once per waitHeartbeatMinGap.
+func (p *PollReporter) MaybeHeartbeat(elapsed time.Duration) {
+	if time.Since(p.lastOut) < waitHeartbeatMinGap {
+		return
+	}
+	PrintTaskProgress(p.task, fmt.Sprintf("still polling (%s elapsed)", formatElapsed(elapsed)))
+	p.lastOut = time.Now()
+}
+

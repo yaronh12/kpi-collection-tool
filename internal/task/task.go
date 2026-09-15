@@ -3,7 +3,6 @@ package task
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/collector"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
@@ -13,10 +12,6 @@ import (
 type Task interface {
 	Name() string
 	Run(ctx context.Context) error
-}
-
-func errNotYetSupported(name string) error {
-	return fmt.Errorf("%s: task type not yet supported", name)
 }
 
 // PromKPITask collects Prometheus/Thanos KPI metrics.
@@ -41,21 +36,4 @@ func (t *PromKPITask) Run(ctx context.Context) error {
 		return collector.RunKPIsOnce(t.kpis, t.flags)
 	}
 	return collector.RunKPIs(t.kpis, t.flags)
-}
-
-// AppRecoveryTimeTask is a stub for the app-recovery-time task.
-type AppRecoveryTimeTask struct {
-	flags config.InputFlags
-}
-
-// NewAppRecoveryTimeTask creates an app-recovery-time stub. Fill in Run when the schema is implemented.
-func NewAppRecoveryTimeTask(flags config.InputFlags) *AppRecoveryTimeTask {
-	return &AppRecoveryTimeTask{flags: flags}
-}
-
-func (t *AppRecoveryTimeTask) Name() string { return config.TaskConfigAppRecoveryTime }
-
-func (t *AppRecoveryTimeTask) Run(ctx context.Context) error {
-	_ = ctx
-	return errNotYetSupported(t.Name())
 }

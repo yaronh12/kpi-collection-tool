@@ -92,7 +92,7 @@ func (t *AppRecoveryTimeTask) Run(ctx context.Context) error {
 	return nil
 }
 
-func (t *AppRecoveryTimeTask) writePollBlock(ctx context.Context, client *k8sclient.Clientset, w *os.File, leadingBlank bool) error {
+func (t *AppRecoveryTimeTask) writePollBlock(ctx context.Context, client k8sclient.Interface, w *os.File, leadingBlank bool) error {
 	if leadingBlank {
 		if _, err := w.WriteString("\n"); err != nil {
 			return err

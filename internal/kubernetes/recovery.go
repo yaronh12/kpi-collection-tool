@@ -24,7 +24,7 @@ const (
 
 // CheckAppRecoveryAccess verifies the kubeconfig can reboot nodes and list workload pods.
 // Call before the task runs so weak credentials fail early.
-func CheckAppRecoveryAccess(ctx context.Context, client *kubernetes.Clientset, nodeNames, workloadNamespaces []string, image string) error {
+func CheckAppRecoveryAccess(ctx context.Context, client kubernetes.Interface, nodeNames, workloadNamespaces []string, image string) error {
 	var problems []string
 
 	for _, nodeName := range nodeNames {
@@ -61,7 +61,7 @@ func CheckAppRecoveryAccess(ctx context.Context, client *kubernetes.Clientset, n
 	return nil
 }
 
-func canAccess(ctx context.Context, client *kubernetes.Clientset, verb, resource, namespace, name string) (bool, string, error) {
+func canAccess(ctx context.Context, client kubernetes.Interface, verb, resource, namespace, name string) (bool, string, error) {
 	review, err := client.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &authv1.SelfSubjectAccessReview{
 		Spec: authv1.SelfSubjectAccessReviewSpec{
 			ResourceAttributes: &authv1.ResourceAttributes{
@@ -78,7 +78,7 @@ func canAccess(ctx context.Context, client *kubernetes.Clientset, verb, resource
 	return review.Status.Allowed, review.Status.Reason, nil
 }
 
-func dryRunRebootPod(ctx context.Context, client *kubernetes.Clientset, nodeName, image string) error {
+func dryRunRebootPod(ctx context.Context, client kubernetes.Interface, nodeName, image string) error {
 	_, err := client.CoreV1().Pods(rebootPodNamespace).Create(
 		ctx,
 		newRebootPod(nodeName, image),
@@ -121,7 +121,7 @@ func newRebootPod(nodeName, image string) *corev1.Pod {
 
 // CreateRebootPod schedules a privileged pod on nodeName that reboots the host.
 // The pod is not waited on after create.
-func CreateRebootPod(ctx context.Context, client *kubernetes.Clientset, nodeName, image string) error {
+func CreateRebootPod(ctx context.Context, client kubernetes.Interface, nodeName, image string) error {
 	_, err := CreatePod(ctx, client, newRebootPod(nodeName, image))
 	if err != nil {
 		return fmt.Errorf("reboot pod on node %s: %w", nodeName, err)
@@ -135,7 +135,7 @@ func CreateRebootPod(ctx context.Context, client *kubernetes.Clientset, nodeName
 // or its status cannot be fetched because the API is unreachable.
 func WaitForNodesNotReady(
 	ctx context.Context,
-	client *kubernetes.Clientset,
+	client kubernetes.Interface,
 	nodeNames []string,
 	timeout time.Duration,
 	onNodeNotReady func(string),
@@ -165,7 +165,7 @@ func WaitForNodesNotReady(
 
 func nodesNotReady(
 	ctx context.Context,
-	client *kubernetes.Clientset,
+	client kubernetes.Interface,
 	nodeNames []string,
 	reported map[string]bool,
 	onNodeNotReady func(string),
@@ -230,7 +230,7 @@ func nodeIsReady(node *corev1.Node) bool {
 }
 
 // ListPods returns pods in namespace.
-func ListPods(ctx context.Context, client *kubernetes.Clientset, namespace string) ([]corev1.Pod, error) {
+func ListPods(ctx context.Context, client kubernetes.Interface, namespace string) ([]corev1.Pod, error) {
 	callCtx, cancel := context.WithTimeout(ctx, apiCallTimeout)
 	defer cancel()
 	list, err := client.CoreV1().Pods(namespace).List(callCtx, metav1.ListOptions{})

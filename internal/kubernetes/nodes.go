@@ -11,7 +11,7 @@ import (
 )
 
 // ListNodeNames returns metadata.name for every node. Fails if there are none.
-func ListNodeNames(ctx context.Context, client *kubernetes.Clientset) ([]string, error) {
+func ListNodeNames(ctx context.Context, client kubernetes.Interface) ([]string, error) {
 	list, err := client.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list nodes: %w", err)
@@ -27,7 +27,7 @@ func ListNodeNames(ctx context.Context, client *kubernetes.Clientset) ([]string,
 }
 
 // WritePodsYAML writes a v1 PodList for namespace to path. An empty list is OK.
-func WritePodsYAML(ctx context.Context, client *kubernetes.Clientset, namespace, path string) error {
+func WritePodsYAML(ctx context.Context, client kubernetes.Interface, namespace, path string) error {
 	list, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list pods in %s: %w", namespace, err)
@@ -38,7 +38,7 @@ func WritePodsYAML(ctx context.Context, client *kubernetes.Clientset, namespace,
 }
 
 // WriteNodesYAML writes a v1 NodeList to path.
-func WriteNodesYAML(ctx context.Context, client *kubernetes.Clientset, path string) error {
+func WriteNodesYAML(ctx context.Context, client kubernetes.Interface, path string) error {
 	list, err := client.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list nodes: %w", err)

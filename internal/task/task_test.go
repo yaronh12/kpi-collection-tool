@@ -1,4 +1,4 @@
-package task_test
+package task
 
 import (
 	"os"
@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
-	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/task"
 )
 
 func validOslatConfig() *config.OslatTaskConfig {
@@ -50,7 +49,7 @@ func validRecoveryConfig() *config.AppRecoveryTimeTaskConfig {
 
 var _ = Describe("PromKPITask", func() {
 	It("uses the prometheus task-config name", func() {
-		t := task.NewPromKPITask(config.KPIs{}, config.InputFlags{})
+		t := NewPromKPITask(config.KPIs{}, config.InputFlags{})
 		Expect(t.Name()).To(Equal(config.TaskConfigPrometheus))
 	})
 })
@@ -60,7 +59,7 @@ var _ = Describe("FromPromKPIsFlag", func() {
 		flags := config.InputFlags{PromKPIsConfig: "kpis.yaml"}
 		kpis := config.KPIs{Queries: []config.Query{{ID: "cpu", PromQuery: "up"}}}
 
-		tasks, err := task.FromPromKPIsFlag(flags, kpis)
+		tasks, err := FromPromKPIsFlag(flags, kpis)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(tasks).To(HaveLen(1))
 		Expect(tasks[0].Name()).To(Equal(config.TaskConfigPrometheus))
@@ -70,7 +69,7 @@ var _ = Describe("FromPromKPIsFlag", func() {
 		flags := config.InputFlags{}
 		kpis := config.KPIs{}
 
-		tasks, err := task.FromPromKPIsFlag(flags, kpis)
+		tasks, err := FromPromKPIsFlag(flags, kpis)
 		Expect(err).To(HaveOccurred())
 		Expect(tasks).To(BeNil())
 		Expect(err.Error()).To(ContainSubstring("--prom-kpis-config is required"))
@@ -79,17 +78,17 @@ var _ = Describe("FromPromKPIsFlag", func() {
 
 var _ = Describe("unimplemented task stubs", func() {
 	It("oslat is named", func() {
-		t := task.NewOslatTask(config.OslatTaskConfig{}, "kubeconfig", "/tmp")
+		t := NewOslatTask(config.OslatTaskConfig{}, "kubeconfig", "/tmp")
 		Expect(t.Name()).To(Equal(config.TaskConfigOslat))
 	})
 
 	It("per-node-data is named", func() {
-		t := task.NewPerNodeDataTask(config.PerNodeDataTaskConfig{}, "kubeconfig", "/tmp")
+		t := NewPerNodeDataTask(config.PerNodeDataTaskConfig{}, "kubeconfig", "/tmp")
 		Expect(t.Name()).To(Equal(config.TaskConfigPerNodeData))
 	})
 
 	It("app-recovery-time is named", func() {
-		t := task.NewAppRecoveryTimeTask(config.AppRecoveryTimeTaskConfig{}, "kubeconfig", "/tmp")
+		t := NewAppRecoveryTimeTask(config.AppRecoveryTimeTaskConfig{}, "kubeconfig", "/tmp")
 		Expect(t.Name()).To(Equal(config.TaskConfigAppRecoveryTime))
 	})
 })
@@ -116,7 +115,7 @@ var _ = Describe("ResolveFromTasksSpec", func() {
 			},
 		}
 
-		tasks, err := task.ResolveFromTasksSpec(cfg, flags)
+		tasks, err := ResolveFromTasksSpec(cfg, flags)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(tasks).To(HaveLen(1))
 		Expect(tasks[0].Name()).To(Equal(config.TaskConfigPrometheus))
@@ -134,7 +133,7 @@ kpis:
 			Prometheus: &config.PrometheusTaskConfig{ConfigFile: kpisPath},
 		}
 
-		tasks, err := task.ResolveFromTasksSpec(cfg, flags)
+		tasks, err := ResolveFromTasksSpec(cfg, flags)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(tasks).To(HaveLen(1))
 		Expect(tasks[0].Name()).To(Equal(config.TaskConfigPrometheus))
@@ -155,7 +154,7 @@ prometheus:
 		cfg, err := config.LoadTasksSpec(tasksPath)
 		Expect(err).NotTo(HaveOccurred())
 
-		tasks, err := task.ResolveFromTasksSpec(cfg, flags)
+		tasks, err := ResolveFromTasksSpec(cfg, flags)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(tasks).To(HaveLen(1))
 		Expect(tasks[0].Name()).To(Equal(config.TaskConfigPrometheus))
@@ -163,7 +162,7 @@ prometheus:
 
 	It("requires kubeconfig for oslat", func() {
 		cfg := config.TasksSpec{Oslat: validOslatConfig()}
-		tasks, err := task.ResolveFromTasksSpec(cfg, flags)
+		tasks, err := ResolveFromTasksSpec(cfg, flags)
 		Expect(err).To(HaveOccurred())
 		Expect(tasks).To(BeNil())
 		Expect(err.Error()).To(ContainSubstring(config.TaskConfigOslat))
@@ -172,7 +171,7 @@ prometheus:
 
 	It("requires kubeconfig for per-node-data", func() {
 		cfg := config.TasksSpec{PerNodeData: validPerNodeConfig()}
-		tasks, err := task.ResolveFromTasksSpec(cfg, flags)
+		tasks, err := ResolveFromTasksSpec(cfg, flags)
 		Expect(err).To(HaveOccurred())
 		Expect(tasks).To(BeNil())
 		Expect(err.Error()).To(ContainSubstring(config.TaskConfigPerNodeData))
@@ -184,7 +183,7 @@ prometheus:
 			AppRecoveryTime: validRecoveryConfig(),
 		}
 
-		tasks, err := task.ResolveFromTasksSpec(cfg, flags)
+		tasks, err := ResolveFromTasksSpec(cfg, flags)
 		Expect(err).To(HaveOccurred())
 		Expect(tasks).To(BeNil())
 		Expect(err.Error()).To(ContainSubstring(config.TaskConfigAppRecoveryTime))
@@ -196,7 +195,7 @@ prometheus:
 			Oslat:           validOslatConfig(),
 			AppRecoveryTime: validRecoveryConfig(),
 		}
-		_, err := task.ResolveFromTasksSpec(cfg, flags)
+		_, err := ResolveFromTasksSpec(cfg, flags)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring(config.TaskConfigOslat))
 		Expect(err.Error()).To(ContainSubstring("--kubeconfig is required"))
@@ -211,13 +210,13 @@ prometheus:
 			AppRecoveryTime: validRecoveryConfig(),
 		}
 
-		_, err := task.ResolveFromTasksSpec(cfg, flags)
+		_, err := ResolveFromTasksSpec(cfg, flags)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring(config.TaskConfigAppRecoveryTime))
 	})
 
 	It("returns an error when no task configs are present", func() {
-		tasks, err := task.ResolveFromTasksSpec(config.TasksSpec{}, flags)
+		tasks, err := ResolveFromTasksSpec(config.TasksSpec{}, flags)
 		Expect(err).To(HaveOccurred())
 		Expect(tasks).To(BeNil())
 		Expect(err.Error()).To(ContainSubstring("no task configs defined"))

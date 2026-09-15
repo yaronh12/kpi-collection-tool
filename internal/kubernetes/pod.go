@@ -15,7 +15,7 @@ import (
 const podPollInterval = 5 * time.Second
 
 // CreatePod creates the pod. Empty namespace becomes "default".
-func CreatePod(ctx context.Context, client *kubernetes.Clientset, pod *corev1.Pod) (*corev1.Pod, error) {
+func CreatePod(ctx context.Context, client kubernetes.Interface, pod *corev1.Pod) (*corev1.Pod, error) {
 	if pod.Namespace == "" {
 		pod.Namespace = "default"
 	}
@@ -32,7 +32,7 @@ type PodWaitTick func(phase string, elapsed time.Duration)
 // PodWaitParams configures WaitForPodTerminal. OnTick is optional.
 type PodWaitParams struct {
 	Ctx       context.Context
-	Client    *kubernetes.Clientset
+	Client    kubernetes.Interface
 	Namespace string
 	Name      string
 	Timeout   time.Duration
@@ -72,7 +72,7 @@ func WaitForPodTerminal(podWaitParams PodWaitParams) (*corev1.Pod, error) {
 }
 
 // GetPodLogs concatenates logs from pod.Spec.Containers.
-func GetPodLogs(ctx context.Context, client *kubernetes.Clientset, pod *corev1.Pod) (string, error) {
+func GetPodLogs(ctx context.Context, client kubernetes.Interface, pod *corev1.Pod) (string, error) {
 	var b strings.Builder
 	multi := len(pod.Spec.Containers) > 1
 	for _, c := range pod.Spec.Containers {

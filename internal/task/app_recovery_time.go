@@ -12,6 +12,7 @@ import (
 
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/kubernetes"
+	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/output"
 )
 
 const (
@@ -43,15 +44,27 @@ func (t *AppRecoveryTimeTask) Run(ctx context.Context) error {
 		return fmt.Errorf("%s: %w", t.Name(), err)
 	}
 
+	taskName := t.Name()
 	for _, nodeName := range t.cfg.NodeNames {
+		output.PrintTaskProgress(taskName, fmt.Sprintf("creating reboot pod on %s", nodeName))
 		if err := kubernetes.CreateRebootPod(ctx, client, nodeName, t.cfg.Image); err != nil {
 			return fmt.Errorf("%s: %w", t.Name(), err)
 		}
 	}
 
-	if err := kubernetes.WaitForNodesNotReady(ctx, client, t.cfg.NodeNames, notReadyWaitTimeout); err != nil {
+	output.PrintTaskProgress(taskName, fmt.Sprintf("waiting for node(s) NotReady (timeout=%s)", notReadyWaitTimeout))
+	onNotReady := func(node string) {
+		output.PrintTaskProgress(taskName, fmt.Sprintf("%s is NotReady", node))
+	}
+	if err := kubernetes.WaitForNodesNotReady(ctx, client, t.cfg.NodeNames, notReadyWaitTimeout, onNotReady); err != nil {
 		return fmt.Errorf("%s: %w", t.Name(), err)
 	}
+
+	output.PrintTaskProgress(taskName, fmt.Sprintf(
+		"polling workload pods for %s (interval=%s)",
+		t.cfg.Duration.Duration,
+		t.cfg.Interval.Duration,
+	))
 
 	path := filepath.Join(t.artifactsDir, podStatusFileName)
 	f, err := os.Create(path) //#nosec G304 -- path is tool-controlled artifacts dir
@@ -61,10 +74,13 @@ func (t *AppRecoveryTimeTask) Run(ctx context.Context) error {
 	defer func() { _ = f.Close() }()
 
 	iterations := int(t.cfg.Duration.Duration / t.cfg.Interval.Duration)
+	pollReporter := output.NewPollReporter(taskName)
+	pollStart := time.Now()
 	for i := 0; i < iterations; i++ {
 		if err := t.writePollBlock(ctx, client, f, i > 0); err != nil {
 			return fmt.Errorf("%s: %w", t.Name(), err)
 		}
+		pollReporter.MaybeHeartbeat(time.Since(pollStart))
 		if i == iterations-1 {
 			break
 		}
@@ -72,6 +88,7 @@ func (t *AppRecoveryTimeTask) Run(ctx context.Context) error {
 			return fmt.Errorf("%s: %w", t.Name(), err)
 		}
 	}
+	output.PrintTaskProgress(taskName, "wrote "+podStatusFileName)
 	return nil
 }
 

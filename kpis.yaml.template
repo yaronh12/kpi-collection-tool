@@ -1,7 +1,7 @@
 # KPI Configuration Template
 #
 # This file is a structural reference for building custom KPI configurations.
-# For ready-to-use profiles, see the kpi-profiles/ directory.
+# For ready-to-use profiles, see the prom-kpi-profiles/ directory.
 #
 # Each KPI entry has:
 #   id:               Unique identifier (used in database and output)

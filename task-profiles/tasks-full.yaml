@@ -1,0 +1,46 @@
+# Tasks — full validation run (three safe task types, production-scale settings).
+#
+# Runs prometheus, per-node-data, and oslat sequentially with durations and
+# intervals sized for a real validation lab. Review and edit CHANGE_ME
+# placeholders in each fragment before running.
+#
+# app-recovery-time is NOT included here because it reboots cluster nodes.
+# To add it, include the following in this file:
+#   - Add "app-recovery-time" to orchestration.order (run it last)
+#   - Add: app-recovery-time:
+#            configFile: app-recovery-time-full.yaml
+#   - Edit nodeNames in app-recovery-time-full.yaml
+#   See docs/app-recovery-time-configuration.md for details.
+#
+# Usage (from repository root):
+#   kpi-collector run \
+#     --tasks task-profiles/tasks-full.yaml \
+#     --cluster-name my-cluster --cluster-type ran \
+#     --kubeconfig ~/.kube/config
+#
+# Prometheus KPI profile:
+#   Default: kpis-basic.yaml (11 KPIs, works on any cluster).
+#   For a cluster-specific profile, change the configFile line below to one of:
+#     ../prom-kpi-profiles/kpis-ran.yaml   (31 KPIs — RAN/DU with PerformanceProfile)
+#     ../prom-kpi-profiles/kpis-core.yaml  (22 KPIs — core / control-plane clusters)
+#     ../prom-kpi-profiles/kpis-hub.yaml   (22 KPIs — hub / ACM clusters)
+#   Or generate a custom file:
+#     kpi-collector kpis generate --profile ran --all
+#   See ../prom-kpi-profiles/README.md for details.
+
+orchestration:
+  mode: sequential
+  on-failure: fail-fast
+  order:
+    - prometheus
+    - per-node-data
+    - oslat
+
+prometheus:
+  configFile: ../prom-kpi-profiles/kpis-basic.yaml
+
+per-node-data:
+  configFile: per-node-data-full.yaml
+
+oslat:
+  configFile: oslat-full.yaml

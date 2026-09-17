@@ -1,0 +1,22 @@
+# Per-node data — quickstart (fast smoke test).
+#
+# Collects top, /proc/meminfo, /proc/cmdline from every cluster node via a
+# privileged debug pod, plus pod and node describes from the API.
+#
+# Artifacts (under --artifacts-dir):
+#   top-<node>.out, proc_meminfo-<node>.txt, proc_cmdline-<node>.txt,
+#   describe_pods_<ns>.txt, describe_nodes.txt
+#
+# Requires: --kubeconfig
+#
+# Image: any image that supports chroot (host tools are used after
+# chroot /host). In disconnected environments, mirror the image and
+# update the value below.
+
+per-node-data:
+  workloadNamespaces:
+    - default
+  duration: 15s
+  interval: 5s
+  image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+  isolcpus: "0"  # Fixed CPU list for top -p; omit to auto-detect from /proc/cmdline on each node

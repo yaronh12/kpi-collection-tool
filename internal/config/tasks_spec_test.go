@@ -342,6 +342,40 @@ prometheus:
 		})
 	})
 
+	Describe("task-profiles", func() {
+		// Verify the shipped task-profiles parse without error.
+		// The paths are relative to the repository root; tests run from
+		// internal/config/, so we walk up two levels.
+		repoRoot := func() string {
+			// go test sets cwd to the package directory
+			abs, err := filepath.Abs("../../task-profiles")
+			Expect(err).NotTo(HaveOccurred())
+			return abs
+		}
+
+		It("tasks-quickstart.yaml parses", func() {
+			path := filepath.Join(repoRoot(), "tasks-quickstart.yaml")
+			cfg, err := LoadTasksSpec(path)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.PresentTaskConfigs()).To(ConsistOf(
+				TaskConfigPrometheus, TaskConfigPerNodeData,
+				TaskConfigOslat,
+			))
+		})
+
+		It("tasks-full.yaml parses", func() {
+			path := filepath.Join(repoRoot(), "tasks-full.yaml")
+			cfg, err := LoadTasksSpec(path)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.PresentTaskConfigs()).To(ConsistOf(
+				TaskConfigPrometheus, TaskConfigPerNodeData,
+				TaskConfigOslat,
+			))
+		})
+	})
+
 	Describe("TasksSpec.PresentTaskConfigs", func() {
 		It("returns an empty slice when no task configs are set", func() {
 			cfg := TasksSpec{}

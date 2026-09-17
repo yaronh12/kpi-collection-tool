@@ -4,7 +4,7 @@ The `db` command provides direct access to query and manage collected KPI data s
 
 
 Related guides:
-- [Collecting Metrics](collecting-metrics.md)
+- [Collecting Prometheus Metrics](collecting-metrics.md)
 - [Grafana](grafana.md)
 - [Troubleshooting](troubleshooting.md)
 

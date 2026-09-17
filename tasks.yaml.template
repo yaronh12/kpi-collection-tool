@@ -1,0 +1,110 @@
+# Tasks Configuration Template
+#
+# This file is a structural reference for building custom tasks.yaml files.
+# For ready-to-use configurations, see the task-profiles/ directory.
+#
+# A tasks.yaml defines which tasks to run and how to orchestrate them.
+# Pass it to the tool with:
+#   kpi-collector run --tasks tasks.yaml \
+#     --cluster-name my-cluster --cluster-type ran \
+#     --kubeconfig ~/.kube/config --once
+#
+# Task types:
+#   prometheus         Collect PromQL metrics from Thanos → database
+#   per-node-data      Collect CPU/memory/kernel data from every node → artifact files
+#   oslat              Run a user-supplied pod and collect logs → artifact file
+#   app-recovery-time  Reboot nodes and poll pod recovery → artifact file
+#
+# Authentication:
+#   prometheus:        --kubeconfig (auto-discovery) or --token + --thanos-url
+#   All other tasks:   --kubeconfig with admin privileges (creates privileged pods)
+#
+# Orchestration fields (all optional):
+#   mode:        "sequential" (default) or "parallel"
+#   on-failure:  "continue" (default) or "fail-fast"
+#   order:       explicit execution order (must list exactly the tasks present)
+#
+# configFile pattern:
+#   Each task supports inline fields OR a configFile reference (not both).
+#   configFile paths are resolved relative to this file's directory.
+#   The external file must wrap config under the task's root key.
+#   For prometheus, configFile points to a KPI YAML file (kpis: root key).
+#
+# For full documentation:
+#   Tasks schema:      docs/tasks-configuration.md
+#   Prometheus KPIs:   docs/kpis-file-configuration.md
+#   Per-node-data:     docs/per-node-data-configuration.md
+#   Oslat:             docs/oslat-configuration.md
+#   App recovery time: docs/app-recovery-time-configuration.md
+
+orchestration:
+  mode: sequential
+  on-failure: fail-fast
+  order:
+    - prometheus
+    - per-node-data
+    - oslat
+    # - app-recovery-time  # Uncomment to add (WARNING: reboots nodes)
+
+# --- Prometheus task ---
+# Collects PromQL metrics and stores them in SQLite or PostgreSQL.
+# Use configFile to reference a KPI profile, or define kpis inline.
+prometheus:
+  configFile: prom-kpi-profiles/kpis-quickstart.yaml
+  # Inline alternative:
+  # kpis:
+  #   - id: node-cpu-usage
+  #     promquery: avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m]))
+
+# --- Per-node-data task ---
+# Collects top, /proc/meminfo, /proc/cmdline from every cluster node.
+# Requires: --kubeconfig with admin privileges.
+per-node-data:
+  workloadNamespaces:
+    - default
+    # - my-workload-ns  # Add namespaces where your workload pods run
+  duration: 30m         # How long top runs on each node
+  interval: 30s         # top sampling period (must be < duration)
+  image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+  # isolcpus: "2-15"   # Optional; omit to auto-detect from /proc/cmdline
+
+# --- Oslat task ---
+# Creates a pod, waits for completion, collects logs.
+# Requires: --kubeconfig with admin privileges.
+# Replace the image and command with your real oslat binary.
+oslat:
+  timeout: 30m
+  pod:
+    metadata:
+      name: oslat-test
+      # namespace: my-ns  # Optional; defaults to cluster default
+    spec:
+      restartPolicy: Never
+      # nodeSelector:
+      #   kubernetes.io/hostname: worker-0.example.com
+      containers:
+        - name: oslat
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest  # CHANGE_ME
+          command: ["sh", "-c", "echo oslat placeholder; sleep 30"]   # CHANGE_ME
+          # resources:
+          #   requests:
+          #     cpu: "4"
+          #     memory: 1Gi
+          #   limits:
+          #     cpu: "4"
+          #     memory: 1Gi
+
+# --- App recovery time task ---
+# ⚠️  WARNING: This task REBOOTS the listed node(s).
+#    Only use on disposable lab workers. Never run against production.
+# Requires: --kubeconfig with admin privileges.
+# Uncomment and edit to enable:
+#
+# app-recovery-time:
+#   workloadNamespaces:
+#     - default           # Namespace with workload pods to observe
+#   nodeNames:
+#     - CHANGE_ME         # Kubernetes node name to reboot
+#   duration: 30m         # How long to poll pod status
+#   interval: 1m          # Poll period (must be < duration)
+#   image: registry.access.redhat.com/ubi9/ubi-minimal:latest

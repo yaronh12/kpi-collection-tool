@@ -1,0 +1,32 @@
+# Oslat — full validation run.
+#
+# Creates a Pod on the cluster, waits for it to complete (or timeout), and
+# writes its logs to oslat_logs.out under --artifacts-dir.
+#
+# Replace the image and command below with your real oslat binary.
+# In disconnected environments, mirror the image to your local registry.
+#
+# Requires: --kubeconfig
+
+oslat:
+  timeout: 30m
+  pod:
+    metadata:
+      name: oslat-validation
+      # namespace: CHANGE_ME  # Uncomment to run in a specific namespace (default: cluster default)
+    spec:
+      restartPolicy: Never
+      # nodeSelector:                         # Uncomment to pin to a specific node
+      #   kubernetes.io/hostname: CHANGE_ME
+      containers:
+        - name: oslat
+          image: CHANGE_ME  # Your oslat container image (e.g. your-registry.example.com/oslat:latest)
+          command: ["oslat"]
+          args: ["-D", "1800"]  # Example: run oslat for 1800 seconds
+          # resources:                         # Uncomment to set resource requests/limits
+          #   requests:
+          #     cpu: "4"
+          #     memory: 1Gi
+          #   limits:
+          #     cpu: "4"
+          #     memory: 1Gi

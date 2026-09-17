@@ -1,10 +1,18 @@
-# KPI Profiles
+# Prometheus KPI Profiles
 
-Ready-to-use KPI configuration files for common use cases. Pick the file that
-matches your cluster profile and pass it to the collector:
+Ready-to-use Prometheus KPI configuration files for the **prometheus** task
+type. Pick the file that matches your cluster profile and reference it from
+your `tasks.yaml` or pass it directly:
+
+```yaml
+# In a tasks.yaml file:
+prometheus:
+  configFile: ../prom-kpi-profiles/kpis-ran.yaml
+```
 
 ```bash
-kpi-collector run --kpis-file <path-to>/kpis-ran.yaml ...
+# Or Prometheus-only mode (no tasks file):
+kpi-collector run --prom-kpis-config prom-kpi-profiles/kpis-ran.yaml ...
 ```
 
 ## Available Profiles

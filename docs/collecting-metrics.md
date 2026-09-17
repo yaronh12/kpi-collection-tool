@@ -1,20 +1,30 @@
-# Collecting Metrics
+# Collecting Prometheus Metrics
 
-The `run` command gathers KPI metrics from Prometheus/Thanos and stores them in a database.
+This page covers the **Prometheus task** — how to authenticate against
+Prometheus/Thanos, how metrics are sampled and stored, and how dynamic CPU
+placeholders work.
+
+The Prometheus task can run standalone via `--prom-kpis-config` or as part of a
+multi-task `tasks.yaml` file via `--tasks`. Either way, the authentication and
+configuration described here applies.
+
+For the full multi-task story (per-node-data, oslat, app-recovery-time,
+orchestration), see [Tasks Configuration](tasks-configuration.md).
 
 > [!TIP]
-> **New here?** Start with the [Getting Started](getting-started.md) tutorial to collect your first metrics in 5 minutes.
+> **New here?** The [Getting Started](getting-started.md) guide covers both multi-task and Prometheus-only quickstart paths.
 
 Related guides:
 
 - [Getting Started](getting-started.md)
-- [KPI Configuration](kpis-file-configuration.md)
+- [Tasks Configuration](tasks-configuration.md)
+- [Prometheus KPI Configuration](kpis-file-configuration.md)
 - [Database Commands](database-commands.md)
 - [Grafana](grafana.md)
 
-## Authentication Modes
+## Prometheus Authentication Modes
 
-kpi-collector supports two authentication modes.
+The Prometheus task supports two authentication modes.
 
 
 | Mode                       | When to use                                                                                                                                                                                                                                                                                         | Requirements                                                                                    |
@@ -30,7 +40,18 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.yaml
+  --prom-kpis-config kpis.yaml
+```
+
+Or, if using a `tasks.yaml` file where the prometheus task references the KPI
+config via `configFile`:
+
+```bash
+kpi-collector run \
+  --cluster-name my-cluster \
+  --cluster-type ran \
+  --kubeconfig ~/.kube/config \
+  --tasks tasks.yaml
 ```
 
 #### What happens behind the scenes
@@ -59,7 +80,7 @@ After these two steps, the discovered URL and token are used exactly like the ma
 
 #### How metrics are stored
 
-Each query returns a Prometheus result — either a **vector** (instant queries) or a **matrix** (range queries). The tool parses the result, extracts each individual sample, and stores it as a separate row in the database with its value, timestamp, and labels (serialized as JSON). You can then query the stored data with [`db show`](database-commands.md) or visualize it in [Grafana](grafana.md).
+Each PromQL query returns a Prometheus result — either a **vector** (instant queries) or a **matrix** (range queries). The tool parses the result, extracts each individual sample, and stores it as a separate row in the database with its value, timestamp, and labels (serialized as JSON). You can then query the stored data with [`db show`](database-commands.md) or visualize it in [Grafana](grafana.md).
 
 #### Additional examples
 
@@ -70,7 +91,7 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.yaml \
+  --prom-kpis-config kpis.yaml \
   --frequency 30s \
   --duration 1h
 ```
@@ -82,7 +103,7 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.yaml \
+  --prom-kpis-config kpis.yaml \
   --db-type postgres \
   --postgres-url "postgresql://myuser:mypass@localhost:5432/kpi_metrics?sslmode=disable"
 ```
@@ -141,19 +162,19 @@ kpi-collector run \
   --cluster-type ran \
   --token $TOKEN \
   --thanos-url $THANOS_URL \
-  --kpis-file kpis.yaml
+  --prom-kpis-config kpis.yaml
 ```
 
 ## `--insecure-tls`
 
-Use this flag when running against clusters or Prometheus/Thanos servers with self-signed or untrusted certificates.
+Use this flag when your cluster or Thanos endpoint has self-signed or untrusted certificates.
 
 ```bash
 kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.yaml \
+  --prom-kpis-config kpis.yaml \
   --insecure-tls
 ```
 
@@ -177,34 +198,34 @@ kpi-collector run \
   --cluster-name dev-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.yaml \
+  --prom-kpis-config kpis.yaml \
   --frequency 60s \
   --duration 1h \
   --insecure-tls
 ```
 
-## Command Line Flags (`run`)
+## Prometheus-specific CLI Flags
 
+These flags control the Prometheus collection task specifically:
 
-| Flag              | Required | Default                      | Description                                                             |
-| ----------------- | -------- | ---------------------------- | ----------------------------------------------------------------------- |
-| `--cluster-name`  | Yes      | -                            | Name of the cluster being monitored                                     |
-| `--cluster-type`  | Yes      | -                            | Cluster type for categorization: `ran`, `core`, or `hub`                |
-| `--kubeconfig`    | No*      | -                            | Path to kubeconfig file for auto-discovery                              |
-| `--token`         | No*      | -                            | Bearer token for Thanos authentication                                  |
-| `--thanos-url`    | No*      | -                            | Thanos querier URL (without `https://`)                                 |
-| `--insecure-tls`  | No       | false                        | Skip TLS certificate verification (dev only)                            |
-| `--frequency`     | No       | 1m                           | Sampling frequency (for example: `10s`, `1m`, `2h`, `24h`)              |
-| `--duration`      | No       | 45m                          | Total sampling duration (for example: `10s`, `1m`, `2h`, `24h`)         |
-| `--db-type`       | No       | sqlite                       | Database type: `sqlite` or `postgres`                                   |
-| `--postgres-url`  | No**     | -                            | PostgreSQL connection string                                            |
-| `--once`          | No       | false                        | Collect all KPIs once and exit (ignores `--frequency` and `--duration`) |
-| `--kpis-file`     | Yes      | -                            | Path to KPIs configuration file (see `kpis.yaml.template`)              |
-| `--artifacts-dir` | No       | `./kpi-collector-artifacts/` | Directory for database, logs, and output files                          |
+| Flag                | Required | Default | Description                                                                                                   |
+| ------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| `--token`           | No*      | -       | Bearer token for Thanos authentication                                                                        |
+| `--thanos-url`      | No*      | -       | Thanos querier URL (without `https://`)                                                                       |
+| `--prom-kpis-config`| No**     | -       | Path to a Prometheus KPI configuration file (see [Prometheus KPI Configuration](kpis-file-configuration.md))  |
+| `--frequency`       | No       | 1m      | Prometheus sampling frequency (e.g. `10s`, `1m`, `2h`)                                                        |
+| `--duration`        | No       | 45m     | Total Prometheus sampling duration (e.g. `10s`, `1m`, `2h`)                                                    |
+| `--db-type`         | No       | sqlite  | Database type for Prometheus metrics: `sqlite` or `postgres`                                                   |
+| `--postgres-url`    | No***    | -       | PostgreSQL connection string                                                                                   |
+| `--once`            | No       | false   | Collect all KPIs once and exit (ignores `--frequency` and `--duration`)                                        |
 
+\* Either provide `--kubeconfig` OR both `--token` and `--thanos-url`
+\*\* Mutually exclusive with `--tasks`
+\*\*\* Required when `--db-type=postgres`
 
- Either provide `--kubeconfig` OR both `--token` and `--thanos-url`  
- Required when `--db-type=postgres`
+For global flags that apply to all tasks (`--cluster-name`, `--cluster-type`,
+`--kubeconfig`, `--insecure-tls`, `--once`, `--parallel`, `--artifacts-dir`),
+see [Global CLI Flags](getting-started.md#step-2-choose-how-to-run).
 
 ## Dynamic CPU IDs from PerformanceProfile CRs
 
@@ -273,6 +294,8 @@ kpis:
 
 This approach avoids the need for `--kubeconfig` at the cost of hardcoding cluster-specific CPU assignments.
 
-## Sampling, KPI File Format, and Run Modes
+## Prometheus Sampling, KPI File Format, and Run Modes
 
-For details on frequency/duration, single run mode (`--once`), per-query `run-once`, range queries, and the KPI YAML file format, see [KPI Configuration](kpis-file-configuration.md).
+For details on frequency/duration, single run mode (`--once`), per-query `run-once`, range queries, and the Prometheus KPI YAML file format, see [Prometheus KPI Configuration](kpis-file-configuration.md).
+
+For the multi-task `--tasks` mode, orchestration, and non-Prometheus task types (per-node-data, oslat, app-recovery-time), see [Tasks Configuration](tasks-configuration.md).

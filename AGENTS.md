@@ -4,17 +4,19 @@ This file provides guidance to AI coding agents when working with code in this r
 
 ## Repository Overview
 
-The KPI Collection Tool is a CLI application for automating metrics gathering and visualization for KPIs in disconnected environments. It collects metrics from Prometheus/Thanos endpoints on Kubernetes/OpenShift clusters and stores them in a database (SQLite or PostgreSQL) for analysis and visualization via Grafana.
+The KPI Collection Tool is a CLI application for automating KPI collection on OpenShift clusters. It runs configurable **tasks** — Prometheus/Thanos metric collection, per-node diagnostics, OS latency testing, and application recovery measurement — and stores results in a database or artifact files.
 
 ### Key Features
 
+- **Multi-task orchestration**: Run prometheus, per-node-data, oslat, and app-recovery-time tasks from a single `tasks.yaml` file
 - **Kubernetes Auto-Discovery**: Automatically discovers Thanos URL and creates service account tokens from kubeconfig
 - **Manual Authentication**: Supports direct bearer token and Thanos URL configuration
-- **Multiple Database Backends**: SQLite (default, local storage) and PostgreSQL (production deployments)
+- **Multiple Database Backends**: SQLite (default, local storage) and PostgreSQL (production deployments) for Prometheus metrics
 - **Flexible Sampling**: Configurable frequency and duration per KPI query
 - **Dynamic CPU Placeholders**: Supports `{{RESERVED_CPUS}}` and `{{ISOLATED_CPUS}}` placeholders fetched from PerformanceProfile CRs
 - **Grafana Integration**: Built-in Grafana dashboard management via Docker
 - **Multi-format Output**: Table, JSON, and CSV output formats
+- **Task Profiles**: Ready-to-use quickstart and full validation configurations under `task-profiles/`
 
 ## Build Commands
 
@@ -60,16 +62,18 @@ The project uses golangci-lint v2 with configuration in `golangci.yml`. Enabled 
 ```
 cmd/kpi-collector/main.go   # Entry point → commands.Execute()
 internal/
-  collector/                # KPI collection orchestration (goroutines per frequency group)
+  collector/                # Prometheus KPI collection orchestration (goroutines per frequency group)
   commands/                 # CLI commands (Cobra): run, db show/remove, grafana start/stop, kpis generate
-  config/                   # InputFlags, Query, KPIs structs; YAML loading; CPU placeholder substitution
+  config/                   # InputFlags, Query, TasksSpec structs; YAML loading; CPU placeholder substitution
   database/                 # Database interface + SQLite/Postgres implementations
-  kubernetes/               # Kubeconfig auth, Thanos discovery, PerformanceProfile CPU fetching
+  kubernetes/               # Kubeconfig auth, Thanos discovery, PerformanceProfile CPU fetching, pod ops
   logger/                   # File-based logging
-  output/                   # Table/JSON/CSV formatters
+  output/                   # Table/JSON/CSV formatters + TaskPrinter (terminal progress)
   prometheus/               # Prometheus/Thanos query client
+  task/                     # Task implementations: prometheus, per-node-data, oslat, app-recovery-time
 grafana-templates/          # Embedded dashboard JSON (sqlite + postgres variants)
-kpi-profiles/               # Embedded KPI YAML profiles (ran, core, hub, basic, quickstart)
+prom-kpi-profiles/          # Embedded Prometheus KPI YAML profiles (ran, core, hub, basic, quickstart)
+task-profiles/              # Ready-to-use task YAML configs (quickstart + full per task type)
 ```
 
 ## Key Dependencies
@@ -97,9 +101,10 @@ This project uses Go 1.26. Ensure your environment matches.
 Tests use Ginkgo/Gomega BDD framework. Test files follow the pattern `*_test.go` with corresponding `*_suite_test.go` files for test suite setup.
 
 ### CLI Structure (Cobra)
-- `kpi-collector kpis generate --profile <profile> [--uncategorized]`: Generate a KPI file for a cluster profile
-- `kpi-collector run [--once]`: Collect KPI metrics
-- `kpi-collector db show clusters|kpis|categories|errors`: Query stored data
+- `kpi-collector run --tasks <file> [--once]`: Run configured tasks (prometheus, per-node-data, oslat, app-recovery-time)
+- `kpi-collector run --prom-kpis-config <file> [--once]`: Collect Prometheus metrics only (no tasks file needed)
+- `kpi-collector kpis generate --profile <profile> [--uncategorized]`: Generate a Prometheus KPI file for a cluster profile
+- `kpi-collector db show clusters|kpis|categories|errors`: Query stored Prometheus data
 - `kpi-collector db remove clusters|kpis|errors`: Delete data
 - `kpi-collector grafana start|stop`: Manage Grafana dashboard
 
@@ -165,19 +170,23 @@ Range query notes:
 ## Common Workflows
 
 ```bash
-# Collect via kubeconfig (auto-discovers Thanos, creates token)
+# Multi-task run from a tasks file
 kpi-collector run --cluster-name my-cluster --cluster-type ran \
-  --kubeconfig ~/.kube/config --kpis-file kpis.yaml --frequency 60 --duration 1h
+  --kubeconfig ~/.kube/config --tasks task-profiles/tasks-quickstart.yaml --once
 
-# Collect via manual credentials
+# Prometheus-only via kubeconfig (auto-discovers Thanos, creates token)
+kpi-collector run --cluster-name my-cluster --cluster-type ran \
+  --kubeconfig ~/.kube/config --prom-kpis-config prom-kpi-profiles/kpis-ran.yaml --frequency 60 --duration 1h
+
+# Prometheus-only via manual credentials
 kpi-collector run --cluster-name my-cluster --cluster-type core \
-  --token $TOKEN --thanos-url $THANOS_URL --kpis-file kpis.yaml
+  --token $TOKEN --thanos-url $THANOS_URL --prom-kpis-config kpis.yaml
 
 # Single collection pass
 kpi-collector run --cluster-name my-cluster --cluster-type ran \
-  --kubeconfig ~/.kube/config --kpis-file kpis.yaml --once
+  --kubeconfig ~/.kube/config --prom-kpis-config kpis.yaml --once
 
-# Query stored data
+# Query stored Prometheus data
 kpi-collector db show clusters
 kpi-collector db show kpis --name "node-cpu-usage" --cluster-name "my-cluster" --limit 100
 
@@ -190,8 +199,9 @@ kpi-collector grafana stop
 ## Architecture Notes
 
 ### Collection Flow
-Flags → load KPI YAML → discover Thanos (if kubeconfig) → substitute CPU placeholders →
-group KPIs by frequency → spawn goroutines per group → query Prometheus → store in DB →
+Flags → load tasks YAML (or KPI YAML for prom-only) → resolve task configs →
+discover Thanos (if kubeconfig + prometheus task) → substitute CPU placeholders →
+run tasks per orchestration order → each task produces DB entries or artifact files →
 repeat until duration expires or `--once`.
 
 ### Database Schema

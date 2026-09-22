@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/redhat-best-practices-for-k8s/kpi-collection-tool/internal/config"
-	kpiprofiles "github.com/redhat-best-practices-for-k8s/kpi-collection-tool/kpi-profiles"
+	kpiprofiles "github.com/redhat-best-practices-for-k8s/kpi-collection-tool/prom-kpi-profiles"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"

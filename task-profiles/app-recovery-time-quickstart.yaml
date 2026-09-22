@@ -1,0 +1,23 @@
+# App recovery time — quickstart (short poll, single node).
+#
+# ⚠️  WARNING: This task REBOOTS the listed node(s). Use only on disposable
+#    lab workers. Never run against production nodes.
+#
+# Reboots the node via a privileged debug pod, waits until it is NotReady,
+# then polls workload pod status for the configured duration.
+#
+# Artifact (under --artifacts-dir): pod_status.out
+#
+# Requires: --kubeconfig
+#
+# Image: any image that supports chroot (host reboot is used after
+# chroot /host). In disconnected environments, mirror the image.
+
+app-recovery-time:
+  workloadNamespaces:
+    - default
+  nodeNames:
+    - CHANGE_ME  # Kubernetes node name of a disposable worker (e.g. worker-0.lab.example.com)
+  duration: 5m
+  interval: 30s
+  image: registry.access.redhat.com/ubi9/ubi-minimal:latest

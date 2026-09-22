@@ -1,0 +1,34 @@
+# Tasks — quickstart (fast smoke test for three safe task types).
+#
+# Runs prometheus, per-node-data, and oslat sequentially with minimal duration
+# and safe defaults. Prometheus uses the 2-KPI quickstart profile; per-node-data
+# and oslat finish in seconds.
+#
+# app-recovery-time is NOT included here because it reboots cluster nodes.
+# To add it, see app-recovery-time-quickstart.yaml and the docs at
+# docs/app-recovery-time-configuration.md.
+#
+# Usage (from repository root):
+#   kpi-collector run \
+#     --tasks task-profiles/tasks-quickstart.yaml \
+#     --cluster-name my-cluster --cluster-type ran \
+#     --kubeconfig ~/.kube/config --once
+#
+# For Prometheus KPI profiles, see ../prom-kpi-profiles/README.md.
+
+orchestration:
+  mode: sequential
+  on-failure: fail-fast
+  order:
+    - prometheus
+    - per-node-data
+    - oslat
+
+prometheus:
+  configFile: ../prom-kpi-profiles/kpis-quickstart.yaml
+
+per-node-data:
+  configFile: per-node-data-quickstart.yaml
+
+oslat:
+  configFile: oslat-quickstart.yaml

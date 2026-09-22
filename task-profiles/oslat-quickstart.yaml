@@ -1,0 +1,21 @@
+# Oslat — quickstart (plumbing test, NOT a real latency measurement).
+#
+# Creates a Pod on the cluster, waits for it to complete, and writes its logs
+# to oslat_logs.out under --artifacts-dir.
+#
+# This quickstart uses a UBI sleep pod to verify the create → wait → collect
+# pipeline without requiring a real oslat binary or tuned node.
+#
+# Requires: --kubeconfig
+
+oslat:
+  timeout: 5m
+  pod:
+    metadata:
+      name: oslat-quickstart
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: oslat
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          command: ["sh", "-c", "echo oslat quickstart; sleep 15"]

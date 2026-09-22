@@ -1,14 +1,19 @@
-# KPI Configuration
+# Prometheus KPI Configuration
 
-This guide covers the KPI YAML file format, sampling controls, and run modes.
+This guide covers the Prometheus KPI YAML file format — the file that defines
+which PromQL queries to run, how often to sample them, and how to store the
+results.
 
 Related guides:
 - [Getting Started](getting-started.md)
-- [Collecting Metrics](collecting-metrics.md)
+- [Collecting Prometheus Metrics](collecting-metrics.md)
+- [Tasks Configuration](tasks-configuration.md)
 
 ## KPI File Format
 
-KPIs are defined in a YAML file passed to `--kpis-file`. Each entry describes a PromQL query to execute against Prometheus/Thanos.
+KPIs are defined in a YAML file passed to `--prom-kpis-config` (or referenced via
+`prometheus.configFile` in a [tasks file](tasks-configuration.md)). Each entry
+describes a PromQL query to execute against Prometheus/Thanos.
 
 Minimal example:
 
@@ -160,7 +165,7 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig ~/.kube/config \
-  --kpis-file kpis.yaml \
+  --prom-kpis-config kpis.yaml \
   --once
 ```
 
@@ -218,4 +223,4 @@ kpis:
     promquery: rate(node_cpu_seconds_total{cpu=~"{{RESERVED_CPUS}}"}[30m])
 ```
 
-For full details on how CPU substitution works and how to obtain CPU IDs manually, see [Collecting Metrics — Dynamic CPU IDs](collecting-metrics.md#dynamic-cpu-ids-from-performanceprofile-crs).
+For full details on how CPU substitution works and how to obtain CPU IDs manually, see [Collecting Prometheus Metrics — Dynamic CPU IDs](collecting-metrics.md#dynamic-cpu-ids-from-performanceprofile-crs).

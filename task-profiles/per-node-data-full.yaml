@@ -1,0 +1,24 @@
+# Per-node data — full validation run.
+#
+# Collects top, /proc/meminfo, /proc/cmdline from every cluster node via a
+# privileged debug pod, plus pod and node describes from the API.
+#
+# Artifacts (under --artifacts-dir):
+#   top-<node>.out, proc_meminfo-<node>.txt, proc_cmdline-<node>.txt,
+#   describe_pods_<ns>.txt, describe_nodes.txt
+#
+# Requires: --kubeconfig
+#
+# Image: any image that supports chroot (host tools are used after
+# chroot /host). In disconnected environments, mirror the image and
+# update the value below.
+
+per-node-data:
+  workloadNamespaces:
+    - default
+    - CHANGE_ME  # Add namespaces where your workload pods run
+  duration: 30m
+  interval: 30s
+  image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+  # isolcpus: "2-15"  # Uncomment and set to match your PerformanceProfile isolated CPUs.
+                       # When omitted the tool parses /proc/cmdline on each node automatically.

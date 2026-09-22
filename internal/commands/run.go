@@ -26,28 +26,29 @@ var flags config.InputFlags
 // runCmd represents the collect command
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Collect KPI metrics from Prometheus/Thanos",
-	Long: `Collect KPI metrics from Prometheus/Thanos endpoints and store them 
-in a database (SQLite or PostgreSQL). Supports two authentication modes:
+	Short: "Run KPI collection tasks",
+	Long: `Run KPI collection tasks against an OpenShift cluster. Supports four
+task types: prometheus (Thanos metrics → database), per-node-data (node
+diagnostics → artifact files), oslat (latency test → artifact file), and
+app-recovery-time (reboot + pod status → artifact file).
+
+Configure tasks in a tasks.yaml file and pass it via --tasks, or use
+--prom-kpis-config for Prometheus-only collection. Supports two authentication
+modes:
   1. Kubeconfig-based auto-discovery
   2. Manual bearer token and Thanos URL
 
-The tool will continuously collect metrics at the specified frequency 
-for the specified duration.
-
-For more usage options, see https://github.com/redhat-best-practices-for-k8s/kpi-collection-tool/blob/main/docs/collecting-metrics.md
-
-All artifacts (database, logs, output) are stored in ./kpi-collector-artifacts/ by default.
-Use --artifacts-dir to override.`,
-	Example: `  # Using a tasks file (prometheus section; other task types not yet supported)
+All artifacts (database, logs, task output) are stored in
+./kpi-collector-artifacts/ by default. Use --artifacts-dir to override.`,
+	Example: `  # Multi-task run from a tasks file
   kpi-collector run --cluster-name prod --cluster-type ran \
-    --kubeconfig ~/.kube/config --tasks tasks.yaml
+    --kubeconfig ~/.kube/config --tasks task-profiles/tasks-quickstart.yaml --once
 
-  # Using kubeconfig (auto-discovery of Thanos URL and token)
+  # Prometheus-only via kubeconfig (auto-discovery of Thanos URL and token)
   kpi-collector run --cluster-name prod --cluster-type ran \
     --kubeconfig ~/.kube/config --prom-kpis-config kpis.yaml
 
-  # Using manual credentials
+  # Prometheus-only via manual credentials
   kpi-collector run --cluster-name prod --cluster-type core \
     --token $TOKEN --thanos-url thanos.example.com --prom-kpis-config kpis.yaml
 

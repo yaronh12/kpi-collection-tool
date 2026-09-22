@@ -1,0 +1,27 @@
+# App recovery time — full validation run.
+#
+# ⚠️  WARNING: This task REBOOTS the listed node(s). Use only on disposable
+#    lab workers. Never run against production nodes.
+#
+# Reboots each node via a privileged debug pod, waits until all are NotReady,
+# then polls workload pod status for the configured duration.
+#
+# Before running, deploy a workload in the target namespace so there are pods
+# to observe during recovery. Any Deployment with a readiness probe works.
+#
+# Artifact (under --artifacts-dir): pod_status.out
+#
+# Requires: --kubeconfig
+#
+# Image: any image that supports chroot (host reboot is used after
+# chroot /host). In disconnected environments, mirror the image.
+
+app-recovery-time:
+  workloadNamespaces:
+    - app-recovery-test  # Deploy your workload here before running
+  nodeNames:
+    - CHANGE_ME  # Kubernetes node name (e.g. worker-0.lab.example.com)
+    # - CHANGE_ME  # Uncomment to reboot additional workers
+  duration: 30m
+  interval: 1m
+  image: registry.access.redhat.com/ubi9/ubi-minimal:latest

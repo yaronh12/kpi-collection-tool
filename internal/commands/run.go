@@ -42,7 +42,7 @@ All artifacts (database, logs, task output) are stored in
 ./kpi-collector-artifacts/ by default. Use --artifacts-dir to override.`,
 	Example: `  # Multi-task run from a tasks file
   kpi-collector run --cluster-name prod --cluster-type ran \
-    --kubeconfig ~/.kube/config --tasks task-profiles/tasks-quickstart.yaml --once
+    --kubeconfig ~/.kube/config --tasks task-profiles/tasks-quickstart.yaml
 
   # Prometheus-only via kubeconfig (auto-discovery of Thanos URL and token)
   kpi-collector run --cluster-name prod --cluster-type ran \
@@ -132,12 +132,23 @@ func init() {
 	runCmd.MarkFlagsMutuallyExclusive("tasks", "kpis-file")
 }
 
+// promCLIFlags lists the Prometheus-specific CLI flag names. With --tasks
+// these are rejected; with --prom-kpis-config they override YAML defaults.
+var promCLIFlags = []string{"frequency", "duration", "db-type", "postgres-url", "once"}
+
 func runTasks(cmd *cobra.Command, args []string) error {
 	fmt.Println("KPI Collector starting...")
 
-	// Validate all flags (including cluster type)
 	if err := config.ValidateFlags(flags); err != nil {
 		return fmt.Errorf("invalid flags: %w", err)
+	}
+
+	// Load config and apply prom settings to flags BEFORE kubeconfig auth,
+	// so token duration uses the correct once/duration values.
+	if flags.TasksConfig != "" {
+		if err := rejectPromCLIFlags(cmd); err != nil {
+			return err
+		}
 	}
 
 	fmt.Printf("Cluster name: %s (type=%s)\n", flags.ClusterName, flags.ClusterType)
@@ -159,22 +170,23 @@ func runTasks(cmd *cobra.Command, args []string) error {
 		}
 	}()
 	fmt.Printf("Log file: %s\n", logFile)
-	fmt.Printf("Database: %s\n", databaseLocation(flags))
 
 	log.Println("KPI Collector initialized")
-
-	if err := setupKubeconfigAuthIfNeeded(&flags); err != nil {
-		return err
-	}
 
 	var tasks []task.Task
 	var parallel, failFast bool
 	if flags.TasksConfig != "" {
-		tasks, parallel, failFast, err = resolveTasksFromSpec(flags)
+		tasks, parallel, failFast, err = resolveTasksFromSpec(cmd, &flags)
 	} else {
-		tasks, parallel, failFast, err = resolvePromKPIFromFlags(flags)
+		tasks, parallel, failFast, err = resolvePromKPIFromFlags(cmd, &flags)
 	}
 	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Database: %s\n", databaseLocation(flags))
+
+	if err := setupKubeconfigAuthIfNeeded(&flags); err != nil {
 		return err
 	}
 
@@ -191,6 +203,29 @@ func runTasks(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// rejectPromCLIFlags returns an error if any Prometheus-specific CLI flag
+// was explicitly set. With --tasks, these come from the YAML only.
+func rejectPromCLIFlags(cmd *cobra.Command) error {
+	for _, name := range promCLIFlags {
+		if cmd.Flags().Changed(name) {
+			return fmt.Errorf("--%s cannot be used with --tasks; set it under prometheus: in the tasks YAML instead", name)
+		}
+	}
+	return nil
+}
+
+// changedPromFlags returns the set of Prometheus-specific CLI flags that
+// the user explicitly set on the command line.
+func changedPromFlags(cmd *cobra.Command) map[string]bool {
+	changed := make(map[string]bool, len(promCLIFlags))
+	for _, name := range promCLIFlags {
+		if cmd.Flags().Changed(name) {
+			changed[name] = true
+		}
+	}
+	return changed
 }
 
 // setupKubeconfigAuthIfNeeded discovers Thanos and a token before tasks are
@@ -220,7 +255,7 @@ func setupKubeconfigAuthIfNeeded(flags *config.InputFlags) error {
 	return nil
 }
 
-func resolveTasksFromSpec(flags config.InputFlags) ([]task.Task, bool, bool, error) {
+func resolveTasksFromSpec(cmd *cobra.Command, flags *config.InputFlags) ([]task.Task, bool, bool, error) {
 	spec, err := config.LoadTasksSpec(flags.TasksConfig)
 	if err != nil {
 		return nil, false, false, err
@@ -228,12 +263,21 @@ func resolveTasksFromSpec(flags config.InputFlags) ([]task.Task, bool, bool, err
 	log.Printf("Loaded tasks from %s (mode=%s, on-failure=%s)",
 		flags.TasksConfig, spec.Orchestration.Mode, spec.Orchestration.OnFailure)
 
+	// Apply YAML prom settings → flags (YAML is the sole source with --tasks).
+	if spec.Prometheus != nil {
+		config.ApplyPromTaskConfig(flags, spec.Prometheus)
+	}
+
+	if err := config.ValidatePromSettings(*flags); err != nil {
+		return nil, false, false, fmt.Errorf("prometheus config: %w", err)
+	}
+
 	if spec.Prometheus != nil {
 		kpis, err := task.LoadPrometheusKPIs(spec)
 		if err != nil {
 			return nil, false, false, err
 		}
-		kpis, err = prepareLoadedKPIs(kpis, flags)
+		kpis, err = prepareLoadedKPIs(kpis, *flags)
 		if err != nil {
 			return nil, false, false, err
 		}
@@ -241,25 +285,25 @@ func resolveTasksFromSpec(flags config.InputFlags) ([]task.Task, bool, bool, err
 		spec.Prometheus.ConfigFile = ""
 	}
 
-	tasks, err := task.ResolveFromTasksSpec(spec, flags)
+	tasks, err := task.ResolveFromTasksSpec(spec, *flags)
 	if err != nil {
 		return nil, false, false, err
 	}
 
-	parallel, failFast := orchestrationFromSpec(spec, flags)
+	parallel, failFast := orchestrationFromSpec(spec, *flags)
 	return tasks, parallel, failFast, nil
 }
 
 // resolvePromKPIFromFlags is the legacy --prom-kpis-config / --kpis-file path:
 // it always produces a single prometheus task. Other task types are only
 // selected via --tasks.
-func resolvePromKPIFromFlags(flags config.InputFlags) ([]task.Task, bool, bool, error) {
-	kpis, err := setupPromKPIs(flags)
+func resolvePromKPIFromFlags(cmd *cobra.Command, flags *config.InputFlags) ([]task.Task, bool, bool, error) {
+	kpis, err := setupPromKPIs(cmd, flags)
 	if err != nil {
 		return nil, false, false, err
 	}
 
-	tasks, err := task.FromPromKPIsFlag(flags, kpis)
+	tasks, err := task.FromPromKPIsFlag(*flags, kpis)
 	if err != nil {
 		return nil, false, false, err
 	}
@@ -274,14 +318,21 @@ func orchestrationFromSpec(spec config.TasksSpec, flags config.InputFlags) (para
 }
 
 // setupPromKPIs loads, validates, and prepares Prom KPI queries.
-func setupPromKPIs(flags config.InputFlags) (config.KPIs, error) {
+// YAML prom settings are applied as defaults; CLI flags override them.
+func setupPromKPIs(cmd *cobra.Command, flags *config.InputFlags) (config.KPIs, error) {
 	kpis, err := config.LoadKPIs(flags.PromKPIsConfig)
 	if err != nil {
 		return config.KPIs{}, fmt.Errorf("failed to load KPI queries: %w", err)
 	}
 	log.Printf("Loaded KPIs from %s", flags.PromKPIsConfig)
 
-	return prepareLoadedKPIs(kpis, flags)
+	config.ApplyKPIsDefaults(flags, kpis, changedPromFlags(cmd))
+
+	if err := config.ValidatePromSettings(*flags); err != nil {
+		return config.KPIs{}, err
+	}
+
+	return prepareLoadedKPIs(kpis, *flags)
 }
 
 func prepareLoadedKPIs(kpis config.KPIs, flags config.InputFlags) (config.KPIs, error) {

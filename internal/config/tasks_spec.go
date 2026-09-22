@@ -45,9 +45,19 @@ type OrchestrationConfig struct {
 
 // PrometheusTaskConfig configures the Prometheus/Thanos KPI task. Exactly
 // one of ConfigFile or Kpis must be set — never both, never neither.
+//
+// The sampling/database fields below mirror their CLI-flag equivalents.
+// When using --tasks they are the sole source; CLI prometheus flags are
+// rejected.  When using --prom-kpis-config the same fields may appear in
+// the KPI YAML as defaults that CLI flags override.
 type PrometheusTaskConfig struct {
-	ConfigFile string  `yaml:"configFile,omitempty"`
-	Kpis       []Query `yaml:"kpis,omitempty"`
+	ConfigFile  string   `yaml:"configFile,omitempty"`
+	Kpis        []Query  `yaml:"kpis,omitempty"`
+	Frequency   *Duration `yaml:"frequency,omitempty"`
+	Duration    *Duration `yaml:"duration,omitempty"`
+	DBType      string    `yaml:"dbType,omitempty"`
+	PostgresURL string    `yaml:"postgresURL,omitempty"`
+	Once        *bool     `yaml:"once,omitempty"`
 }
 
 // TasksSpec is the root of a --tasks YAML file: one optional task config per

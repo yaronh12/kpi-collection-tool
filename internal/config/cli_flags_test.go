@@ -36,6 +36,9 @@ var _ = Describe("validateFlags test", func() {
 	DescribeTable("flag validation scenarios",
 		func(flags InputFlags, expectedErr string) {
 			err := ValidateFlags(flags)
+			if err == nil {
+				err = ValidatePromSettings(flags)
+			}
 
 			if expectedErr != "" {
 				Expect(err).To(HaveOccurred())
@@ -340,4 +343,141 @@ var _ = Describe("validateFlags test", func() {
 			"",
 		),
 	)
+})
+
+var _ = Describe("ValidatePromSettings", func() {
+	DescribeTable("prom settings validation",
+		func(flags InputFlags, expectedErr string) {
+			err := ValidatePromSettings(flags)
+			if expectedErr != "" {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal(expectedErr))
+			} else {
+				Expect(err).ToNot(HaveOccurred())
+			}
+		},
+		Entry("valid defaults",
+			InputFlags{SamplingFreq: validSamplingFreq, Duration: validDuration, DatabaseType: "sqlite"},
+			"",
+		),
+		Entry("zero frequency",
+			InputFlags{SamplingFreq: 0, Duration: validDuration, DatabaseType: "sqlite"},
+			errSamplingFreqMsg,
+		),
+		Entry("zero duration",
+			InputFlags{SamplingFreq: validSamplingFreq, Duration: 0, DatabaseType: "sqlite"},
+			errDurationMsg,
+		),
+		Entry("invalid db-type",
+			InputFlags{SamplingFreq: validSamplingFreq, Duration: validDuration, DatabaseType: "mysql"},
+			errInvalidDBTypeMsg,
+		),
+		Entry("postgres without url",
+			InputFlags{SamplingFreq: validSamplingFreq, Duration: validDuration, DatabaseType: "postgres"},
+			errPostgresURLRequiredMsg,
+		),
+		Entry("valid postgres",
+			InputFlags{SamplingFreq: validSamplingFreq, Duration: validDuration, DatabaseType: "postgres", PostgresURL: "postgresql://host/db"},
+			"",
+		),
+	)
+})
+
+var _ = Describe("ApplyPromTaskConfig", func() {
+	It("copies all fields from PrometheusTaskConfig to InputFlags", func() {
+		flags := InputFlags{
+			SamplingFreq: 60 * 1e9, // 60s default
+			Duration:     45 * 60 * 1e9,
+			DatabaseType: "sqlite",
+		}
+		once := true
+		cfg := &PrometheusTaskConfig{
+			Frequency:   &Duration{Duration: 30 * 1e9},
+			Duration:    &Duration{Duration: 2 * 3600 * 1e9},
+			DBType:      "postgres",
+			PostgresURL: "postgresql://host/db",
+			Once:        &once,
+		}
+
+		ApplyPromTaskConfig(&flags, cfg)
+
+		Expect(flags.SamplingFreq).To(Equal(cfg.Frequency.Duration))
+		Expect(flags.Duration).To(Equal(cfg.Duration.Duration))
+		Expect(flags.DatabaseType).To(Equal("postgres"))
+		Expect(flags.PostgresURL).To(Equal("postgresql://host/db"))
+		Expect(flags.SingleRun).To(BeTrue())
+	})
+
+	It("leaves flags unchanged for nil fields", func() {
+		flags := InputFlags{
+			SamplingFreq: 60 * 1e9,
+			Duration:     45 * 60 * 1e9,
+			DatabaseType: "sqlite",
+		}
+		cfg := &PrometheusTaskConfig{}
+
+		ApplyPromTaskConfig(&flags, cfg)
+
+		Expect(flags.SamplingFreq).To(Equal(60 * time.Duration(1e9)))
+		Expect(flags.Duration).To(Equal(45 * 60 * time.Duration(1e9)))
+		Expect(flags.DatabaseType).To(Equal("sqlite"))
+		Expect(flags.SingleRun).To(BeFalse())
+	})
+
+	It("does nothing for nil config", func() {
+		flags := InputFlags{DatabaseType: "sqlite"}
+		ApplyPromTaskConfig(&flags, nil)
+		Expect(flags.DatabaseType).To(Equal("sqlite"))
+	})
+})
+
+var _ = Describe("ApplyKPIsDefaults", func() {
+	It("applies YAML defaults when CLI flags are not changed", func() {
+		flags := InputFlags{
+			SamplingFreq: 60 * 1e9,
+			Duration:     45 * 60 * 1e9,
+			DatabaseType: "sqlite",
+		}
+		once := true
+		kpis := KPIs{
+			Frequency:   &Duration{Duration: 30 * 1e9},
+			Duration:    &Duration{Duration: 2 * 3600 * 1e9},
+			DBType:      "postgres",
+			PostgresURL: "postgresql://host/db",
+			Once:        &once,
+		}
+		changed := map[string]bool{}
+
+		ApplyKPIsDefaults(&flags, kpis, changed)
+
+		Expect(flags.SamplingFreq).To(Equal(kpis.Frequency.Duration))
+		Expect(flags.Duration).To(Equal(kpis.Duration.Duration))
+		Expect(flags.DatabaseType).To(Equal("postgres"))
+		Expect(flags.PostgresURL).To(Equal("postgresql://host/db"))
+		Expect(flags.SingleRun).To(BeTrue())
+	})
+
+	It("preserves CLI values when flags are changed", func() {
+		flags := InputFlags{
+			SamplingFreq: 15 * 1e9,
+			Duration:     10 * 60 * 1e9,
+			DatabaseType: "sqlite",
+		}
+		kpis := KPIs{
+			Frequency: &Duration{Duration: 30 * 1e9},
+			Duration:  &Duration{Duration: 2 * 3600 * 1e9},
+			DBType:    "postgres",
+		}
+		changed := map[string]bool{
+			"frequency": true,
+			"duration":  true,
+			"db-type":   true,
+		}
+
+		ApplyKPIsDefaults(&flags, kpis, changed)
+
+		Expect(flags.SamplingFreq).To(Equal(15 * time.Duration(1e9)))
+		Expect(flags.Duration).To(Equal(10 * 60 * time.Duration(1e9)))
+		Expect(flags.DatabaseType).To(Equal("sqlite"))
+	})
 })

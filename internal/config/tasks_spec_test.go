@@ -107,6 +107,44 @@ prometheus: {}
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("one of configFile or kpis must be set"))
 			})
+
+			It("parses prometheus sampling and database fields", func() {
+				path := writeFile("tasks.yaml", `
+prometheus:
+  configFile: kpis.yaml
+  frequency: 30s
+  duration: 2h
+  dbType: postgres
+  postgresURL: "postgresql://user:pass@host:5432/kpi"
+  once: true
+`)
+				cfg, err := LoadTasksSpec(path)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Prometheus.Frequency).NotTo(BeNil())
+				Expect(cfg.Prometheus.Frequency.String()).To(Equal("30s"))
+				Expect(cfg.Prometheus.Duration).NotTo(BeNil())
+				Expect(cfg.Prometheus.Duration.String()).To(Equal("2h0m0s"))
+				Expect(cfg.Prometheus.DBType).To(Equal("postgres"))
+				Expect(cfg.Prometheus.PostgresURL).To(Equal("postgresql://user:pass@host:5432/kpi"))
+				Expect(cfg.Prometheus.Once).NotTo(BeNil())
+				Expect(*cfg.Prometheus.Once).To(BeTrue())
+			})
+
+			It("leaves optional prometheus fields nil when not set", func() {
+				path := writeFile("tasks.yaml", `
+prometheus:
+  configFile: kpis.yaml
+`)
+				cfg, err := LoadTasksSpec(path)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Prometheus.Frequency).To(BeNil())
+				Expect(cfg.Prometheus.Duration).To(BeNil())
+				Expect(cfg.Prometheus.DBType).To(BeEmpty())
+				Expect(cfg.Prometheus.PostgresURL).To(BeEmpty())
+				Expect(cfg.Prometheus.Once).To(BeNil())
+			})
 		})
 
 		Context("all task configs together", func() {

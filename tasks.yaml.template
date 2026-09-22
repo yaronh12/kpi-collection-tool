@@ -7,7 +7,7 @@
 # Pass it to the tool with:
 #   kpi-collector run --tasks tasks.yaml \
 #     --cluster-name my-cluster --cluster-type ran \
-#     --kubeconfig ~/.kube/config --once
+#     --kubeconfig ~/.kube/config
 #
 # Task types:
 #   prometheus         Collect PromQL metrics from Thanos → database
@@ -49,9 +49,18 @@ orchestration:
 # --- Prometheus task ---
 # Collects PromQL metrics and stores them in SQLite or PostgreSQL.
 # Use configFile to reference a KPI profile, or define kpis inline.
+#
+# Sampling and database settings are configured here when using --tasks.
+# (The CLI flags --frequency, --duration, --db-type, --postgres-url, and
+# --once cannot be used with --tasks; set them under prometheus: instead.)
 prometheus:
   configFile: prom-kpi-profiles/kpis-quickstart.yaml
-  # Inline alternative:
+  frequency: 1m          # Sampling frequency (default: 1m)
+  duration: 45m           # Total collection duration (default: 45m)
+  once: false             # Collect once and exit (default: false)
+  dbType: sqlite          # Database backend: sqlite (default) or postgres
+  # postgresURL: "postgresql://user:pass@host:5432/kpi"  # Required when dbType is postgres
+  # Inline alternative (instead of configFile):
   # kpis:
   #   - id: node-cpu-usage
   #     promquery: avg by (instance) (rate(node_cpu_seconds_total{mode!="idle"}[5m]))

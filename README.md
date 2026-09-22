@@ -26,6 +26,10 @@ Four task types are available:
 | **oslat** | OS latency test results from a user-supplied pod | `oslat_logs.out` |
 | **app-recovery-time** | Workload pod status after node reboot | `pod_status.out` |
 
+See [Validation Tasks Overview](docs/validation-tasks-overview.md) for a
+detailed introduction to each task, authentication requirements, and when to
+use which.
+
 Tasks run sequentially by default. Orchestration (order, failure policy,
 parallel mode) is configurable in the `tasks.yaml` file.
 
@@ -124,6 +128,7 @@ Total results: 3
 ## Documentation
 
 - [Getting Started](docs/getting-started.md) — install and run your first collection in 5 minutes
+- [Validation Tasks Overview](docs/validation-tasks-overview.md) — what each task does, its artifacts, and when to use it
 - [Tasks Configuration](docs/tasks-configuration.md) — `tasks.yaml` schema, orchestration, and all four task types
 - [Task Profiles](task-profiles/README.md) — ready-to-use quickstart and full validation task configurations
 - [Installation](docs/installation.md) — pre-built binary, go install, or build from source

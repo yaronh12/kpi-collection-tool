@@ -54,6 +54,11 @@ func (t *PerNodeDataTask) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", t.Name(), err)
 	}
+	if t.cfg.Isolcpus != "" {
+		log.Printf("%s: using isolcpus=%s", t.Name(), t.cfg.Isolcpus)
+	} else {
+		log.Printf("%s: isolcpus not set, will detect from /proc/cmdline on each node", t.Name())
+	}
 	output.PrintTaskProgress(t.Name(), fmt.Sprintf("collecting from %d node(s)", len(nodes)))
 
 	nodeErr := t.collectAll(ctx, client, nodes)

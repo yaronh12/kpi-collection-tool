@@ -233,12 +233,19 @@ func resolveTasksFromSpec(flags config.InputFlags) ([]task.Task, bool, bool, err
 		if err != nil {
 			return nil, false, false, err
 		}
-		kpis, err = prepareLoadedKPIs(kpis, flags)
+		var cpus *config.CPUPlaceholders
+		kpis, cpus, err = prepareLoadedKPIs(kpis, flags)
 		if err != nil {
 			return nil, false, false, err
 		}
 		spec.Prometheus.Kpis = kpis.Queries
 		spec.Prometheus.ConfigFile = ""
+
+		if cpus != nil && cpus.Isolated != "" &&
+			spec.PerNodeData != nil && spec.PerNodeData.Isolcpus == "" {
+			spec.PerNodeData.Isolcpus = strings.ReplaceAll(cpus.Isolated, "|", ",")
+			log.Printf("Shared isolated CPUs with per-node-data: %s", spec.PerNodeData.Isolcpus)
+		}
 	}
 
 	tasks, err := task.ResolveFromTasksSpec(spec, flags)
@@ -281,39 +288,40 @@ func setupPromKPIs(flags config.InputFlags) (config.KPIs, error) {
 	}
 	log.Printf("Loaded KPIs from %s", flags.PromKPIsConfig)
 
-	return prepareLoadedKPIs(kpis, flags)
+	kpis, _, err = prepareLoadedKPIs(kpis, flags)
+	return kpis, err
 }
 
-func prepareLoadedKPIs(kpis config.KPIs, flags config.InputFlags) (config.KPIs, error) {
+func prepareLoadedKPIs(kpis config.KPIs, flags config.InputFlags) (config.KPIs, *config.CPUPlaceholders, error) {
 	if validationErrors := config.ValidateKPIs(kpis); len(validationErrors) > 0 {
 		fmt.Println("KPI validation errors:")
 		for _, e := range validationErrors {
 			fmt.Printf("  ✗ %v\n", e)
 		}
-		return config.KPIs{}, fmt.Errorf("found %d KPI validation error(s)", len(validationErrors))
+		return config.KPIs{}, nil, fmt.Errorf("found %d KPI validation error(s)", len(validationErrors))
 	}
 	fmt.Printf("✓ Validated %d KPI(s)\n", len(kpis.Queries))
 
 	if !flags.SkipPrompts {
 		if abort := promptIfManyUncategorized(kpis); abort {
-			return config.KPIs{}, fmt.Errorf("aborted by user")
+			return config.KPIs{}, nil, fmt.Errorf("aborted by user")
 		}
 	}
 
-	kpis, err := substituteCPUsIfNeeded(kpis, flags)
+	kpis, cpus, err := substituteCPUsIfNeeded(kpis, flags)
 	if err != nil {
-		return config.KPIs{}, err
+		return config.KPIs{}, nil, err
 	}
 
 	if !flags.SingleRun {
 		warnFrequencyExceedsDuration(kpis, flags)
 
 		if err := validateRangeFrequency(kpis, flags); err != nil {
-			return config.KPIs{}, err
+			return config.KPIs{}, nil, err
 		}
 	}
 
-	return kpis, nil
+	return kpis, cpus, nil
 }
 
 // runAllTasks executes tasks and returns the names of any that failed.
@@ -376,19 +384,21 @@ func tokenDurationForCollection(isSingleRun bool, collectionDuration time.Durati
 }
 
 // substituteCPUsIfNeeded checks if queries contain CPU placeholders and if so,
-// fetches CPU IDs from PerformanceProfiles and substitutes them into queries
-func substituteCPUsIfNeeded(kpis config.KPIs, flags config.InputFlags) (config.KPIs, error) {
+// fetches CPU IDs from PerformanceProfiles and substitutes them into queries.
+// Returns the fetched CPUPlaceholders (nil when no fetch was needed) so callers
+// can share the values with other tasks.
+func substituteCPUsIfNeeded(kpis config.KPIs, flags config.InputFlags) (config.KPIs, *config.CPUPlaceholders, error) {
 	if !config.RequiresCPUSubstitution(kpis) {
-		return kpis, nil
+		return kpis, nil, nil
 	}
 
 	if flags.Kubeconfig == "" {
-		return kpis, fmt.Errorf("queries contain CPU placeholders ({{RESERVED_CPUS}}/{{ISOLATED_CPUS}}) but no --kubeconfig provided")
+		return kpis, nil, fmt.Errorf("queries contain CPU placeholders ({{RESERVED_CPUS}}/{{ISOLATED_CPUS}}) but no --kubeconfig provided")
 	}
 
 	reservedCPUs, isolatedCPUs, err := kubernetes.FetchCPUsFromPerformanceProfiles(flags.Kubeconfig)
 	if err != nil {
-		return kpis, fmt.Errorf("failed to fetch CPUs from PerformanceProfiles: %w", err)
+		return kpis, nil, fmt.Errorf("failed to fetch CPUs from PerformanceProfiles: %w", err)
 	}
 
 	fmt.Printf("Loaded CPU sets - Reserved: [%s], Isolated: [%s]\n", reservedCPUs, isolatedCPUs)
@@ -398,7 +408,7 @@ func substituteCPUsIfNeeded(kpis config.KPIs, flags config.InputFlags) (config.K
 		Isolated: isolatedCPUs,
 	}
 
-	return config.SubstituteCPUPlaceholders(kpis, cpuPlaceholders), nil
+	return config.SubstituteCPUPlaceholders(kpis, cpuPlaceholders), cpuPlaceholders, nil
 }
 
 // validateRangeFrequency checks range queries with since lookback for frequency/range mismatches.

@@ -575,6 +575,18 @@ app-recovery-time:
 
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("should return an error when there are failures", func() {
+			checks := []check{
+				{statusPass, "ok"},
+				{statusFail, "broken"},
+			}
+
+			err := printReport(checks)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("1 configuration error"))
+		})
 	})
 
 	Describe("runDoctor end-to-end", func() {
@@ -599,6 +611,14 @@ app-recovery-time:
 			err := runDoctor(nil, nil)
 
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should fail when KPI file does not exist", func() {
+			setValidFlags("/nonexistent/kpis.yaml")
+
+			err := runDoctor(nil, nil)
+
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })

@@ -481,8 +481,7 @@ func printReport(checks []check) error {
 	fmt.Printf("\n%d passed, %d warning(s), %d error(s)\n", passed, warnings, errors)
 
 	if errors > 0 {
-		fmt.Fprintf(os.Stderr, "\nError: found %d configuration error(s)\n", errors)
-		os.Exit(1)
+		return fmt.Errorf("found %d configuration error(s)", errors)
 	}
 	return nil
 }

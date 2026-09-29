@@ -130,25 +130,21 @@ func init() {
 	runCmd.MarkFlagsMutuallyExclusive("once", "duration")
 	runCmd.MarkFlagsMutuallyExclusive("tasks", "prom-kpis-config")
 	runCmd.MarkFlagsMutuallyExclusive("tasks", "kpis-file")
+	// With --tasks, sampling flags come from prometheus: in the YAML only.
+	// --db-type and --postgres-url stay global and are allowed with --tasks.
+	runCmd.MarkFlagsMutuallyExclusive("tasks", "frequency")
+	runCmd.MarkFlagsMutuallyExclusive("tasks", "duration")
+	runCmd.MarkFlagsMutuallyExclusive("tasks", "once")
 }
 
-// promCLIFlags lists the Prometheus-specific CLI flag names. With --tasks
-// these are rejected; with --prom-kpis-config they override YAML defaults.
-var promCLIFlags = []string{"frequency", "duration", "db-type", "postgres-url", "once"}
+// promOverrideFlags can override KPI YAML defaults when using --prom-kpis-config.
+var promOverrideFlags = []string{"frequency", "duration", "db-type", "postgres-url", "once"}
 
 func runTasks(cmd *cobra.Command, args []string) error {
 	fmt.Println("KPI Collector starting...")
 
 	if err := config.ValidateFlags(flags); err != nil {
 		return fmt.Errorf("invalid flags: %w", err)
-	}
-
-	// Load config and apply prom settings to flags BEFORE kubeconfig auth,
-	// so token duration uses the correct once/duration values.
-	if flags.TasksConfig != "" {
-		if err := rejectPromCLIFlags(cmd); err != nil {
-			return err
-		}
 	}
 
 	fmt.Printf("Cluster name: %s (type=%s)\n", flags.ClusterName, flags.ClusterType)
@@ -194,7 +190,7 @@ func runTasks(cmd *cobra.Command, args []string) error {
 	var tasks []task.Task
 	var parallel, failFast bool
 	if flags.TasksConfig != "" {
-		tasks, parallel, failFast, err = resolveTasksFromSpec(cmd, &flags)
+		tasks, parallel, failFast, err = resolveTasksFromSpec(&flags)
 	} else {
 		tasks, parallel, failFast, err = resolvePromKPIFromFlags(cmd, &flags)
 	}
@@ -219,22 +215,11 @@ func runTasks(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// rejectPromCLIFlags returns an error if any Prometheus-specific CLI flag
-// was explicitly set. With --tasks, these come from the YAML only.
-func rejectPromCLIFlags(cmd *cobra.Command) error {
-	for _, name := range promCLIFlags {
-		if cmd.Flags().Changed(name) {
-			return fmt.Errorf("--%s cannot be used with --tasks; set it under prometheus: in the tasks YAML instead", name)
-		}
-	}
-	return nil
-}
-
-// changedPromFlags returns the set of Prometheus-specific CLI flags that
+// changedPromFlags returns the set of Prometheus override CLI flags that
 // the user explicitly set on the command line.
 func changedPromFlags(cmd *cobra.Command) map[string]bool {
-	changed := make(map[string]bool, len(promCLIFlags))
-	for _, name := range promCLIFlags {
+	changed := make(map[string]bool, len(promOverrideFlags))
+	for _, name := range promOverrideFlags {
 		if cmd.Flags().Changed(name) {
 			changed[name] = true
 		}
@@ -269,7 +254,7 @@ func setupKubeconfigAuthIfNeeded(flags *config.InputFlags) error {
 	return nil
 }
 
-func resolveTasksFromSpec(cmd *cobra.Command, flags *config.InputFlags) ([]task.Task, bool, bool, error) {
+func resolveTasksFromSpec(flags *config.InputFlags) ([]task.Task, bool, bool, error) {
 	spec, err := config.LoadTasksSpec(flags.TasksConfig)
 	if err != nil {
 		return nil, false, false, err
@@ -277,8 +262,8 @@ func resolveTasksFromSpec(cmd *cobra.Command, flags *config.InputFlags) ([]task.
 	log.Printf("Loaded tasks from %s (mode=%s, on-failure=%s)",
 		flags.TasksConfig, spec.Orchestration.Mode, spec.Orchestration.OnFailure)
 
-	// Apply YAML prom settings → flags (idempotent; already applied by
-	// applyPromSettingsFromSpec but needed when called without that step).
+	// Apply YAML prom settings → flags (idempotent if already applied
+	// before kubeconfig auth for token duration).
 	if spec.Prometheus != nil {
 		config.ApplyPromTaskConfig(flags, spec.Prometheus)
 	}

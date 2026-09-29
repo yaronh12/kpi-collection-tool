@@ -384,7 +384,7 @@ var _ = Describe("ValidatePromSettings", func() {
 })
 
 var _ = Describe("ApplyPromTaskConfig", func() {
-	It("copies all fields from PrometheusTaskConfig to InputFlags", func() {
+	It("copies sampling fields from PrometheusTaskConfig to InputFlags", func() {
 		flags := InputFlags{
 			SamplingFreq: 60 * 1e9, // 60s default
 			Duration:     45 * 60 * 1e9,
@@ -392,19 +392,16 @@ var _ = Describe("ApplyPromTaskConfig", func() {
 		}
 		once := true
 		cfg := &PrometheusTaskConfig{
-			Frequency:   &Duration{Duration: 30 * 1e9},
-			Duration:    &Duration{Duration: 2 * 3600 * 1e9},
-			DBType:      "postgres",
-			PostgresURL: "postgresql://host/db",
-			Once:        &once,
+			Frequency: &Duration{Duration: 30 * 1e9},
+			Duration:  &Duration{Duration: 2 * 3600 * 1e9},
+			Once:      &once,
 		}
 
 		ApplyPromTaskConfig(&flags, cfg)
 
 		Expect(flags.SamplingFreq).To(Equal(cfg.Frequency.Duration))
 		Expect(flags.Duration).To(Equal(cfg.Duration.Duration))
-		Expect(flags.DatabaseType).To(Equal("postgres"))
-		Expect(flags.PostgresURL).To(Equal("postgresql://host/db"))
+		Expect(flags.DatabaseType).To(Equal("sqlite"))
 		Expect(flags.SingleRun).To(BeTrue())
 	})
 

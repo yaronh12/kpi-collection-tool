@@ -5,9 +5,9 @@ import (
 )
 
 // ValidateFlags ensures the correct combination of flags is provided.
-// Prometheus-specific fields (frequency, duration, db-type, postgres-url)
-// are validated separately by ValidatePromSettings after YAML values have
-// been merged into the flags.
+// Prometheus sampling fields (frequency, duration) and database settings
+// (db-type, postgres-url) are validated separately by ValidatePromSettings
+// after YAML values have been merged into the flags.
 func ValidateFlags(flags InputFlags) error {
 	if flags.ClusterName == "" {
 		return fmt.Errorf("cluster name is required: use --cluster-name flag")
@@ -65,9 +65,10 @@ func ValidatePromSettings(flags InputFlags) error {
 	return nil
 }
 
-// ApplyPromTaskConfig copies Prometheus settings from a tasks.yaml prometheus
-// section into InputFlags. Used with --tasks where CLI prom flags are rejected
-// and the YAML is the sole source.
+// ApplyPromTaskConfig copies Prometheus sampling settings from a tasks.yaml
+// prometheus section into InputFlags. Used with --tasks where CLI
+// --frequency/--duration/--once are rejected and the YAML is the sole source.
+// Database settings are not applied here; they remain global CLI flags.
 func ApplyPromTaskConfig(flags *InputFlags, p *PrometheusTaskConfig) {
 	if p == nil {
 		return
@@ -77,12 +78,6 @@ func ApplyPromTaskConfig(flags *InputFlags, p *PrometheusTaskConfig) {
 	}
 	if p.Duration != nil {
 		flags.Duration = p.Duration.Duration
-	}
-	if p.DBType != "" {
-		flags.DatabaseType = p.DBType
-	}
-	if p.PostgresURL != "" {
-		flags.PostgresURL = p.PostgresURL
 	}
 	if p.Once != nil {
 		flags.SingleRun = *p.Once

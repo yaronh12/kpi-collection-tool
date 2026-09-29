@@ -206,7 +206,10 @@ kpi-collector run \
 
 ## Prometheus-specific CLI Flags
 
-These flags control the Prometheus collection task specifically:
+These flags control Prometheus collection and storage. With `--tasks`,
+`--frequency`, `--duration`, and `--once` must be set under `prometheus:` in
+the tasks YAML instead; `--db-type` and `--postgres-url` remain global CLI
+flags in either mode.
 
 | Flag                | Required | Default | Description                                                                                                   |
 | ------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------- |
@@ -215,8 +218,8 @@ These flags control the Prometheus collection task specifically:
 | `--prom-kpis-config`| No**     | -       | Path to a Prometheus KPI configuration file (see [Prometheus KPI Configuration](kpis-file-configuration.md))  |
 | `--frequency`       | No       | 1m      | Prometheus sampling frequency (e.g. `10s`, `1m`, `2h`)                                                        |
 | `--duration`        | No       | 45m     | Total Prometheus sampling duration (e.g. `10s`, `1m`, `2h`)                                                    |
-| `--db-type`         | No       | sqlite  | Database type for Prometheus metrics: `sqlite` or `postgres`                                                   |
-| `--postgres-url`    | No***    | -       | PostgreSQL connection string                                                                                   |
+| `--db-type`         | No       | sqlite  | Database type: `sqlite` or `postgres` (global; usable with `--tasks`)                                         |
+| `--postgres-url`    | No***    | -       | PostgreSQL connection string (global; usable with `--tasks`)                                                  |
 | `--once`            | No       | false   | Collect all KPIs once and exit (ignores `--frequency` and `--duration`)                                        |
 
 \* Either provide `--kubeconfig` OR both `--token` and `--thanos-url`
@@ -224,7 +227,7 @@ These flags control the Prometheus collection task specifically:
 \*\*\* Required when `--db-type=postgres`
 
 For global flags that apply to all tasks (`--cluster-name`, `--cluster-type`,
-`--kubeconfig`, `--insecure-tls`, `--once`, `--parallel`, `--artifacts-dir`),
+`--kubeconfig`, `--insecure-tls`, `--parallel`, `--artifacts-dir`),
 see [Global CLI Flags](getting-started.md#step-2-choose-how-to-run).
 
 ## Dynamic CPU IDs from PerformanceProfile CRs

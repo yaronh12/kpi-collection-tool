@@ -63,11 +63,13 @@ Run it:
 kpi-collector run \
   --tasks tasks.yaml \
   --cluster-name my-cluster --cluster-type ran \
-  --kubeconfig ~/.kube/config --once
+  --kubeconfig ~/.kube/config
 ```
 
 `--tasks` accepts a path to a YAML file **or** a directory containing a file
-named `tasks.yaml`.
+named `tasks.yaml`. With `--tasks`, set `frequency` / `duration` / `once`
+under `prometheus:` in the YAML (not as CLI flags). `--db-type` and
+`--postgres-url` remain global CLI flags.
 
 > [!IMPORTANT]
 > `--tasks` and `--prom-kpis-config` are mutually exclusive. Use one or the other.

@@ -46,7 +46,6 @@ kpi-collector run \
   --cluster-name my-cluster \
   --cluster-type ran \
   --kubeconfig /path/to/your/kubeconfig \
-  --once \
   --insecure-tls
 ```
 
@@ -99,7 +98,7 @@ See [Prometheus KPI Configuration](kpis-file-configuration.md) for the full file
 | `--kubeconfig`      | No*      | -                            | Path to a kubeconfig with access to the cluster. Required for non-Prometheus tasks; optional for Prometheus (auto-discovers Thanos URL and creates a token) |
 | `--tasks`           | No**     | -                            | Path to a `tasks.yaml` file (or a directory containing one) — see [Tasks Configuration](tasks-configuration.md) |
 | `--prom-kpis-config`| No**     | -                            | Path to a Prometheus KPI YAML file — see [Prometheus KPI Configuration](kpis-file-configuration.md)            |
-| `--once`            | No       | false                        | Prometheus task only: collect all KPIs once and exit (ignores `--frequency` and `--duration`)                  |
+| `--once`            | No       | false                        | With `--prom-kpis-config` only: collect all KPIs once and exit (mutually exclusive with `--tasks`, `--frequency`, `--duration`) |
 | `--parallel`        | No       | false                        | Run tasks concurrently (also settable via `orchestration.mode` in a tasks file)                                |
 | `--insecure-tls`    | No       | false                        | Skip TLS certificate verification (dev/lab clusters with self-signed certs)                                    |
 | `--artifacts-dir`   | No       | `./kpi-collector-artifacts/` | Directory for database, logs, and output files                                                                 |
@@ -107,7 +106,7 @@ See [Prometheus KPI Configuration](kpis-file-configuration.md) for the full file
 \* Required for non-Prometheus tasks; for Prometheus-only, can use `--token` + `--thanos-url` instead
 \*\* Provide exactly one of `--tasks` or `--prom-kpis-config`
 
-For Prometheus-specific flags (`--frequency`, `--duration`, `--db-type`, `--token`, `--thanos-url`), see [Collecting Prometheus Metrics](collecting-metrics.md#prometheus-specific-cli-flags).
+For Prometheus-specific flags (`--frequency`, `--duration`, `--token`, `--thanos-url`), see [Collecting Prometheus Metrics](collecting-metrics.md#prometheus-specific-cli-flags). Database flags (`--db-type`, `--postgres-url`) are global and work with both `--tasks` and `--prom-kpis-config`.
 
 ## Step 3: Check the artifacts
 

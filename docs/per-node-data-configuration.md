@@ -124,21 +124,19 @@ The `isolcpus` field tells `top` which CPUs to monitor via `taskset -c`. This
 is useful for RAN/DU clusters where workload CPUs are isolated from the kernel
 scheduler.
 
-**Auto-detection (default):** When `isolcpus` is omitted, the debug pod reads
-`/proc/cmdline` on each node and parses the `isolcpus=` kernel parameter. This
-works on nodes configured via a PerformanceProfile or tuned profile, since
-those set `isolcpus` in the kernel command line.
+**Auto-detection (default):** When `isolcpus` is omitted, the tool uses one of
+two strategies depending on the task configuration:
 
-> [!NOTE]
-> This per-node `/proc/cmdline` detection is separate from the Prometheus
-> task's `{{ISOLATED_CPUS}}` placeholder, which reads PerformanceProfile CRs
-> via the Kubernetes API. The values should match on a correctly configured
-> cluster, but the two mechanisms are currently independent.
->
-> **Planned improvement:** when both tasks run in the same `tasks.yaml`, the
-> per-node-data task will be able to reuse the CPU IDs already fetched by the
-> Prometheus task's PerformanceProfile lookup, removing the need for
-> `/proc/cmdline` parsing or manual `isolcpus` configuration.
+1. **Shared from Prometheus (preferred):** When both `prometheus` and
+   `per-node-data` run in the same `tasks.yaml` and the Prometheus KPIs use
+   `{{ISOLATED_CPUS}}` placeholders, the isolated CPU IDs fetched from
+   PerformanceProfile CRs are automatically passed to per-node-data. No extra
+   API calls or manual configuration needed.
+
+2. **`/proc/cmdline` fallback:** When per-node-data runs alone, or the
+   Prometheus KPIs don't use CPU placeholders, the debug pod parses the
+   `isolcpus=` kernel parameter from `/proc/cmdline` on each node. This works
+   on nodes configured via a PerformanceProfile or tuned profile.
 
 **Manual override:** Set `isolcpus` explicitly when:
 - Nodes don't have `isolcpus` in their kernel command line

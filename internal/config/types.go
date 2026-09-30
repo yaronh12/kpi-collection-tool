@@ -160,9 +160,17 @@ func (q *Query) IsRunOnce() bool {
 }
 
 // KPIs represents the structure of the KPI configuration file containing
-// the list of KPI queries to be executed against Prometheus/Thanos
+// the list of KPI queries to be executed against Prometheus/Thanos.
+//
+// When loaded via --prom-kpis-config, the optional sampling/database fields
+// serve as defaults that CLI flags can override.
 type KPIs struct {
-	Queries []Query `yaml:"kpis"`
+	Queries     []Query   `yaml:"kpis"`
+	Frequency   *Duration `yaml:"frequency,omitempty"`
+	Duration    *Duration `yaml:"duration,omitempty"`
+	DBType      string    `yaml:"dbType,omitempty"`
+	PostgresURL string    `yaml:"postgresURL,omitempty"`
+	Once        *bool     `yaml:"once,omitempty"`
 }
 
 // GetEffectiveFrequency returns the sample frequency for this query,

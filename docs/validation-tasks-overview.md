@@ -7,7 +7,7 @@ one command:
 ```bash
 kpi-collector run --tasks tasks.yaml \
   --cluster-name my-cluster --cluster-type ran \
-  --kubeconfig ~/.kube/config --once
+  --kubeconfig ~/.kube/config
 ```
 
 This page introduces each task — what it does, what artifacts you get, and when
@@ -83,7 +83,7 @@ The fastest way to run the non-Prometheus tasks is with a
 kpi-collector run \
   --tasks task-profiles/tasks-quickstart.yaml \
   --cluster-name my-cluster --cluster-type ran \
-  --kubeconfig ~/.kube/config --once
+  --kubeconfig ~/.kube/config
 ```
 
 This runs **prometheus + per-node-data + oslat** with safe, short-duration

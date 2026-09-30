@@ -45,6 +45,11 @@ func NewPerNodeDataTask(cfg config.PerNodeDataTaskConfig, kubeconfig, artifactsD
 func (t *PerNodeDataTask) Name() string { return config.TaskConfigPerNodeData }
 
 func (t *PerNodeDataTask) Run(ctx context.Context) error {
+	if t.cfg.Isolcpus == "" {
+		return fmt.Errorf("%s: isolcpus is empty", t.Name())
+	}
+	log.Printf("%s: using isolcpus=%s", t.Name(), t.cfg.Isolcpus)
+
 	client, err := kubernetes.ClientsetFromKubeconfig(t.kubeconfig)
 	if err != nil {
 		return fmt.Errorf("%s: %w", t.Name(), err)
@@ -53,11 +58,6 @@ func (t *PerNodeDataTask) Run(ctx context.Context) error {
 	nodes, err := kubernetes.ListNodeNames(ctx, client)
 	if err != nil {
 		return fmt.Errorf("%s: %w", t.Name(), err)
-	}
-	if t.cfg.Isolcpus != "" {
-		log.Printf("%s: using isolcpus=%s", t.Name(), t.cfg.Isolcpus)
-	} else {
-		log.Printf("%s: isolcpus not set, will detect from /proc/cmdline on each node", t.Name())
 	}
 	output.PrintTaskProgress(t.Name(), fmt.Sprintf("collecting from %d node(s)", len(nodes)))
 

@@ -19,4 +19,4 @@ per-node-data:
   duration: 15s
   interval: 5s
   image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-  isolcpus: "0"  # Fixed CPU list for top -p; omit to auto-detect from /proc/cmdline on each node
+  isolcpus: "0"  # Explicit CPU list for top. Omit to use the PerformanceProfile isolated CPU set.

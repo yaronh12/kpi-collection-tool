@@ -20,5 +20,4 @@ per-node-data:
   duration: 30m
   interval: 30s
   image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-  # isolcpus: "2-15"  # Uncomment and set to match your PerformanceProfile isolated CPUs.
-                       # When omitted the tool parses /proc/cmdline on each node automatically.
+  # isolcpus: "2-15"  # Optional. When omitted, the PerformanceProfile isolated CPU set is used.

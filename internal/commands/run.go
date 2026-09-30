@@ -228,24 +228,28 @@ func resolveTasksFromSpec(flags config.InputFlags) ([]task.Task, bool, bool, err
 	log.Printf("Loaded tasks from %s (mode=%s, on-failure=%s)",
 		flags.TasksConfig, spec.Orchestration.Mode, spec.Orchestration.OnFailure)
 
+	var cpus *config.CPUPlaceholders
 	if spec.Prometheus != nil {
 		kpis, err := task.LoadPrometheusKPIs(spec)
 		if err != nil {
 			return nil, false, false, err
 		}
-		var cpus *config.CPUPlaceholders
 		kpis, cpus, err = prepareLoadedKPIs(kpis, flags)
 		if err != nil {
 			return nil, false, false, err
 		}
 		spec.Prometheus.Kpis = kpis.Queries
 		spec.Prometheus.ConfigFile = ""
+	}
 
-		if cpus != nil && cpus.Isolated != "" &&
-			spec.PerNodeData != nil && spec.PerNodeData.Isolcpus == "" {
-			spec.PerNodeData.Isolcpus = strings.ReplaceAll(cpus.Isolated, "|", ",")
-			log.Printf("Shared isolated CPUs with per-node-data: %s", spec.PerNodeData.Isolcpus)
+	if spec.PerNodeData != nil && spec.PerNodeData.Isolcpus == "" && cpus == nil {
+		cpus, err = fetchCPUPlaceholders(flags.Kubeconfig)
+		if err != nil {
+			return nil, false, false, err
 		}
+	}
+	if err := setPerNodeDataIsolcpus(&spec, cpus); err != nil {
+		return nil, false, false, err
 	}
 
 	tasks, err := task.ResolveFromTasksSpec(spec, flags)
@@ -383,32 +387,51 @@ func tokenDurationForCollection(isSingleRun bool, collectionDuration time.Durati
 	return collectionDuration + buffer
 }
 
-// substituteCPUsIfNeeded checks if queries contain CPU placeholders and if so,
-// fetches CPU IDs from PerformanceProfiles and substitutes them into queries.
-// Returns the fetched CPUPlaceholders (nil when no fetch was needed) so callers
-// can share the values with other tasks.
+// substituteCPUsIfNeeded fetches PerformanceProfile CPU sets when queries contain
+// {{RESERVED_CPUS}} or {{ISOLATED_CPUS}} and substitutes them into the queries.
 func substituteCPUsIfNeeded(kpis config.KPIs, flags config.InputFlags) (config.KPIs, *config.CPUPlaceholders, error) {
 	if !config.RequiresCPUSubstitution(kpis) {
 		return kpis, nil, nil
 	}
 
-	if flags.Kubeconfig == "" {
-		return kpis, nil, fmt.Errorf("queries contain CPU placeholders ({{RESERVED_CPUS}}/{{ISOLATED_CPUS}}) but no --kubeconfig provided")
+	cpus, err := fetchCPUPlaceholders(flags.Kubeconfig)
+	if err != nil {
+		return kpis, nil, err
+	}
+	return config.SubstituteCPUPlaceholders(kpis, cpus), cpus, nil
+}
+
+// fetchCPUPlaceholders reads reserved and isolated CPU sets from PerformanceProfiles.
+func fetchCPUPlaceholders(kubeconfig string) (*config.CPUPlaceholders, error) {
+	if kubeconfig == "" {
+		return nil, fmt.Errorf("--kubeconfig is required to read PerformanceProfile CPU sets")
 	}
 
-	reservedCPUs, isolatedCPUs, err := kubernetes.FetchCPUsFromPerformanceProfiles(flags.Kubeconfig)
+	reservedCPUs, isolatedCPUs, err := kubernetes.FetchCPUsFromPerformanceProfiles(kubeconfig)
 	if err != nil {
-		return kpis, nil, fmt.Errorf("failed to fetch CPUs from PerformanceProfiles: %w", err)
+		return nil, fmt.Errorf("failed to fetch CPUs from PerformanceProfiles: %w", err)
 	}
 
 	fmt.Printf("Loaded CPU sets - Reserved: [%s], Isolated: [%s]\n", reservedCPUs, isolatedCPUs)
+	return &config.CPUPlaceholders{Reserved: reservedCPUs, Isolated: isolatedCPUs}, nil
+}
 
-	cpuPlaceholders := &config.CPUPlaceholders{
-		Reserved: reservedCPUs,
-		Isolated: isolatedCPUs,
+// setPerNodeDataIsolcpus copies PerformanceProfile CPU sets onto per-node-data
+// when isolcpus was not set in the tasks file. An explicit value is left as-is.
+func setPerNodeDataIsolcpus(spec *config.TasksSpec, cpus *config.CPUPlaceholders) error {
+	if spec.PerNodeData == nil || spec.PerNodeData.Isolcpus != "" {
+		return nil
+	}
+	if cpus == nil || cpus.Isolated == "" {
+		return fmt.Errorf("%s: PerformanceProfile isolated CPU set is empty", config.TaskConfigPerNodeData)
 	}
 
-	return config.SubstituteCPUPlaceholders(kpis, cpuPlaceholders), cpuPlaceholders, nil
+	spec.PerNodeData.Isolcpus = strings.ReplaceAll(cpus.Isolated, "|", ",")
+	log.Printf("%s: CPU sets from PerformanceProfile: reserved=%s isolated=%s",
+		config.TaskConfigPerNodeData,
+		strings.ReplaceAll(cpus.Reserved, "|", ","),
+		spec.PerNodeData.Isolcpus)
+	return nil
 }
 
 // validateRangeFrequency checks range queries with since lookback for frequency/range mismatches.

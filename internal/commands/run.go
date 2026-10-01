@@ -272,17 +272,28 @@ func resolveTasksFromSpec(flags *config.InputFlags) ([]task.Task, bool, bool, er
 		return nil, false, false, fmt.Errorf("prometheus config: %w", err)
 	}
 
+	var cpus *config.CPUPlaceholders
 	if spec.Prometheus != nil {
 		kpis, err := task.LoadPrometheusKPIs(spec)
 		if err != nil {
 			return nil, false, false, err
 		}
-		kpis, err = prepareLoadedKPIs(kpis, *flags)
+		kpis, cpus, err = prepareLoadedKPIs(kpis, *flags)
 		if err != nil {
 			return nil, false, false, err
 		}
 		spec.Prometheus.Kpis = kpis.Queries
 		spec.Prometheus.ConfigFile = ""
+	}
+
+	if spec.PerNodeData != nil && spec.PerNodeData.Isolcpus == "" && cpus == nil {
+		cpus, err = fetchCPUPlaceholders(flags.Kubeconfig)
+		if err != nil {
+			return nil, false, false, err
+		}
+	}
+	if err := setPerNodeDataIsolcpus(&spec, cpus); err != nil {
+		return nil, false, false, err
 	}
 
 	tasks, err := task.ResolveFromTasksSpec(spec, *flags)
@@ -332,39 +343,40 @@ func setupPromKPIs(cmd *cobra.Command, flags *config.InputFlags) (config.KPIs, e
 		return config.KPIs{}, err
 	}
 
-	return prepareLoadedKPIs(kpis, *flags)
+	kpis, _, err = prepareLoadedKPIs(kpis, *flags)
+	return kpis, err
 }
 
-func prepareLoadedKPIs(kpis config.KPIs, flags config.InputFlags) (config.KPIs, error) {
+func prepareLoadedKPIs(kpis config.KPIs, flags config.InputFlags) (config.KPIs, *config.CPUPlaceholders, error) {
 	if validationErrors := config.ValidateKPIs(kpis); len(validationErrors) > 0 {
 		fmt.Println("KPI validation errors:")
 		for _, e := range validationErrors {
 			fmt.Printf("  ✗ %v\n", e)
 		}
-		return config.KPIs{}, fmt.Errorf("found %d KPI validation error(s)", len(validationErrors))
+		return config.KPIs{}, nil, fmt.Errorf("found %d KPI validation error(s)", len(validationErrors))
 	}
 	fmt.Printf("✓ Validated %d KPI(s)\n", len(kpis.Queries))
 
 	if !flags.SkipPrompts {
 		if abort := promptIfManyUncategorized(kpis); abort {
-			return config.KPIs{}, fmt.Errorf("aborted by user")
+			return config.KPIs{}, nil, fmt.Errorf("aborted by user")
 		}
 	}
 
-	kpis, err := substituteCPUsIfNeeded(kpis, flags)
+	kpis, cpus, err := substituteCPUsIfNeeded(kpis, flags)
 	if err != nil {
-		return config.KPIs{}, err
+		return config.KPIs{}, nil, err
 	}
 
 	if !flags.SingleRun {
 		warnFrequencyExceedsDuration(kpis, flags)
 
 		if err := validateRangeFrequency(kpis, flags); err != nil {
-			return config.KPIs{}, err
+			return config.KPIs{}, nil, err
 		}
 	}
 
-	return kpis, nil
+	return kpis, cpus, nil
 }
 
 // runAllTasks executes tasks and returns the names of any that failed.
@@ -426,30 +438,51 @@ func tokenDurationForCollection(isSingleRun bool, collectionDuration time.Durati
 	return collectionDuration + buffer
 }
 
-// substituteCPUsIfNeeded checks if queries contain CPU placeholders and if so,
-// fetches CPU IDs from PerformanceProfiles and substitutes them into queries
-func substituteCPUsIfNeeded(kpis config.KPIs, flags config.InputFlags) (config.KPIs, error) {
+// substituteCPUsIfNeeded fetches PerformanceProfile CPU sets when queries contain
+// {{RESERVED_CPUS}} or {{ISOLATED_CPUS}} and substitutes them into the queries.
+func substituteCPUsIfNeeded(kpis config.KPIs, flags config.InputFlags) (config.KPIs, *config.CPUPlaceholders, error) {
 	if !config.RequiresCPUSubstitution(kpis) {
-		return kpis, nil
+		return kpis, nil, nil
 	}
 
-	if flags.Kubeconfig == "" {
-		return kpis, fmt.Errorf("queries contain CPU placeholders ({{RESERVED_CPUS}}/{{ISOLATED_CPUS}}) but no --kubeconfig provided")
-	}
-
-	reservedCPUs, isolatedCPUs, err := kubernetes.FetchCPUsFromPerformanceProfiles(flags.Kubeconfig)
+	cpus, err := fetchCPUPlaceholders(flags.Kubeconfig)
 	if err != nil {
-		return kpis, fmt.Errorf("failed to fetch CPUs from PerformanceProfiles: %w", err)
+		return kpis, nil, err
+	}
+	return config.SubstituteCPUPlaceholders(kpis, cpus), cpus, nil
+}
+
+// fetchCPUPlaceholders reads reserved and isolated CPU sets from PerformanceProfiles.
+func fetchCPUPlaceholders(kubeconfig string) (*config.CPUPlaceholders, error) {
+	if kubeconfig == "" {
+		return nil, fmt.Errorf("--kubeconfig is required to read PerformanceProfile CPU sets")
+	}
+
+	reservedCPUs, isolatedCPUs, err := kubernetes.FetchCPUsFromPerformanceProfiles(kubeconfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch CPUs from PerformanceProfiles: %w", err)
 	}
 
 	fmt.Printf("Loaded CPU sets - Reserved: [%s], Isolated: [%s]\n", reservedCPUs, isolatedCPUs)
+	return &config.CPUPlaceholders{Reserved: reservedCPUs, Isolated: isolatedCPUs}, nil
+}
 
-	cpuPlaceholders := &config.CPUPlaceholders{
-		Reserved: reservedCPUs,
-		Isolated: isolatedCPUs,
+// setPerNodeDataIsolcpus copies PerformanceProfile CPU sets onto per-node-data
+// when isolcpus was not set in the tasks file. An explicit value is left as-is.
+func setPerNodeDataIsolcpus(spec *config.TasksSpec, cpus *config.CPUPlaceholders) error {
+	if spec.PerNodeData == nil || spec.PerNodeData.Isolcpus != "" {
+		return nil
+	}
+	if cpus == nil || cpus.Isolated == "" {
+		return fmt.Errorf("%s: PerformanceProfile isolated CPU set is empty", config.TaskConfigPerNodeData)
 	}
 
-	return config.SubstituteCPUPlaceholders(kpis, cpuPlaceholders), nil
+	spec.PerNodeData.Isolcpus = strings.ReplaceAll(cpus.Isolated, "|", ",")
+	log.Printf("%s: CPU sets from PerformanceProfile: reserved=%s isolated=%s",
+		config.TaskConfigPerNodeData,
+		strings.ReplaceAll(cpus.Reserved, "|", ","),
+		spec.PerNodeData.Isolcpus)
+	return nil
 }
 
 // validateRangeFrequency checks range queries with since lookback for frequency/range mismatches.

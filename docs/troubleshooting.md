@@ -48,12 +48,12 @@ export TOKEN=$(oc create token prometheus-k8s -n openshift-monitoring --duration
 
 **Symptom:** `no PerformanceProfile found in cluster`
 
-**Cause:** Your KPI queries contain `{{RESERVED_CPUS}}` or `{{ISOLATED_CPUS}}` placeholders, but the cluster does not have a PerformanceProfile CR installed.
+**Cause:** The run needs PerformanceProfile CPU sets, but the cluster has no PerformanceProfile CR. This happens when KPI queries contain `{{RESERVED_CPUS}}` or `{{ISOLATED_CPUS}}`, or when `per-node-data` is configured without `isolcpus`.
 
 **Fix:** Either:
-- Remove the placeholder queries from your `kpis.yaml` file
 - Install the Node Tuning Operator and create a PerformanceProfile on the cluster
-- Hardcode the CPU IDs directly in your queries (see [Collecting Metrics — Manual CPU IDs](collecting-metrics.md#manual-alternative-obtaining-cpu-ids-without---kubeconfig))
+- Remove the placeholder queries from your `kpis.yaml` file, or hardcode the CPU IDs (see [Collecting Metrics — Manual CPU IDs](collecting-metrics.md#manual-alternative-obtaining-cpu-ids-without---kubeconfig))
+- Set `isolcpus` explicitly on the `per-node-data` task
 
 ## KPI validation errors
 

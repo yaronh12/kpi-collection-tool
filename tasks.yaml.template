@@ -74,7 +74,7 @@ per-node-data:
   duration: 30m         # How long top runs on each node
   interval: 30s         # top sampling period (must be < duration)
   image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-  # isolcpus: "2-15"   # Optional; omit to auto-detect from /proc/cmdline
+  # isolcpus: "2-15"   # Optional; omit to use the PerformanceProfile isolated CPU set
 
 # --- Oslat task ---
 # Creates a pod, waits for completion, collects logs.

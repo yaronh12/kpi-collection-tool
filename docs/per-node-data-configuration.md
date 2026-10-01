@@ -61,7 +61,7 @@ per-node-data:
 | `duration` | Yes | — | How long `top` runs on each node. Accepts a Go duration string (e.g. `30m`, `1h`, `5m30s`). |
 | `interval` | Yes | — | `top` sampling period — how often a snapshot is taken. Must be less than `duration`. Accepts a Go duration string. |
 | `image` | Yes | — | Container image for the privileged debug pod. Must support `chroot` (the task runs `chroot /host` to access host tools). |
-| `isolcpus` | No | auto-detected | CPU list passed to `taskset -c` when running `top`. When omitted, the tool parses `/proc/cmdline` on each node to detect isolated CPUs automatically. Set this if your nodes don't have `isolcpus` in their kernel command line or if you want to override the detected value. |
+| `isolcpus` | No | PerformanceProfile isolated CPUs | CPU list passed to `taskset -c` when running `top`. When omitted, filled from the cluster PerformanceProfile isolated CPU set. Set this to override that value. |
 
 ### Validation rules
 
@@ -120,28 +120,16 @@ The `duration` and `interval` fields control the `top` collection window:
 
 ## Isolated CPUs (`isolcpus`)
 
-The `isolcpus` field tells `top` which CPUs to monitor via `taskset -c`. This
-is useful for RAN/DU clusters where workload CPUs are isolated from the kernel
-scheduler.
+The `isolcpus` field tells `top` which CPUs to monitor via `taskset -c`.
 
-**Auto-detection (default):** When `isolcpus` is omitted, the tool uses one of
-two strategies depending on the task configuration:
+**Default:** When `isolcpus` is omitted, the tool reads the reserved and isolated
+CPU sets from the cluster's PerformanceProfile CRs and uses the isolated set.
+This is the same lookup used for Prometheus `{{RESERVED_CPUS}}` and
+`{{ISOLATED_CPUS}}` placeholders. When both are needed, the sets are fetched
+once and shared. Requires `--kubeconfig` and a PerformanceProfile on the cluster.
 
-1. **Shared from Prometheus (preferred):** When both `prometheus` and
-   `per-node-data` run in the same `tasks.yaml` and the Prometheus KPIs use
-   `{{ISOLATED_CPUS}}` placeholders, the isolated CPU IDs fetched from
-   PerformanceProfile CRs are automatically passed to per-node-data. No extra
-   API calls or manual configuration needed.
-
-2. **`/proc/cmdline` fallback:** When per-node-data runs alone, or the
-   Prometheus KPIs don't use CPU placeholders, the debug pod parses the
-   `isolcpus=` kernel parameter from `/proc/cmdline` on each node. This works
-   on nodes configured via a PerformanceProfile or tuned profile.
-
-**Manual override:** Set `isolcpus` explicitly when:
-- Nodes don't have `isolcpus` in their kernel command line
-- You want to monitor a specific CPU subset
-- You want consistent behavior across heterogeneous nodes
+**Override:** Set `isolcpus` to monitor a specific CPU list instead of the
+PerformanceProfile isolated set.
 
 ```yaml
 per-node-data:

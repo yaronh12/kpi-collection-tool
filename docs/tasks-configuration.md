@@ -150,7 +150,7 @@ per-node-data:
   duration: 30m
   interval: 30s
   image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-  # isolcpus: "2-15"  # Optional; omit to auto-detect from /proc/cmdline on each node
+  # isolcpus: "2-15"  # Optional; omit to use the PerformanceProfile isolated CPU set
 ```
 
 Or split into a separate file:
@@ -174,7 +174,7 @@ per-node-data:
 | `duration` | Yes | How long `top` runs (e.g. `30m`) |
 | `interval` | Yes | `top` sample period; must be less than `duration` |
 | `image` | Yes | Container image for the debug pod (must support `chroot`) |
-| `isolcpus` | No | CPU list for `taskset`; if omitted, parsed from `/proc/cmdline` on each node |
+| `isolcpus` | No | CPU list for `taskset`; if omitted, the PerformanceProfile isolated CPU set |
 
 **Artifacts** (under `--artifacts-dir`):
 - `top-<node>.out` — CPU usage over time

@@ -28,12 +28,16 @@ type check struct {
 }
 
 func (c check) String() string {
-	tag := map[checkStatus]string{
-		statusPass: "[PASS]",
-		statusWarn: "[WARN]",
-		statusFail: "[FAIL]",
+	tag := "[UNKNOWN]"
+	switch c.status {
+	case statusPass:
+		tag = "[PASS]"
+	case statusWarn:
+		tag = "[WARN]"
+	case statusFail:
+		tag = "[FAIL]"
 	}
-	return fmt.Sprintf("  %s %s", tag[c.status], c.message)
+	return fmt.Sprintf("  %s %s", tag, c.message)
 }
 
 // doctorFlags holds flags specific to the doctor command.
